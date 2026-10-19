@@ -6,7 +6,7 @@ A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.18, `fs-base-ui` 0.1.1
 
 - **MSFS-UI-GENERATOR**: the Windows app (`generator/`, exe `MSFS-UI-GENERATOR.exe`, data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`).
 - **msfs-ui**: the package installed in the sim's Community folder; the mod's sources are in `mod/`.
-- `docs/` (user guide, development, sim reference, feature ideas, `images/` for the README's screenshots), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `build-release.ps1` (the release; output in `release/`, ignored by Git).
+- `docs/` (user guide, development, sim reference, next steps, feature ideas, `images/` for the README's screenshots), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `build-release.ps1` (the release; output in `release/`, ignored by Git).
 - The C# projects keep their internal names (`MsfsUi.App`, `MsfsUi.Core`, `MsfsUi.Core.Tests`, `MsfsUi.App.UITests`, `MsfsUi.DevTool`).
 
 ## Language
@@ -39,7 +39,7 @@ $dev = "generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe"
 2. Explore the sim: `fs-base-ui\html_ui\Global\*.js` and `cookedcomps\*` (`name="…"`, `…Manipulator` classes, `Game.…` paths); read the real state with `msfs-ui-dev eval`; try an action, then put the original state back.
 3. Code, build, test; install and reload in the sim.
 4. Verify by measuring (in the sim: `eval`, `getBoundingClientRect`; in the app: UI Automation from PowerShell, elements by `AutomationProperties.AutomationId`, buttons through `InvokePattern`), alignments to the pixel; then ask the user for a screenshot.
-5. Document (`docs/`, `mod/README.md`, this file), then commit.
+5. Document (`docs/`, `mod/README.md`, this file, `docs/next-steps.md`), then commit.
 
 ## Rules
 
@@ -75,7 +75,7 @@ The map gestures to remove the departure / arrival were tried and abandoned at t
 
 ## Progress
 
-Plan: `%USERPROFILE%\.claude\plans\jaunty-foraging-allen.md` (steps 0 to 6). The Git history was started again from version 1.0.0 (2026-10-19, without personal data): the steps below, and version 0.3.0 (Node tool `cli/`, first mod), are no longer in it.
+The original plan, `%USERPROFILE%\.claude\plans\jaunty-foraging-allen.md` (steps 0 to 6), is history: later decisions changed it (names, layout, no Data page). **What comes next is in [docs/next-steps.md](docs/next-steps.md)**: keep it up to date at the end of every step. The Git history was started again from version 1.0.0 (2026-10-19, without personal data): the steps below, and version 0.3.0 (Node tool `cli/`, first mod), are no longer in it.
 
 | Step | Content |
 |---|---|
@@ -92,7 +92,7 @@ Plan: `%USERPROFILE%\.claude\plans\jaunty-foraging-allen.md` (steps 0 to 6). The
 | 3c | Compatibility and Log pages |
 | 3d | UI tests, code review fixes, accessibility, light / dark button |
 | 5 | Reorganisation: `generator/`, `mod/`, `docs/` in English; the app named MSFS-UI-GENERATOR (data folder moved); 0.3.0 removed |
-| 4 | Version 1.0.0: release build (`build-release.ps1`, self-contained folder and zip, 217 MB / 81 MB), app icon (`tools/make-icon.ps1`), the WinUI component of the Windows App SDK instead of the metapackage; Data page and backup / restore removed (user's decision: not needed); Readme page at the bottom of the navigation (how it works, no file of the sim modified) |
-| **6** | Next: improvements from [docs/feature-ideas.md](docs/feature-ideas.md) |
+| 4 | Version 1.0.0: release build (`build-release.ps1`, self-contained folder and zip, 218 MB / 81 MB), app icon (`tools/make-icon.ps1`), the WinUI component of the Windows App SDK instead of the metapackage; Data page and backup / restore removed (user's decision: not needed); Readme page at the bottom of the navigation (how it works, no file of the sim modified) |
+| **6** | Next: new features, from 6a (A1, favourite and recent airports); order, design and open questions in [docs/next-steps.md](docs/next-steps.md) |
 
-The package installed in Community is still the 1.0.0-dev mod: Generate & install from the 1.0.0 app (`release\MSFS-UI-GENERATOR\`) updates it.
+The package installed in Community is still the 1.0.0-dev mod: Generate & install from the 1.0.0 app (`release\MSFS-UI-GENERATOR\`) updates it (next steps, 1.2).

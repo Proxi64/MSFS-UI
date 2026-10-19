@@ -113,7 +113,7 @@ The cost: the mod's start-up waits for `config.js`, and both files are a contrac
 1. **Explore the sim**: search `fs-base-ui\html_ui\Global\*.js` and `cookedcomps\*` (`name="…"` attributes, `…Manipulator` classes, `Game.…` paths); read the real state with `msfs-ui-dev eval`; try an action, then put the original state back.
 2. **Code**, then `npm run check` (mod) or `dotnet build` / `dotnet test` (app).
 3. **Verify by measuring**: in the sim with `eval` (`getBoundingClientRect`, classes, model values), in the app with UI Automation (elements by `AutomationProperties.AutomationId`), rather than by asking to look; alignments to the pixel. Then a screenshot to the user.
-4. **Document** (this folder, `mod/README.md`), then one commit per step validated in the sim.
+4. **Document** (this folder, `mod/README.md`; [next-steps.md](next-steps.md) moves on to the following step), then one commit per step validated in the sim.
 
 ## Rules
 
@@ -156,6 +156,6 @@ It stops at the first failure:
 
 The version comes from `mod/features.json` (`modVersion`) and must equal `<Version>` in `generator/Directory.Build.props`. The `release\` folder is ignored by Git. Afterwards `mod/dist/main.js` is the release module: `npm run check` builds the development one again.
 
-The folder (about 217 MB, 82 MB zipped) runs on any Windows 10 1809+ x64 machine without installing anything: .NET and the Windows App SDK are inside. The app references only the **WinUI component** of the Windows App SDK (`Microsoft.WindowsAppSDK.WinUI`, with `Microsoft.Windows.SDK.BuildTools.MSIX` as a component used on its own requires), not the `Microsoft.WindowsAppSDK` metapackage, whose AI, ML, Search and Widgets components would add about 60 MB.
+The folder (about 218 MB, 81 MB zipped) runs on any Windows 10 1809+ x64 machine without installing anything: .NET and the Windows App SDK are inside. The app references only the **WinUI component** of the Windows App SDK (`Microsoft.WindowsAppSDK.WinUI`, with `Microsoft.Windows.SDK.BuildTools.MSIX` as a component used on its own requires), not the `Microsoft.WindowsAppSDK` metapackage, whose AI, ML, Search and Widgets components would add about 60 MB.
 
 The icon (`generator/MsfsUi.App/Assets/AppIcon.ico`) is drawn by `tools/make-icon.ps1` (`-Preview` also writes PNG previews).

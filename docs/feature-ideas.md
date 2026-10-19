@@ -2,7 +2,7 @@
 
 Features that could be added to the mod, with what the sim offers for each, a proposed design, the unknowns and an estimate. It is the list to pick the next versions from.
 
-**Status:** B1, B2 and D1 are done (since 0.3.0, rewritten in 1.0); G1 is done by MSFS-UI-GENERATOR (the Features page applies the settings to the running sim). G2 (backup and restore) was in 0.3.0 and the first 1.0 builds, then removed on 2026-10-19 at the user's request: not needed. The rest is not implemented.
+**Status:** B1, B2 and D1 are done (since 0.3.0, rewritten in 1.0); G1 is done by MSFS-UI-GENERATOR (the Features page applies the settings to the running sim). G2 (backup and restore) was in 0.3.0 and the first 1.0 builds, then removed on 2026-10-19 at the user's request: not needed. The rest is not implemented. The order suggested for the next versions, and the design of the first one (A1), are in [next-steps.md](next-steps.md).
 
 ## Method
 
