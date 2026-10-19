@@ -15,7 +15,7 @@ Where MSFS-UI stands, and what is suggested next, in order. Each step is present
 | # | Step | Why | How |
 |---|---|---|---|
 | 1.1 | ~~Publish the repository~~ | Done on 2026-10-19 | Public, after an audit of the whole history (no personal data, no secret, no file of the sim) |
-| 1.2 | Check 1.0.1 in the sim | Installed from the release app with the sim closed: not seen running yet | Start the sim; with its main menu displayed, the app's **Compatibility** page (offline and live checks), and a look at each feature |
+| 1.2 | ~~Check 1.0.1 in the sim~~ | Done on 2026-10-19 | The published module (build `2026-10-19T18:18:38Z`) runs: 163/163 compatibility checks (111 offline, 52 live), the 7 features started, no error in the mod's log, each feature checked by the user |
 | 1.3 | Try the release on a clean Windows (optional) | The release should run without .NET or the Windows App SDK installed; this has not been tried on another machine yet | Copy the folder into Windows Sandbox and run the exe: the Home page should open and say *Sim not found* |
 | 1.4 | ~~Publish a GitHub release~~ | Done on 2026-10-19 | Tag `1.0.1` on `main`, the zip attached (SHA-256 checked against the local one). Next ones: tag `<version>`, see the Release section of [development.md](development.md#release) |
 
