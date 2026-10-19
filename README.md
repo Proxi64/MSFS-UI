@@ -7,12 +7,26 @@ A personal mod of the **Microsoft Flight Simulator 2024** main menu, and the Win
 
 Version 1.0.0, tested on MSFS 2024 1.9.18 (Steam), base package `fs-base-ui` 0.1.10.
 
+## Screenshots
+
+Free Flight: favourite aircraft on the left, the weather and time bar on the right.
+
+![Free Flight with the favourites and the weather and time bar](docs/images/free-flight.png)
+
+Aircraft selection: the gallery, the list, and the favourites first; the setup panel on the left (variant, livery, tail number).
+
+![Aircraft gallery](docs/images/gallery.png)
+
+![Aircraft list](docs/images/gallery-list.png)
+
+![Favourite aircraft in the list](docs/images/favorites.png)
+
 ## Repository
 
 ```
 generator/   MSFS-UI-GENERATOR (.NET 10, WinUI 3): the app, its library, its tests and a developer tool
 mod/         the menu mod (TypeScript), installed in the sim as the msfs-ui package
-docs/        documentation
+docs/        documentation; docs/images/ holds the screenshots
 tools/       msfs-sdk-mcp, the MSFS 2024 SDK for Claude Code (MCP server); make-icon.ps1, the app's icon
 build-release.ps1   the release: release\MSFS-UI-GENERATOR\ and its zip
 ```
@@ -29,10 +43,13 @@ Then run `generator\MsfsUi.App\bin\Debug\net10.0-windows10.0.26100.0\win-x64\MSF
 
 ## Documentation
 
-- [User guide](docs/user-guide.md)
-- [Development](docs/development.md)
-- [Sim reference](docs/sim-reference.md)
-- [Feature ideas](docs/feature-ideas.md)
+| Document | For | Content |
+|---|---|---|
+| [User guide](docs/user-guide.md) | Users | Installing, the app's pages, every feature of the mod in the sim, after a sim update, troubleshooting |
+| [Development](docs/development.md) | Developers | Repository, build and tests, the developer tool, how the package works, the contracts between the app and the mod, working method, rules, the app's structure |
+| [Sim reference](docs/sim-reference.md) | Developers | What the mod uses from the MSFS 2024 menu: files, screens, data model, events, storage, Coherent GT constraints |
+| [Feature ideas](docs/feature-ideas.md) | Everyone | Features that could come next, with what the sim offers and an estimate |
+| [Mod](mod/README.md) | Developers | The menu mod's build, contracts, sources and the sim's components it uses |
 
 ## How it works
 

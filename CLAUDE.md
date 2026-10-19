@@ -1,12 +1,12 @@
 # MSFS-UI: instructions for Claude Code
 
-A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.18, `fs-base-ui` 0.1.10) and the Windows app that installs it. The documentation is in [docs/](docs/README.md); this file sums up what to keep in mind while working on the project.
+A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.18, `fs-base-ui` 0.1.10) and the Windows app that installs it. The documentation is listed in [README.md](README.md#documentation); this file sums up what to keep in mind while working on the project.
 
 ## Names and layout
 
 - **MSFS-UI-GENERATOR**: the Windows app (`generator/`, exe `MSFS-UI-GENERATOR.exe`, data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`).
 - **msfs-ui**: the package installed in the sim's Community folder; the mod's sources are in `mod/`.
-- `docs/` (user guide, development, sim reference, feature ideas), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `build-release.ps1` (the release; output in `release/`, ignored by Git).
+- `docs/` (user guide, development, sim reference, feature ideas, `images/` for the README's screenshots), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `build-release.ps1` (the release; output in `release/`, ignored by Git).
 - The C# projects keep their internal names (`MsfsUi.App`, `MsfsUi.Core`, `MsfsUi.Core.Tests`, `MsfsUi.App.UITests`, `MsfsUi.DevTool`).
 
 ## Language

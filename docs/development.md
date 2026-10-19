@@ -7,7 +7,7 @@ How the project is built, tested and changed. Users only need the [user guide](u
 ```
 generator/   MSFS-UI-GENERATOR, the Windows app (.NET 10, WinUI 3), with its library and tests
 mod/         the menu mod (TypeScript → one ES2017 module), installed in the sim as the msfs-ui package
-docs/        this documentation
+docs/        this documentation; docs/images/ holds the screenshots of the README
 tools/       msfs-sdk-mcp, an MCP server giving Claude Code the MSFS 2024 SDK and SimConnect; make-icon.ps1, the app's icon
 build-release.ps1   the release (see below); its output goes to release/, ignored by Git
 ```
