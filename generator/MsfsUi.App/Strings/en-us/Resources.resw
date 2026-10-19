@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="NavHome.Content" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="NavFeatures.Content" xml:space="preserve">
+    <value>Features</value>
+  </data>
+  <data name="NavCompatibility.Content" xml:space="preserve">
+    <value>Compatibility</value>
+  </data>
+  <data name="NavLog.Content" xml:space="preserve">
+    <value>Log</value>
+  </data>
+  <data name="HomeTitle.Text" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="FeaturesTitle.Text" xml:space="preserve">
+    <value>Features</value>
+  </data>
+  <data name="FeaturesDescription.Text" xml:space="preserve">
+    <value>Choose the features of the mod and their options. Apply saves them and updates the mod in the sim.</value>
+  </data>
+  <data name="CompatibilityTitle.Text" xml:space="preserve">
+    <value>Compatibility</value>
+  </data>
+  <data name="CompatibilityDescription.Text" xml:space="preserve">
+    <value>What the mod uses in the sim, checked in its files and, while it runs, in its main menu. A failure after a sim update shows which features may no longer work.</value>
+  </data>
+  <data name="LogTitle.Text" xml:space="preserve">
+    <value>Log</value>
+  </data>
+  <data name="LogDescription.Text" xml:space="preserve">
+    <value>Operations of the app, and the mod's log read from the sim.</value>
+  </data>
+  <data name="HomeSimUpdated.Title" xml:space="preserve">
+    <value>The sim was updated</value>
+  </data>
+  <data name="HomeSimUpdated.Message" xml:space="preserve">
+    <value>The menu's root page changed since the package was generated. Generate &amp; install again so that the mod loads with the new page.</value>
+  </data>
+  <data name="HomeSettingsProblem.Title" xml:space="preserve">
+    <value>Settings not read</value>
+  </data>
+  <data name="HomeSimHeader.Text" xml:space="preserve">
+    <value>Microsoft Flight Simulator 2024</value>
+  </data>
+  <data name="HomeSimNotFoundBar.Title" xml:space="preserve">
+    <value>Sim not found</value>
+  </data>
+  <data name="HomeSimSourceLabel.Text" xml:space="preserve">
+    <value>Found through</value>
+  </data>
+  <data name="HomeSimStateLabel.Text" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="HomeFsBaseUiLabel.Text" xml:space="preserve">
+    <value>fs-base-ui</value>
+  </data>
+  <data name="HomeCommunityLabel.Text" xml:space="preserve">
+    <value>Community folder</value>
+  </data>
+  <data name="HomeChooseFolders.Content" xml:space="preserve">
+    <value>Choose folders…</value>
+  </data>
+  <data name="HomeUseDetectedFolders.Content" xml:space="preserve">
+    <value>Use detected folders</value>
+  </data>
+  <data name="HomePackageHeader.Text" xml:space="preserve">
+    <value>msfs-ui package</value>
+  </data>
+  <data name="HomeConflicts.Title" xml:space="preserve">
+    <value>Other packages replace the same menu page</value>
+  </data>
+  <data name="HomeInstall.Content" xml:space="preserve">
+    <value>Generate &amp; install</value>
+  </data>
+  <data name="HomeReload.Content" xml:space="preserve">
+    <value>Reload in sim</value>
+  </data>
+  <data name="HomeRemove.Content" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="DialogCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="HomeBusyInstall" xml:space="preserve">
+    <value>Generating and installing…</value>
+  </data>
+  <data name="HomeInstallFailed" xml:space="preserve">
+    <value>The package could not be installed</value>
+  </data>
+  <data name="HomeInstalled" xml:space="preserve">
+    <value>msfs-ui {0} installed</value>
+  </data>
+  <data name="HomeNextRestart" xml:space="preserve">
+    <value>Restart the sim: it reads a new package and the menu's root page only at start-up.</value>
+  </data>
+  <data name="HomeNextNone" xml:space="preserve">
+    <value>The sim will load it at its next start.</value>
+  </data>
+  <data name="HomeNextReloaded" xml:space="preserve">
+    <value>The mod was reloaded in the sim.</value>
+  </data>
+  <data name="HomeNextReloadFailed" xml:space="preserve">
+    <value>The mod could not be reloaded in the sim ({0}): use Reload in sim, or restart the sim.</value>
+  </data>
+  <data name="HomeBusyReload" xml:space="preserve">
+    <value>Reloading the mod…</value>
+  </data>
+  <data name="HomeReloadFailed" xml:space="preserve">
+    <value>The mod could not be reloaded</value>
+  </data>
+  <data name="HomeReloaded" xml:space="preserve">
+    <value>Mod reloaded in the sim</value>
+  </data>
+  <data name="HomeRemoveTitle" xml:space="preserve">
+    <value>Remove the package?</value>
+  </data>
+  <data name="HomeRemoveMessage" xml:space="preserve">
+    <value>The msfs-ui package is deleted from the Community folder. The mod's data (favourites, tail numbers…) stays in the sim.</value>
+  </data>
+  <data name="HomeRemoveConfirm" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="HomeBusyRemove" xml:space="preserve">
+    <value>Removing…</value>
+  </data>
+  <data name="HomeRemoveFailed" xml:space="preserve">
+    <value>The package could not be removed</value>
+  </data>
+  <data name="HomeRemoved" xml:space="preserve">
+    <value>Package removed</value>
+  </data>
+  <data name="HomeNothingToRemove" xml:space="preserve">
+    <value>The package was not installed</value>
+  </data>
+  <data name="HomeRemovedRestart" xml:space="preserve">
+    <value>Restart the sim to unload the mod.</value>
+  </data>
+  <data name="HomePickCommunity" xml:space="preserve">
+    <value>Use as Community folder</value>
+  </data>
+  <data name="HomePickFsBaseUi" xml:space="preserve">
+    <value>Use as fs-base-ui folder</value>
+  </data>
+  <data name="HomeBusyLocate" xml:space="preserve">
+    <value>Looking for the sim…</value>
+  </data>
+  <data name="HomeFoldersFailed" xml:space="preserve">
+    <value>The folders could not be saved</value>
+  </data>
+  <data name="HomeSimNotFound" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="HomeSimSteam" xml:space="preserve">
+    <value>Steam</value>
+  </data>
+  <data name="HomeSimStore" xml:space="preserve">
+    <value>Microsoft Store</value>
+  </data>
+  <data name="HomeSimManual" xml:space="preserve">
+    <value>Folders chosen by hand</value>
+  </data>
+  <data name="HomeFsBaseUiValue" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="HomeSimRunning" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="HomeSimNotRunning" xml:space="preserve">
+    <value>Not running</value>
+  </data>
+  <data name="HomePackageUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="HomePackageUnreadable" xml:space="preserve">
+    <value>Package state unreadable</value>
+  </data>
+  <data name="HomePackageNeedsSim" xml:space="preserve">
+    <value>The package state is known once the sim is found.</value>
+  </data>
+  <data name="HomePackageNotInstalled" xml:space="preserve">
+    <value>Not installed</value>
+  </data>
+  <data name="HomePackageForeign" xml:space="preserve">
+    <value>Another msfs-ui folder is in Community</value>
+  </data>
+  <data name="HomePackageUpToDate" xml:space="preserve">
+    <value>Installed and up to date</value>
+  </data>
+  <data name="HomePackageUpdateNeeded" xml:space="preserve">
+    <value>Installed, update needed</value>
+  </data>
+  <data name="HomePackageInstalledDetail" xml:space="preserve">
+    <value>Version {0}, generated {1} from fs-base-ui {2}. Folder: {3}</value>
+  </data>
+  <data name="HomePackageForeignDetail" xml:space="preserve">
+    <value>{0} was not generated by MSFS-UI-GENERATOR and is never touched: move or delete it to install msfs-ui.</value>
+  </data>
+  <data name="HomePackageNotInstalledDetail" xml:space="preserve">
+    <value>Generate &amp; install puts the mod in the Community folder.</value>
+  </data>
+  <data name="HomeReasonLegacyPackage" xml:space="preserve">
+    <value>Generated by MSFS-UI 0.3.0.</value>
+  </data>
+  <data name="HomeReasonSimUpdated" xml:space="preserve">
+    <value>The sim was updated since.</value>
+  </data>
+  <data name="HomeReasonAppVersionChanged" xml:space="preserve">
+    <value>Generated by another version of MSFS-UI-GENERATOR.</value>
+  </data>
+  <data name="HomeReasonModChanged" xml:space="preserve">
+    <value>The mod changed since (development build).</value>
+  </data>
+  <data name="HomeReasonSettingsChanged" xml:space="preserve">
+    <value>The settings changed since.</value>
+  </data>
+  <data name="FeaturesApply.Content" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="FeaturesDiscard.Content" xml:space="preserve">
+    <value>Discard changes</value>
+  </data>
+  <data name="FeaturesReset.Content" xml:space="preserve">
+    <value>Reset to defaults</value>
+  </data>
+  <data name="FeaturesUnsaved.Text" xml:space="preserve">
+    <value>Unsaved changes</value>
+  </data>
+  <data name="FeaturesSettingsUnreadable" xml:space="preserve">
+    <value>Settings not read</value>
+  </data>
+  <data name="FeaturesSettingsAdjusted" xml:space="preserve">
+    <value>Some saved settings were adjusted</value>
+  </data>
+  <data name="FeaturesApplyFailed" xml:space="preserve">
+    <value>The settings could not be applied</value>
+  </data>
+  <data name="FeaturesSaved" xml:space="preserve">
+    <value>Settings saved</value>
+  </data>
+  <data name="FeaturesSavedNotInstalled" xml:space="preserve">
+    <value>The package is not installed: Generate &amp; install on Home puts the mod in the sim with these settings.</value>
+  </data>
+  <data name="FeaturesApplied" xml:space="preserve">
+    <value>Settings applied</value>
+  </data>
+  <data name="FeaturesAppliedReloaded" xml:space="preserve">
+    <value>The package was updated and the mod reloaded in the sim: the changes are live.</value>
+  </data>
+  <data name="FeaturesAppliedReloadFailed" xml:space="preserve">
+    <value>The package was updated, but the mod could not be reloaded ({0}): use Reload in sim on Home, or restart the sim.</value>
+  </data>
+  <data name="FeaturesAppliedRestart" xml:space="preserve">
+    <value>The package was updated: restart the sim to load it.</value>
+  </data>
+  <data name="FeaturesAppliedNextStart" xml:space="preserve">
+    <value>The package was updated: the sim will use these settings at its next start.</value>
+  </data>
+  <data name="CompatibilityRun.Content" xml:space="preserve">
+    <value>Check again</value>
+  </data>
+  <data name="CompatibilityRunning.Text" xml:space="preserve">
+    <value>Checking…</value>
+  </data>
+  <data name="CompatibilityNoSim" xml:space="preserve">
+    <value>The sim was not found</value>
+  </data>
+  <data name="CompatibilityOfflineTitle" xml:space="preserve">
+    <value>Sim files (fs-base-ui {0})</value>
+  </data>
+  <data name="CompatibilityLiveTitle" xml:space="preserve">
+    <value>Running sim (main menu)</value>
+  </data>
+  <data name="CompatibilityLiveSkipped" xml:space="preserve">
+    <value>The sim is not running: the checks in its main menu were skipped.</value>
+  </data>
+  <data name="CompatibilityAllPassed" xml:space="preserve">
+    <value>All {0} checks passed</value>
+  </data>
+  <data name="CompatibilityFailed" xml:space="preserve">
+    <value>{0} of {1} checks failed</value>
+  </data>
+  <data name="CompatibilityFailedHint" xml:space="preserve">
+    <value>The sim may have changed since this version of the mod: the features that use what failed may not work.</value>
+  </data>
+  <data name="CompatibilityError" xml:space="preserve">
+    <value>The check could not run</value>
+  </data>
+  <data name="CompatibilityCount" xml:space="preserve">
+    <value>{0}/{1} passed</value>
+  </data>
+  <data name="LogAppTab.Text" xml:space="preserve">
+    <value>App</value>
+  </data>
+  <data name="LogModTab.Text" xml:space="preserve">
+    <value>Mod in the sim</value>
+  </data>
+  <data name="LogReadMod.Content" xml:space="preserve">
+    <value>Read again</value>
+  </data>
+  <data name="LogCopy.Content" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="LogOpenFolder.Content" xml:space="preserve">
+    <value>Open log folder</value>
+  </data>
+  <data name="LogModNotRead" xml:space="preserve">
+    <value>Not read yet.</value>
+  </data>
+  <data name="LogModSimNotRunning" xml:space="preserve">
+    <value>The sim is not running: its log can be read while it runs.</value>
+  </data>
+  <data name="LogModReading" xml:space="preserve">
+    <value>Reading the sim's console…</value>
+  </data>
+  <data name="LogModEmpty" xml:space="preserve">
+    <value>No [msfs-ui] line in the sim's console.</value>
+  </data>
+  <data name="LogModRead" xml:space="preserve">
+    <value>{0} line(s), read at {1}.</value>
+  </data>
+  <data name="LogModFailed" xml:space="preserve">
+    <value>The sim's console could not be read: {0}</value>
+  </data>
+  <data name="CompatibilityItemPassed" xml:space="preserve">
+    <value>{0}: passed</value>
+  </data>
+  <data name="CompatibilityItemFailed" xml:space="preserve">
+    <value>{0}: failed</value>
+  </data>
+  <data name="ThemeToDark" xml:space="preserve">
+    <value>Switch to the dark theme</value>
+  </data>
+  <data name="ThemeToLight" xml:space="preserve">
+    <value>Switch to the light theme</value>
+  </data>
+  <data name="NavReadme.Content" xml:space="preserve">
+    <value>Readme</value>
+  </data>
+  <data name="ReadmeTitle.Text" xml:space="preserve">
+    <value>Readme</value>
+  </data>
+  <data name="ReadmeIntro.Text" xml:space="preserve">
+    <value>MSFS-UI-GENERATOR installs and sets up msfs-ui, a mod of the Microsoft Flight Simulator 2024 main menu: faster menus, a weather and time bar on Free Flight, favourite aircraft and liveries, an aircraft gallery and list, a setup panel and a tail number per livery.</value>
+  </data>
+  <data name="ReadmeNoSimFile.Title" xml:space="preserve">
+    <value>No file of the simulator is modified</value>
+  </data>
+  <data name="ReadmeNoSimFile.Message" xml:space="preserve">
+    <value>The mod lives in its own package, msfs-ui, in the sim's Community folder. The sim's own files are only read: never changed, moved or deleted. Removing the package (Remove on the Home page, then a restart of the sim) brings the original menu back.</value>
+  </data>
+  <data name="ReadmeHowHeader.Text" xml:space="preserve">
+    <value>How it works</value>
+  </data>
+  <data name="ReadmeHow1.Text" xml:space="preserve">
+    <value>1. The sim builds its main menu from components, and a package in the Community folder can stand in for one of them. When you generate the package, the app makes a copy of the menu's root component from your own sim, adds a small loader to it, and places the copy in the msfs-ui package. The sim then uses this copy instead of its own file, which stays untouched.</value>
+  </data>
+  <data name="ReadmeHow2.Text" xml:space="preserve">
+    <value>2. When the menu opens, the loader starts the mod. The mod adds its panels and changes the menu in memory only: everything it does is undone when it unloads or when the sim closes. When it changes a setting of the sim (aircraft, livery, weather, time, traffic), it uses the same commands as the sim's own buttons.</value>
+  </data>
+  <data name="ReadmeHow3.Text" xml:space="preserve">
+    <value>3. Your choices on the Features page are written in the package as a settings file, which the mod reads when it starts. Apply updates this file and reloads the mod while the sim runs: no restart is needed.</value>
+  </data>
+  <data name="ReadmeHow4.Text" xml:space="preserve">
+    <value>4. What the mod remembers (favourites, tail numbers per livery, last weather and time choice, the gallery's view) is kept by the sim in its own storage, as it keeps its own preferences.</value>
+  </data>
+  <data name="ReadmePagesHeader.Text" xml:space="preserve">
+    <value>The pages</value>
+  </data>
+  <data name="ReadmePageHome.Text" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="ReadmePageHomeText.Text" xml:space="preserve">
+    <value>Finds the sim, shows the state of the package, and installs (Generate &amp; install), reloads or removes it.</value>
+  </data>
+  <data name="ReadmePageFeatures.Text" xml:space="preserve">
+    <value>Features</value>
+  </data>
+  <data name="ReadmePageFeaturesText.Text" xml:space="preserve">
+    <value>Turns each feature of the mod on or off and sets its options; Apply makes the change live.</value>
+  </data>
+  <data name="ReadmePageCompatibility.Text" xml:space="preserve">
+    <value>Compatibility</value>
+  </data>
+  <data name="ReadmePageCompatibilityText.Text" xml:space="preserve">
+    <value>Checks that the sim still offers everything the mod uses, in its files and, while it runs, in its menu. Useful after a sim update.</value>
+  </data>
+  <data name="ReadmePageLog.Text" xml:space="preserve">
+    <value>Log</value>
+  </data>
+  <data name="ReadmePageLogText.Text" xml:space="preserve">
+    <value>What the app did, and the mod's own messages read from the running sim.</value>
+  </data>
+  <data name="ReadmeUpdateHeader.Text" xml:space="preserve">
+    <value>After a sim update</value>
+  </data>
+  <data name="ReadmeUpdateText.Text" xml:space="preserve">
+    <value>Use Generate &amp; install again, then restart the sim: the package has to copy the new version of the menu's root component. The Home page says when this is needed.</value>
+  </data>
+  <data name="ReadmeFilesHeader.Text" xml:space="preserve">
+    <value>Files of the app</value>
+  </data>
+  <data name="ReadmeFilesText.Text" xml:space="preserve">
+    <value>The package: &lt;Community folder&gt;\msfs-ui. The app's settings, chosen folders, theme and logs: %LOCALAPPDATA%\MSFS-UI-GENERATOR. Nothing else is written on the computer.</value>
+  </data>
+  <data name="ReadmeVersion" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+</root>

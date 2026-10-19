@@ -1,0 +1,68 @@
+/*
+ * The look of the MSFS 2024 menu for what the sim draws without a component: the cards' background layers, section
+ * headers and text, read on sim 1.9.18 from the computed styles of the sim's cards. Everything else the mod shows is
+ * made of the sim's own components (src/sim/components.ts), with their colours and states.
+ * Colours: the sim's global variables (`--colorComplementary1` white, `--colorComplementary2`…).
+ * Unit: `--u`, one unit of the sim's mock-ups (1/1080 of the screen height), defined on every panel.
+ * A feature's own CSS only does layout.
+ */
+
+.msfs-ui-panel {
+  position: absolute;
+  z-index: 50;
+  box-sizing: border-box;
+  /* One unit of the sim's mock-ups (1/1080 of the screen height), from the sim's own variable. */
+  --u: calc(var(--unscaledScreenHeight) * 1px / 1080);
+  color: var(--colorComplementary1);
+  font-size: var(--fontSizeXS);
+  pointer-events: auto;
+}
+/* Background layers of the sim's cards (FreeFlight_Runways, Flight_Conditions_History_Widget): frosted glass, the
+   accessibility layer (the sim's background opacity setting) and a black veil at 20 %. */
+.msfs-ui-panel__blur,
+.msfs-ui-panel__accessibility,
+.msfs-ui-panel__tint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.msfs-ui-panel__blur { background-color: #FFFFFF; }
+.msfs-ui-panel__accessibility { background-color: var(--colorComplementary2); opacity: var(--backgroundOpacity); }
+.msfs-ui-panel__tint { background-color: #00000033; }
+
+/* Section header, as the header of the sim's airport card: black at 30 %, text in --fontSizeXS. */
+.msfs-ui-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: calc(var(--u) * 36);
+  padding: 0 calc(var(--u) * 12);
+  background-color: #0000004D;
+  flex-shrink: 0;
+}
+.msfs-ui-title { font-size: var(--fontSizeXS); font-weight: 700; white-space: nowrap; }
+.msfs-ui-header .msfs-ui-value { font-size: var(--fontSizeXS); font-weight: 400; white-space: nowrap; }
+
+/*
+ * The sim's TileButton in a compact host (msfs-ui-compact-tile, about 36 units high). Its template is made for 100 to
+ * 180 units: its Content block is a column aligned to the top with 12 units of padding and a fixed height, its title
+ * may wrap, and its selection corner is 60 units. Here the block takes the tile height and centres a title kept on
+ * one line (cut with an ellipsis when too long), and the corner is reduced to 30 units so that it does not cover the title. Layout only: the colours and
+ * states stay the component's. The children are declared with the component in compat.json.
+ */
+.msfs-ui-compact-tile [name="Content"] {
+  height: 100% !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  justify-content: center !important;
+}
+.msfs-ui-compact-tile [name="Title"] { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.msfs-ui-compact-tile [name="CornerWhite"] {
+  width: calc(var(--u) * 30) !important;
+  height: calc(var(--u) * 30) !important;
+}

@@ -1,0 +1,111 @@
+{
+  "manifest_version": "0.2",
+  "name": "msfs-2024-sdk",
+  "display_name": "MSFS 2024 SDK",
+  "version": "1.0.0",
+  "description": "Microsoft Flight Simulator 2024 SDK reference, and live control of the sim through SimConnect.",
+  "long_description": "Gives Claude access to the MSFS 2024 SDK installed on this PC (SimConnect.h, WASM headers, the catalogue of ~2000 key events, ModelBehaviorDefs with real SimVar / LVar examples, glTF schemas) and, while MSFS 2024 runs, the ability to read and write SimVars and LVars, send events and operate the cockpit input events.",
+  "author": {
+    "name": "Proxi64"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "MSFS_SDK_PATH": "${user_config.sdk_path}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "sdk_overview",
+      "description": "Version, zones et fichiers clés du SDK"
+    },
+    {
+      "name": "sdk_list_dir",
+      "description": "Lister un dossier du SDK"
+    },
+    {
+      "name": "sdk_read_file",
+      "description": "Lire un fichier texte du SDK"
+    },
+    {
+      "name": "sdk_search",
+      "description": "Recherche plein texte / regex dans le SDK"
+    },
+    {
+      "name": "sdk_key_events",
+      "description": "Catalogue des événements clés (K:)"
+    },
+    {
+      "name": "sdk_simconnect_api",
+      "description": "Fonctions, enums et structs de SimConnect.h"
+    },
+    {
+      "name": "sdk_behavior_vars",
+      "description": "Variables utilisées dans les ModelBehaviorDefs"
+    },
+    {
+      "name": "sim_status",
+      "description": "État de la connexion SimConnect"
+    },
+    {
+      "name": "sim_snapshot",
+      "description": "Instantané de l'état du vol"
+    },
+    {
+      "name": "sim_get_vars",
+      "description": "Lire des SimVars / LVars"
+    },
+    {
+      "name": "sim_set_var",
+      "description": "Écrire une SimVar / LVar"
+    },
+    {
+      "name": "sim_send_event",
+      "description": "Envoyer un événement clé ou custom"
+    },
+    {
+      "name": "sim_list_input_events",
+      "description": "Lister les input events (B:) de l'avion"
+    },
+    {
+      "name": "sim_get_input_event",
+      "description": "Lire un input event"
+    },
+    {
+      "name": "sim_set_input_event",
+      "description": "Actionner un input event"
+    }
+  ],
+  "user_config": {
+    "sdk_path": {
+      "type": "directory",
+      "title": "Dossier du SDK MSFS 2024",
+      "description": "Dossier racine du SDK (celui qui contient « SimConnect SDK », « WASM », « ModelBehaviorDefs »…).",
+      "required": true,
+      "default": "${HOME}\\Model Context Protocol\\MSFS 2024 SDK"
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "keywords": [
+    "msfs",
+    "msfs2024",
+    "simconnect",
+    "flight simulator",
+    "sdk"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://msfs-ui.local/schema/features.schema.json",
+  "title": "MSFS-UI feature catalogue",
+  "description": "Every feature of the menu mod with its options and defaults (ADR-0001). Read by the mod build (menu-mod/build.mjs) and by the app (MsfsUi.Core FeatureCatalog). Consistency rules that a schema cannot express (unique ids, defaults on the step grid) are checked by both readers.",
+  "type": "object",
+  "required": ["schemaVersion", "modVersion", "features"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "modVersion": {
+      "description": "Version of the mod the catalogue belongs to; equal to the version in menu-mod/package.json.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$"
+    },
+    "features": {
+      "description": "Features, in display order.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/feature" }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "description": "camelCase identifier, used in config.js and in the mod's code.",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]*$"
+    },
+    "text": { "type": "string", "minLength": 1 },
+    "feature": {
+      "type": "object",
+      "required": ["id", "title", "description", "screen", "enabledByDefault", "options"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "$ref": "#/$defs/text" },
+        "description": { "$ref": "#/$defs/text" },
+        "screen": { "description": "Where the feature acts in the sim.", "$ref": "#/$defs/text" },
+        "enabledByDefault": { "type": "boolean" },
+        "options": {
+          "description": "Options, in display order. \"enabled\" is implicit and must not be listed.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" }
+        }
+      }
+    },
+    "option": {
+      "type": "object",
+      "required": ["id", "type", "title", "description", "default"],
+      "properties": {
+        "id": {
+          "allOf": [{ "$ref": "#/$defs/identifier" }, { "not": { "const": "enabled" } }]
+        },
+        "type": { "enum": ["boolean", "number"] },
+        "title": { "$ref": "#/$defs/text" },
+        "description": { "$ref": "#/$defs/text" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "type": { "const": "boolean" },
+            "id": true,
+            "title": true,
+            "description": true,
+            "default": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["min", "max"],
+          "properties": {
+            "type": { "const": "number" },
+            "id": true,
+            "title": true,
+            "description": true,
+            "default": { "type": "number" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "type": "number", "exclusiveMinimum": 0 },
+            "unit": { "$ref": "#/$defs/text" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

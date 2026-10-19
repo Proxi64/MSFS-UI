@@ -1,0 +1,29 @@
+<Project>
+  <!-- Central package management: every version is pinned here, never with "*". -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WinUI 3 app -->
+    <!-- The WinUI component of the Windows App SDK only (with Foundation, InteractiveExperiences and Base), not the
+         Microsoft.WindowsAppSDK metapackage: its AI, ML, Search and Widgets components would add about 60 MB the app
+         never uses. A component used on its own needs Microsoft.Windows.SDK.BuildTools.MSIX (Windows App SDK 1.8 notes). -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.9" />
+    <!-- WinUI 2.3.9 asks for InteractiveExperiences 2.1.8, which was never published: the one the metapackage uses. -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.9" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.251221100" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.WinUIAnalyzer" Version="0.7.1" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.13" />
+    <!-- Core library -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+    <!-- Developer tool -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.13" />
+    <!-- Tests -->
+    <PackageVersion Include="MSTest" Version="4.5.1" />
+    <!-- JavaScript interpreter: runs the programs the app sends to the sim's pages, in tests only. -->
+    <PackageVersion Include="Jint" Version="4.17.0" />
+  </ItemGroup>
+</Project>

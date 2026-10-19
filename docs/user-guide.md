@@ -1,0 +1,190 @@
+# User guide
+
+MSFS-UI improves the main menu of **Microsoft Flight Simulator 2024**. It has two parts:
+
+- **MSFS-UI-GENERATOR**, a Windows app: you choose the features, it generates the `msfs-ui` package, installs it in the sim's Community folder, and checks that the sim still offers what the mod needs;
+- the **`msfs-ui` package**, the mod itself, which runs inside the sim's menu.
+
+Developed and tested on MSFS 2024 1.9.18 (Steam), base UI package `fs-base-ui` 0.1.10.
+
+## Contents
+
+- [Install and first run](#install-and-first-run)
+- [The app](#the-app): Home, Features, Compatibility, Log, Readme
+- [The mod in the sim](#the-mod-in-the-sim): fast menus, weather and time bar, wheel on the time, Free Flight favourites, aircraft gallery and list, setup panel, tail number per livery
+- [After a sim update](#after-a-sim-update)
+- [Troubleshooting](#troubleshooting)
+
+## Install and first run
+
+1. Copy the `MSFS-UI-GENERATOR` folder anywhere and run `MSFS-UI-GENERATOR.exe`. Nothing else needs installing: .NET and the Windows App SDK ship with it.
+2. The **Home** page finds the sim (Steam or Microsoft Store). If it does not, **Choose folders…** asks for the Community folder, then for the sim's `fs-base-ui` folder.
+3. **Generate & install** puts the `msfs-ui` package in Community.
+4. Start (or restart) the sim: it reads a new package only at start-up.
+
+The app keeps its own data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`: your feature settings (`settings.json`), the folders chosen by hand and the theme (`app.json`), and the log files. Earlier versions used `%LOCALAPPDATA%\MSFS-UI`; that folder is moved there the first time.
+
+To remove the mod: **Remove** on the Home page, then restart the sim. The mod never changes a file of the sim: only the `Community\msfs-ui` folder is involved.
+
+## The app
+
+The navigation is on the left; **Readme**, at the bottom, explains how the app and the mod work, and that no file of the sim is modified. The sun / moon button on the right of the title bar switches between the light and dark themes; until you use it, the app follows Windows.
+
+### Home
+
+- **Microsoft Flight Simulator 2024**: how the sim was found (Steam, Microsoft Store or folders chosen by hand), whether it is running, the `fs-base-ui` version and the Community folder. **Choose folders…** replaces the detection; **Use detected folders** goes back to it.
+- **msfs-ui package**: its state, with the reasons when it should be generated again:
+  - *Installed and up to date*;
+  - *Installed, update needed*: the sim was updated, the settings changed, or the package comes from another version;
+  - *Not installed*;
+  - *Another msfs-ui folder is in Community*: a folder the app did not create, which it never touches.
+
+  Other Community packages that also replace the menu's root page are listed: only one of them can win.
+- **Generate & install** builds the package from the sim installed on this machine and your settings, and installs it. When the sim is running and only reads the files again, the mod is reloaded at once; when a restart is needed (first install, sim update), the app says so.
+- **Reload in sim** reloads the mod in the running sim.
+- **Remove** deletes the package, after confirmation.
+
+### Features
+
+One card per feature of the mod, with its switch, its description and the screen where it acts. A feature with options opens to show them: switches, and numbers with their range, step and unit. Options are inactive while their feature is off.
+
+- **Apply** saves the choices. When the package is installed, it is updated (only the settings change) and, when the sim is running, the mod is reloaded: the change is live at once, without restarting the sim.
+- **Discard changes** goes back to the saved choices; **Reset to defaults** shows the defaults, which **Apply** then saves.
+- *Unsaved changes* shows while something differs from what is saved. Changes not applied are kept when you visit another page.
+
+### Compatibility
+
+What the mod needs from the sim, checked in the sim's files and, while the sim runs, in its main menu. It runs when the page opens; **Check again** runs it again. The checks are grouped; a group with a failure is open and shows what went wrong. After a sim update, a failure tells which features may no longer work.
+
+### Log
+
+- **App**: what the app did, live (also written to `%LOCALAPPDATA%\MSFS-UI-GENERATOR\logs`, one file per day).
+- **Mod in the sim**: the mod's own lines, read from the console of the sim's main menu (the sim must be running). **Read again** reads them again.
+- **Copy** copies the log shown; **Open log folder** opens the folder of the log files.
+
+## The mod in the sim
+
+Everything the mod shows is made of the sim's own components (tiles, buttons, tabs, text fields, scroll bars), so it looks and behaves like the rest of the menu. When the mouse is over one of the mod's panels, neither the click nor the wheel reaches the map or the scene under it.
+
+### Fast menus
+
+**Where:** every menu screen.
+
+- The menu's animations (panels appearing, transitions) are shorter: twice as short by default (option *Animation speed*, 1 keeps the sim's speed). Looping animations, such as loading indicators, keep their pace.
+- Images show as soon as they are loaded, without the sim's half-second fade (option *Images without fade*).
+
+### Weather and time bar
+
+**Where:** Free Flight, right column, just under the sim's *Flight Conditions* widget.
+
+When an airport (or an aircraft of the traffic) is selected on the map, the sim shows its card in the same column. Two tabs then appear under the widget, **Weather** and **Airport** (or **Traffic**): only the chosen one shows. Without such a card, the tabs disappear.
+
+| Section | Content |
+|---|---|
+| **Weather** | One icon per weather preset of the sim (Live, clear skies… thunderstorm, the last custom weather). A click applies it, as in the sim's panel; the preset's name shows on hover |
+| **METAR** (option *METAR section*) | The real weather at the departure airport: its flight category in colour (VFR, MVFR, IFR, LIFR), then wind, visibility, clouds and temperature. Out of Live weather, a second line gives the **simulated** weather at the departure, to compare. Shown only with a departure airport |
+| **Time** | The local time of the departure, and **Now**, **Dawn**, **Day**, **Dusk**, **Night** |
+| **Air traffic**, **Multiplayer** (option *Traffic section*) | The sim's buttons (Live / AI / Off, Live / All Players / Off), without opening its panel. A button the sim makes unavailable (multiplayer offline) is inactive |
+
+The time buttons follow the widget's mode:
+
+| Button | In Live weather (red 24-hour timeline) | Out of Live (custom time) |
+|---|---|---|
+| **Now** | Back to the present | Back to the real time (Live) |
+| **Dawn** / **Day** / **Dusk** / **Night** | Back to the last sunrise / solar noon / sunset / solar midnight of the last 24 hours, with the real weather of that moment | Sets the departure time to that moment |
+
+The sun times are computed for the departure airport and its date. Without a departure (or during polar day or night), the bar uses 6:00, 12:00, 18:00 and 0:00. When the departure airport changes while a moment is selected, the time follows the new place.
+
+**Last choice remembered** (option *Remember the last choice*): the last preset, time button and traffic choices clicked in the bar are applied again the first time the bar shows after the sim starts. (At start-up the sim activates Free Flight behind the scenes, then resets the flight conditions: a choice applied earlier would be lost.)
+
+### Mouse wheel on the time
+
+**Where:** Free Flight, over the *Flight Conditions* widget (the time and the timeline).
+
+| Gesture | Effect |
+|---|---|
+| Wheel up / down | One minute later / earlier per notch (option *Step*) |
+| Shift + wheel | Ten minutes per notch (option *Step with Shift*) |
+
+In Live weather the wheel moves within the last 24 hours and stays live; out of Live it changes the departure time on the same date. Fast notches add up correctly.
+
+### Favourites on Free Flight
+
+**Where:** Free Flight, left column, under *Search location*, as wide as the aircraft button. The block hides while the search shows its results.
+
+- One row per **favourite livery** (heart of the setup panel), and one per **favourite aircraft** (heart of the gallery) that has no favourite livery, shown with the last livery used with its variant.
+- Each row shows the livery's thumbnail, the aircraft's name, then its variant, livery and tail number. A text too long for the row scrolls when the mouse is over it.
+- **Click**: loads the variant, then the livery; the sim's aircraft button follows. The row of the current aircraft is selected.
+- **Heart**: unchecking it removes the favourite (the livery, or every variant of the aircraft).
+- **Order**: from the most recently used, computed when the screen opens, then kept while it stays open, so that a clicked row does not jump under the mouse.
+- The use of each aircraft (last livery per variant) is recorded at every change of aircraft, whatever the screen.
+
+### Aircraft gallery and list
+
+**Where:** aircraft selection (*Change Aircraft*), in place of the sim's grid. The sim's category tabs (All, Airplane, Helicopter…) still apply.
+
+| Control | Role |
+|---|---|
+| Search field | Filters by name, publisher or variant at each key press; several words must all match; accents and case are ignored |
+| Count | Aircraft shown / aircraft of the tab |
+| **Favorites** | Shows the favourites only, with one tile per favourite livery |
+| Sort | **Name** (natural order: ATR 42, ATR 72, Cessna 172), **Studio** (then name) or **Max Range** (the sim's sort); the arrow reverses the order. A new order starts from the top |
+| **Gallery** / **List** / **Default** | Tiles in columns; one compact row per aircraft; the sim's own grid |
+
+- Favourites always come first, whatever the sort.
+- **Gallery**: the sim's aircraft tiles, with the name, the variant and the studio on three lines. **List**: one row per aircraft, the thumbnail then *name - studio - variant* on one line, the heart at the end of the row.
+- Both views scroll with the wheel or the sim's scroll bar; a text too long for its tile scrolls on hover.
+- **Click** selects the aircraft, exactly like a tile of the sim; **hover** shows it in the header of the left column.
+- **Heart**: for a modular aircraft the sim shows one tile per aircraft, so the heart is about the aircraft (all its variants). Unchecking it also removes its favourite liveries.
+- On opening, the gallery scrolls to the selected aircraft. The view, the Favorites filter and the sort are remembered.
+- **Default** brings the sim's grid back, with its own search; the view buttons stay on its line.
+
+### Aircraft setup panel
+
+**Where:** aircraft selection, left column, in place of the aircraft's statistics. The column is widened (option *Widen the left column*, 50 layout units by default; 0 keeps the sim's width).
+
+| Section | Content |
+|---|---|
+| **Variant** | One tile per variant; a click changes the variant (the sim then puts back its first livery) |
+| **Livery** | The livery thumbnails, three per row, favourites first; the active one is framed. Its name shows next to the title, the hovered one's on hover. A click changes the livery. A heart on each thumbnail marks it as a favourite (for the variant shown) |
+| **Tail number** | The tail number of the current livery (letters, digits, dash; 9 characters at most) |
+| Buttons | **Fuel and Payload** and **Identification** open those tabs of the sim's configurator directly |
+
+Everything happens without opening the configurator and its 3D preview. Typing in the tail number field turns the sim's keyboard shortcuts off until you click elsewhere; the number is sent when you leave the field or press Enter.
+
+The panel always sets the sim's configurator on the current aircraft before acting: a choice sent to a released configurator would make the current aircraft invalid (empty left column). If it cannot, the click is ignored and the lists are read again: click again.
+
+### Tail number per livery
+
+**Where:** everywhere, in the background.
+
+The sim has one tail number field for all aircraft. The mod gives each livery its own number. At each change of aircraft, variant or livery it applies, in this order:
+
+1. the number you chose for this livery, if any;
+2. otherwise the livery's own: `atc_id` in its `livery.cfg`, or a registration found in its name (`F-GKXA`, `HB-JVA`, `N561AJ`…);
+3. otherwise the default number, read once from the sim's field (`ASXGS` on the sim as installed).
+
+A number is remembered for the current livery as soon as you change the tail number, in the setup panel or in the sim's Identification tab.
+
+## After a sim update
+
+1. Open the app: the Home page says *Installed, update needed* with *The sim was updated since* when the menu's root page changed.
+2. **Generate & install**, then restart the sim.
+3. Open **Compatibility** with the sim running and its main menu displayed. A failure lists what disappeared or changed; the features that use it may not work until the mod is updated (they can be turned off on the Features page meanwhile).
+
+## Troubleshooting
+
+| What you see | Likely cause | What to do |
+|---|---|---|
+| The sim's menu is broken | The mod, or another package that replaces the same page | **Remove** on Home and restart the sim: the original menu always comes back |
+| No change in the sim after installing | The sim reads a new package only at start-up | Restart the sim |
+| Home: *Other packages replace the same menu page* | Another Community package replaces the menu's root page too | Remove one of them |
+| Home: *Sim not found* | Neither Steam nor the Microsoft Store installation was found | **Choose folders…** |
+| The left column of the aircraft selection is empty | The current aircraft became invalid (a choice sent to a released configurator) | Click an aircraft in the gallery; otherwise leave and reopen the screen |
+| A favourite does not load (*not in the list*) | The aircraft is not in the category tab chosen in the aircraft selection | Choose the *All* tab |
+| The Favorites block disappears on Free Flight | *Search location* shows its results | Normal: it comes back when the results close |
+| METAR shows *No METAR* | No answer from the sim within 4 s, or no station | Choose the departure again |
+| *Ceiling 400 ft* instead of a cloud cover | Out of Live weather, the sim's METAR keeps the ceiling but not the cover | Normal |
+| The same tail number on every aircraft | Numbers typed before the per-livery memory, or liveries without a number | Type the number wanted for each livery |
+
+The **Log** page (tab *Mod in the sim*) shows the mod's messages and errors; include them when reporting a problem.

@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="MsfsUi.App.Pages.FeaturesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:MsfsUi.App.ViewModels">
+    <Page.Resources>
+        <!--  An option: its title and explanation on the left, its switch or number on the right.  -->
+        <DataTemplate x:Key="OptionTemplate" x:DataType="vm:OptionItemViewModel">
+            <Grid Padding="0,10" ColumnSpacing="24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="{x:Bind Title, Mode=OneTime}" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind Description, Mode=OneTime}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch
+                    Grid.Column="1"
+                    MinWidth="0"
+                    HorizontalAlignment="Right"
+                    AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
+                    IsOn="{x:Bind BoolValue, Mode=TwoWay}"
+                    Visibility="{x:Bind IsBoolean, Mode=OneTime}" />
+                <StackPanel
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Visibility="{x:Bind IsNumber, Mode=OneTime}">
+                    <NumberBox
+                        Width="150"
+                        AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
+                        LargeChange="{x:Bind Step, Mode=OneTime}"
+                        Maximum="{x:Bind Maximum, Mode=OneTime}"
+                        Minimum="{x:Bind Minimum, Mode=OneTime}"
+                        SmallChange="{x:Bind Step, Mode=OneTime}"
+                        SpinButtonPlacementMode="Inline"
+                        ValidationMode="InvalidInputOverwritten"
+                        Value="{x:Bind NumberValue, Mode=TwoWay}" />
+                    <TextBlock
+                        MinWidth="36"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource BodyTextBlockStyle}"
+                        Text="{x:Bind Unit, Mode=OneTime}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer>
+            <Grid Padding="{StaticResource PagePadding}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MaxWidth="{StaticResource PageMaxWidth}" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        x:Uid="FeaturesTitle"
+                        AutomationProperties.HeadingLevel="Level1"
+                        Style="{StaticResource TitleTextBlockStyle}" />
+                    <TextBlock
+                        x:Uid="FeaturesDescription"
+                        Margin="0,0,0,8"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource BodyTextBlockStyle}" />
+
+                    <ItemsControl AutomationProperties.AutomationId="FeaturesList" ItemsSource="{x:Bind ViewModel.Features, Mode=OneTime}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FeatureItemViewModel">
+                                <Grid Margin="0,0,0,6">
+                                    <!--  A feature with options: its switch in the header, its options inside.  -->
+                                    <Expander
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
+                                        Visibility="{x:Bind HasOptions, Mode=OneTime}">
+                                        <Expander.Header>
+                                            <Grid Padding="0,12" ColumnSpacing="24">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Spacing="2">
+                                                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Title, Mode=OneTime}" />
+                                                    <TextBlock
+                                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                                        Text="{x:Bind Description, Mode=OneTime}"
+                                                        TextWrapping="Wrap" />
+                                                    <TextBlock
+                                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                                        Text="{x:Bind Screen, Mode=OneTime}" />
+                                                </StackPanel>
+                                                <ToggleSwitch
+                                                    Grid.Column="1"
+                                                    MinWidth="0"
+                                                    AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
+                                                    IsOn="{x:Bind IsEnabled, Mode=TwoWay}" />
+                                            </Grid>
+                                        </Expander.Header>
+                                        <!--  The options act only while the feature is on.  -->
+                                        <ItemsControl
+                                            IsEnabled="{x:Bind IsEnabled, Mode=OneWay}"
+                                            ItemTemplate="{StaticResource OptionTemplate}"
+                                            ItemsSource="{x:Bind Options, Mode=OneTime}" />
+                                    </Expander>
+
+                                    <!--  A feature without options: the same header on a card.  -->
+                                    <Border
+                                        Padding="16,0,16,0"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource ControlCornerRadius}"
+                                        Visibility="{x:Bind HasNoOptions, Mode=OneTime}">
+                                        <Grid Padding="0,12" ColumnSpacing="24">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Title, Mode=OneTime}" />
+                                                <TextBlock
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                                    Text="{x:Bind Description, Mode=OneTime}"
+                                                    TextWrapping="Wrap" />
+                                                <TextBlock
+                                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                                    Text="{x:Bind Screen, Mode=OneTime}" />
+                                            </StackPanel>
+                                            <ToggleSwitch
+                                                Grid.Column="1"
+                                                MinWidth="0"
+                                                Margin="0,0,44,0"
+                                                AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
+                                                IsOn="{x:Bind IsEnabled, Mode=TwoWay}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!--  Actions, always in view: apply, discard, back to the defaults.  -->
+        <Border
+            Grid.Row="1"
+            Padding="0,12,0,16"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0">
+            <!--  Same width and side padding as the page content above, so that the buttons line up with the cards.  -->
+            <Grid Padding="36,0,36,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MaxWidth="{StaticResource PageMaxWidth}" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="12">
+                    <InfoBar
+                        AutomationProperties.AutomationId="FeaturesMessage"
+                        IsOpen="{x:Bind ViewModel.IsMessageOpen, Mode=TwoWay}"
+                        Message="{x:Bind ViewModel.MessageText, Mode=OneWay}"
+                        Severity="{x:Bind ViewModel.MessageSeverity, Mode=OneWay}"
+                        Title="{x:Bind ViewModel.MessageTitle, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.IsMessageOpen, Mode=OneWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            x:Uid="FeaturesApply"
+                            AutomationProperties.AutomationId="FeaturesApply"
+                            Command="{x:Bind ViewModel.ApplyCommand}"
+                            Style="{StaticResource AccentButtonStyle}" />
+                        <Button
+                            x:Uid="FeaturesDiscard"
+                            AutomationProperties.AutomationId="FeaturesDiscard"
+                            Command="{x:Bind ViewModel.DiscardCommand}" />
+                        <Button
+                            x:Uid="FeaturesReset"
+                            AutomationProperties.AutomationId="FeaturesReset"
+                            Command="{x:Bind ViewModel.ResetCommand}" />
+                        <ProgressRing
+                            Width="20"
+                            Height="20"
+                            Margin="8,0,0,0"
+                            IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+                        <TextBlock
+                            x:Uid="FeaturesUnsaved"
+                            VerticalAlignment="Center"
+                            AutomationProperties.AutomationId="FeaturesUnsaved"
+                            AutomationProperties.LiveSetting="Polite"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource BodyTextBlockStyle}"
+                            Visibility="{x:Bind ViewModel.HasChanges, Mode=OneWay}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

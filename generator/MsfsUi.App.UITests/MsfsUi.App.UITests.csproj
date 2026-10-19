@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- UI tests of the app: they start the built MSFS-UI-GENERATOR.exe on an isolated profile (fake sim folders, temporary
+       data folder, unreachable inspector) and drive it through Windows UI Automation. They never touch the real sim,
+       the real Community folder or the user's data. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>MsfsUi.App.UITests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- UI Automation client (System.Windows.Automation) ships with the Windows desktop framework. -->
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The sim's MasterPage as the Core tests use it (from MSFS-UI 0.3.0's tests): the fake fs-base-ui gets it. -->
+    <None Include="..\MsfsUi.Core.Tests\Golden\0.3.0\masterpage-input.html" Link="Fixtures\masterpage.html" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

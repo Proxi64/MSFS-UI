@@ -1,0 +1,123 @@
+/*
+ * Layout of the gallery only: colours, backgrounds and states come from the sim's components. The gallery has no
+ * background of its own: it replaces the sim's grid, which sits on the screen's background. Gaps of 6 units, no
+ * negative margins (Coherent does not widen the element).
+ */
+
+.msfs-ui-gal {
+  position: absolute;
+  z-index: 50;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* One unit of the sim's mock-ups (1/1080 of the screen height), from the sim's own variable. */
+  --u: calc(var(--unscaledScreenHeight) * 1px / 1080);
+  color: var(--colorComplementary1);
+  font-size: var(--fontSizeXS);
+  pointer-events: none;
+}
+.msfs-ui-gal__body,
+.msfs-ui-gal__control { pointer-events: auto; }
+
+/* Bar: search, count, Favorites, sort and its direction, views. */
+/* Above the tiles: the sort dropdown opens over them. */
+.msfs-ui-gal__bar { position: relative; z-index: 2; display: flex; align-items: center; flex-shrink: 0; height: calc(var(--u) * 36); margin-bottom: calc(var(--u) * 12); }
+.msfs-ui-gal__control { position: relative; flex-shrink: 0; height: calc(var(--u) * 30); margin-left: calc(var(--u) * 6); }
+.msfs-ui-gal__search { flex-grow: 1; flex-shrink: 1; margin-left: 0; }
+.msfs-ui-gal__count { margin: 0 calc(var(--u) * 6) 0 calc(var(--u) * 12); opacity: 0.75; flex-shrink: 0; white-space: nowrap; }
+.msfs-ui-gal__favorites { width: calc(var(--u) * 130); }
+.msfs-ui-gal__sort { width: calc(var(--u) * 240); }
+.msfs-ui-gal__reverse { width: calc(var(--u) * 30); }
+.msfs-ui-gal__view { width: calc(var(--u) * 100); }
+/* Default view: only the views stay, on the line of the sim's search, on the right. */
+.msfs-ui-gal.is-stock .msfs-ui-gal__bar { height: 100%; margin-bottom: 0; justify-content: flex-end; }
+.msfs-ui-gal.is-stock .msfs-ui-gal__search,
+.msfs-ui-gal.is-stock .msfs-ui-gal__count,
+.msfs-ui-gal.is-stock .msfs-ui-gal__favorites,
+.msfs-ui-gal.is-stock .msfs-ui-gal__sort,
+.msfs-ui-gal.is-stock .msfs-ui-gal__reverse,
+.msfs-ui-gal.is-stock .msfs-ui-gal__body { display: none; }
+
+/*
+ * The sim's scrolling list fills the body; its content (the sim's `scroll__content`, a plain block) leaves room on the
+ * right for its scroll bar. In the gallery it becomes a flex container wrapping the tiles in rows; align-items: a
+ * one-line flex-wrap container stretches its items in Coherent (align-content does not apply).
+ */
+.msfs-ui-gal__body { position: relative; flex-grow: 1; min-height: 0; }
+.msfs-ui-gal__list { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.msfs-ui-gal__list .scroll__content { padding-right: calc(var(--u) * 24) !important; box-sizing: border-box; }
+.msfs-ui-gal__body.is-gallery .scroll__content {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  align-content: flex-start !important;
+}
+.msfs-ui-gal__empty { padding: calc(var(--u) * 30); opacity: 0.75; }
+
+/*
+ * Gallery: the sim's aircraft tile, whole-pixel width and height (--tile-w, --tile-h: gallery.ts), 6 units each side.
+ * Its image area keeps its height (--tile-image-h) and its text banner takes the rest, its three lines of text only.
+ */
+.msfs-ui-gal__tile {
+  position: relative;
+  width: var(--tile-w);
+  height: var(--tile-h);
+  margin: 0 calc(var(--u) * 6) calc(var(--u) * 12);
+}
+.msfs-ui-gal__tile [name="Content"] > [name="Background"] { flex-grow: 0 !important; height: var(--tile-image-h) !important; }
+
+/* List: the sim's horizontal tile, one per row. */
+/* Full width: its content is absolute, so in a column aligned to the start it would shrink to nothing. */
+.msfs-ui-gal__row { position: relative; flex-shrink: 0; width: 100%; height: calc(var(--u) * 77); margin-bottom: calc(var(--u) * 6); }
+/*
+ * The marketplace tile: one line centred in the row, the name in its bold Title, then "- studio - variant" in its
+ * light Creator (gallery.ts). Its rating and separator, its price or "Owned" banner and its own heart over the
+ * image are hidden: the row's heart is the mod's, at the end of the line.
+ */
+.msfs-ui-gal__row [name="Rating_Overview"],
+.msfs-ui-gal__row [name="Details"] [name="Separator"],
+.msfs-ui-gal__row [name="Banner"],
+.msfs-ui-gal__row [name="WishlistBlock"] { display: none !important; }
+/*
+ * The image box takes the thumbnails' ratio (720 x 344, all aircraft): the tile's own box is wider and its "cover"
+ * cut the top and bottom of each thumbnail. The title block keeps its 6-unit gap after it.
+ */
+.msfs-ui-gal__row [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
+.msfs-ui-gal__row [name="TitleBlock"] {
+  left: calc(var(--u) * 167) !important;
+  top: 0 !important;
+  height: 100% !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+.msfs-ui-gal__row [name="Title"] { flex-grow: 0 !important; flex-shrink: 0 !important; width: auto !important; }
+.msfs-ui-gal__row [name="Details"] { margin-left: calc(var(--u) * 6) !important; margin-top: 0 !important; }
+
+.msfs-ui-gal__card { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+/*
+ * The tile's third line of text (its Distance, here the studio): its own State_Distance shows it, but the tile's
+ * Disabled state hides it again for good, so it is shown here.
+ */
+.msfs-ui-gal__tile.has-third-line [name="Distance"] { display: flex !important; }
+
+/* The sim's heart, over the tile in its top right corner. */
+.msfs-ui-gal__heart {
+  position: absolute;
+  top: calc(var(--u) * 6);
+  right: calc(var(--u) * 6);
+  width: calc(var(--u) * 30);
+  height: calc(var(--u) * 30);
+}
+/* In a list row, at the end of the line and centred in its height, like the text. */
+.msfs-ui-gal__row .msfs-ui-gal__heart { top: calc(50% - var(--u) * 15); }
+
+/*
+ * Behind the thumbnails, the sim's studio backdrop (colours measured on the sim's own thumbnails, 1.9.18): a few
+ * publishers ship a transparent thumbnail (Nemeth Designs' EC-135), which would otherwise show the tile's dark colour.
+ */
+.msfs-ui-gal__tile img[name="ImageBlock"],
+.msfs-ui-gal__row img[name="Image"] {
+  background-image: linear-gradient(to bottom, rgb(165, 173, 198), rgb(150, 164, 193) 50%, rgb(100, 118, 152)) !important;
+}

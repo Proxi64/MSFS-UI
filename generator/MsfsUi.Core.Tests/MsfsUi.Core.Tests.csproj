@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tests of MsfsUi.Core. They never touch the sim or the real Community folder. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>MsfsUi.Core.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" />
+    <PackageReference Include="Jint" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MsfsUi.Core\MsfsUi.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Expected outputs produced by the MSFS-UI 0.3.0 tool (see Golden/README.md); kept byte-identical. -->
+    <None Include="Golden\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The real compatibility manifest of the mod, checked by the tests. -->
+    <None Include="..\..\mod\compat.json" Link="Fixtures\compat.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

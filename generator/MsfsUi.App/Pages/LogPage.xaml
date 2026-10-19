@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="MsfsUi.App.Pages.LogPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:MsfsUi.App.ViewModels">
+    <Page.Resources>
+        <!--  Log lines follow each other at an even pace: no 40 px minimum height per item (the default).  -->
+        <Style
+            x:Key="LogLineContainerStyle"
+            BasedOn="{StaticResource DefaultListViewItemStyle}"
+            TargetType="ListViewItem">
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="12,3,12,3" />
+        </Style>
+
+        <!--  A log line: monospaced, selectable; a warning or an error in the critical colour.  -->
+        <DataTemplate x:Key="LogLineTemplate" x:DataType="vm:LogLine">
+            <Grid>
+                <TextBlock
+                    FontFamily="Cascadia Mono, Consolas"
+                    FontSize="12"
+                    IsTextSelectionEnabled="True"
+                    Text="{x:Bind Text, Mode=OneTime}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind IsNormal, Mode=OneTime}" />
+                <TextBlock
+                    FontFamily="Cascadia Mono, Consolas"
+                    FontSize="12"
+                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                    IsTextSelectionEnabled="True"
+                    Text="{x:Bind Text, Mode=OneTime}"
+                    TextWrapping="Wrap"
+                    Visibility="{x:Bind IsProblem, Mode=OneTime}" />
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="{StaticResource PagePadding}" RowSpacing="12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MaxWidth="{StaticResource PageMaxWidth}" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Spacing="8">
+            <TextBlock
+                x:Uid="LogTitle"
+                AutomationProperties.HeadingLevel="Level1"
+                Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock
+                x:Uid="LogDescription"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource BodyTextBlockStyle}" />
+        </StackPanel>
+
+        <SelectorBar
+            x:Name="Logs"
+            Grid.Row="1"
+            AutomationProperties.AutomationId="LogSelector"
+            SelectionChanged="Logs_SelectionChanged">
+            <SelectorBarItem
+                x:Uid="LogAppTab"
+                AutomationProperties.AutomationId="LogAppTab"
+                IsSelected="True" />
+            <SelectorBarItem
+                x:Name="ModTab"
+                x:Uid="LogModTab"
+                AutomationProperties.AutomationId="LogModTab" />
+        </SelectorBar>
+
+        <StackPanel
+            Grid.Row="2"
+            Orientation="Horizontal"
+            Spacing="8">
+            <Button
+                x:Uid="LogReadMod"
+                AutomationProperties.AutomationId="LogReadMod"
+                Command="{x:Bind ViewModel.ReadModCommand}"
+                Style="{StaticResource AccentButtonStyle}"
+                Visibility="{x:Bind ViewModel.ShowsMod, Mode=OneWay}" />
+            <Button
+                x:Uid="LogCopy"
+                AutomationProperties.AutomationId="LogCopy"
+                Command="{x:Bind ViewModel.CopyCommand}" />
+            <Button
+                x:Uid="LogOpenFolder"
+                AutomationProperties.AutomationId="LogOpenFolder"
+                Command="{x:Bind ViewModel.OpenFolderCommand}" />
+            <ProgressRing
+                Width="20"
+                Height="20"
+                Margin="8,0,0,0"
+                IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+            <TextBlock
+                VerticalAlignment="Center"
+                AutomationProperties.AutomationId="LogModStatus"
+                AutomationProperties.LiveSetting="Polite"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource BodyTextBlockStyle}"
+                Text="{x:Bind ViewModel.ModStatus, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.ShowsMod, Mode=OneWay}" />
+        </StackPanel>
+
+        <!--  The log shown, on a card; oldest first, the view follows the newest line.  -->
+        <Border
+            Grid.Row="3"
+            Padding="12,8"
+            Style="{StaticResource CardStyle}">
+            <Grid>
+                <ListView
+                    x:Name="AppList"
+                    AutomationProperties.AutomationId="LogAppLines"
+                    ItemContainerStyle="{StaticResource LogLineContainerStyle}"
+                    ItemTemplate="{StaticResource LogLineTemplate}"
+                    ItemsSource="{x:Bind ViewModel.AppLines, Mode=OneTime}"
+                    SelectionMode="None"
+                    Visibility="{x:Bind ViewModel.ShowsApp, Mode=OneWay}" />
+                <ListView
+                    x:Name="ModList"
+                    AutomationProperties.AutomationId="LogModLines"
+                    ItemContainerStyle="{StaticResource LogLineContainerStyle}"
+                    ItemTemplate="{StaticResource LogLineTemplate}"
+                    ItemsSource="{x:Bind ViewModel.ModLines, Mode=OneWay}"
+                    SelectionMode="None"
+                    Visibility="{x:Bind ViewModel.ShowsMod, Mode=OneWay}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

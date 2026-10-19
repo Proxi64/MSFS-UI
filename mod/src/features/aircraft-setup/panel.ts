@@ -1,0 +1,529 @@
+// The setup panel in the aircraft selection, in place of the statistics (left column): variant, liveries as
+// thumbnails (with a heart: favourite liveries, shown first), editable tail number, shortcuts to Fuel and
+// Identification. Made of the sim's own components. Everything goes through the sim's configurator
+// (`Game.Aircraft.Configurator`), which the sim already sets on the aircraft chosen in the list; no 3D preview loads.
+
+import { el, toggleClass, uiUnit } from '../../core/dom.ts';
+import { logError } from '../../core/log.ts';
+import type { Scope } from '../../core/scope.ts';
+import { syncConfiguratorToCurrent, type ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
+import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
+import { FAVORITE_LIVERIES_CHANGED, findFavoriteLivery, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
+import { liveryKey, TAIL_NUMBER } from '../../sim/liveries.ts';
+import { cleanTail } from '../../sim/registration.ts';
+import { isShown, type Manipulator } from '../../sim/screens.ts';
+import { readArray, store, translate, watch } from '../../sim/store.ts';
+import { createTextField, type TextField } from '../../sim/text-field.ts';
+import { orderLiveries, variationOf, type LiveryOrder } from './livery-order.ts';
+
+/** A variant of the configurator (`Configurator.Items`). */
+interface ConfiguratorItem {
+  id: string;
+  title: string;
+  isSelected: boolean;
+  isDisabled: boolean;
+}
+
+interface ConfiguratorDetails {
+  variationId: string;
+  displayName: string;
+  creator: string;
+}
+
+interface IdentificationField {
+  dataName: string;
+  value: string;
+  allowedLength: number;
+}
+
+/** The sim's wishlist heart (IconButtonLightWishlistManipulator). */
+interface WishlistManipulator {
+  setData(checked: boolean, callback: (checked: boolean) => void): void;
+}
+
+/** The sim's livery button (ImageButtonLiveryManipulator). */
+interface LiveryButtonManipulator {
+  setData(image: string, callback: () => void): void;
+}
+
+/** Length of the field when the sim does not give it. */
+const DEFAULT_TAIL_LENGTH = 9;
+const RELOAD_DELAY_MS = 80;
+/** Livery thumbnails: three per row, in the proportions of the sim's thumbnails (about 2:1). */
+const LIVERY_COLUMNS = 3;
+const LIVERY_RATIO = 0.47;
+/** Selection corner of the compact tiles (core/theme.css), kept clear of the title. */
+const CORNER_UNITS = 30;
+/** Wheel step on the thumbnails, in layout units. */
+const WHEEL_STEP = 60;
+const FLOW = {
+  fuel: 'GOTO_WORLDMAP_PLANECONFIGURATION_FUEL_XML',
+  identification: 'GOTO_WORLDMAP_PLANECONFIGURATION_IDENTIFICATION_XML',
+};
+const STATISTICS = '[name="Fleet_Details"]';
+
+const aircraft = store.Game.Aircraft;
+const configurator = aircraft.Configurator;
+
+/** Opens a screen of the sim by its navigation event (as its own tabs do). */
+function launchFlow(event: string): void {
+  engine.trigger('LAUNCH_FLOW_EVENT_TO_GLOBAL_FLOW_FROM_VIEW', event, '');
+}
+
+interface LiveryTile {
+  button: SimComponent;
+  heart: SimComponent | null;
+  host: HTMLElement;
+}
+
+export class SetupPanel {
+  private readonly page: Manipulator;
+  private readonly scope: Scope;
+  private readonly root = el('div', 'msfs-ui-setup');
+  private readonly variantsRow = el('div', 'msfs-ui-setup__variants');
+  private readonly liveryName = el('span', 'msfs-ui-value msfs-ui-setup__value');
+  private readonly liveriesGrid = el('div', 'msfs-ui-setup__liveries');
+
+  /** Variants: components by id, built for one set of ids. */
+  private variants: ConfiguratorItem[] = [];
+  private variantKey = '';
+  private variantScope: Scope | null = null;
+  private readonly variantTiles = new Map<string, SimComponent>();
+  /** Tiles per row and tile width of the current layout of the variants. */
+  private variantsLayout = '';
+  /** Width of the panel at the last fit of the variants. */
+  private fittedWidth = 0;
+
+  /** Liveries: components by id, built for one ordered set of ids. */
+  private liveries: ConfiguratorLivery[] = [];
+  private liveryKeyList = '';
+  private liveryScope: Scope | null = null;
+  private readonly liveryTiles = new Map<string, LiveryTile>();
+  private liveryOrder: LiveryOrder | null = null;
+  private selectedLiveryTitle = '';
+
+  /** Aircraft of the configurator and the title of its variant (when it has several), for favourite liveries. */
+  private details: ConfiguratorDetails | null = null;
+  private variationTitle = '';
+
+  private tail: TextField | null = null;
+  private tailInfo: IdentificationField | null = null;
+  private reloadTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Number of the last reload: an older one that finishes later is ignored. */
+  private reloadNumber = 0;
+  /**
+   * The tail number being typed: the livery selected when the field took the keyboard (the value belongs to it)
+   * and the value typed so far (kept here: the field may be gone when the screen closes during the edit).
+   */
+  private edit: { livery: string | null; value: string } | null = null;
+
+  constructor(page: Manipulator, scope: Scope) {
+    this.page = page;
+    this.scope = scope;
+  }
+
+  mount(): void {
+    const scope = this.scope;
+    // As the sim's panels: the mouse does not go through the panel (core/theme.ts).
+    this.root.setAttribute('data-input-group', 'inputLocker');
+    const tailHost = this.build();
+    scope.append(this.page.elt, this.root);
+    scope.add(() => this.restoreStatistics());
+    this.layout();
+    scope.interval(() => this.layout(), 250);
+
+    // Leaving the screen while typing sends the value too (registered first: runs after the field is gone).
+    scope.add(() => this.commitTail(false));
+    createTextField(scope, tailHost, {
+      plain: true,
+      onEnter: () => (this.edit = { livery: this.selectedLiveryId(), value: this.tail ? this.tail.value : '' }),
+      onChange: (value) => this.onTailTyped(value),
+      onSubmit: () => this.commitTail(true),
+      onLeave: () => this.commitTail(false),
+    }).then(
+      (field) => {
+        this.tail = field;
+        if (this.tailInfo) field.value = this.tailInfo.value;
+      },
+      (error: unknown) => logError('the tail number field could not be created', error),
+    );
+
+    // The sim releases its configurator when leaving the screen and sets it only on a click on a tile or on
+    // "Configure"; a livery chosen on a released configurator makes the current aircraft invalid.
+    this.syncConfigurator().catch((error: unknown) => logError('the configurator could not be set', error));
+    const reload = () => this.scheduleReload();
+    watch(scope, configurator.Details, reload);
+    watch(scope, aircraft.CurrentAircraft, reload);
+    watch<{ identificationInfos?: IdentificationField[] } | null>(scope, aircraft.CurrentIdentification, (identification) => this.onIdentification(identification));
+    // A gallery heart unchecked also removes the aircraft's favourite liveries.
+    scope.listen(document, FAVORITE_LIVERIES_CHANGED, reload);
+    scope.add(() => clearTimeout(this.reloadTimer));
+
+    // Wheel on the thumbnails: scrolled by the mod (Coherent's native scrolling is not reliable here).
+    scope.listen(document, 'wheel', (event) => {
+      if (!(event.target instanceof Element) || !this.liveriesGrid.contains(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.liveriesGrid.scrollTop += (event.deltaY > 0 ? 1 : -1) * WHEEL_STEP * uiUnit();
+    });
+  }
+
+  // ----- Construction -----
+
+  /** The fixed parts; returns the host of the tail number field. */
+  private build(): HTMLElement {
+    const variantHeader = el('div', 'msfs-ui-header', this.root);
+    el('span', 'msfs-ui-title', variantHeader).textContent = translate('TT:MANUFACTURE.BREADCRUMB.VARIATION');
+    this.root.appendChild(this.variantsRow);
+
+    const liveryHeader = el('div', 'msfs-ui-header', this.root);
+    el('span', 'msfs-ui-title', liveryHeader).textContent = translate('TT:GENERIC.LIVERY');
+    liveryHeader.appendChild(this.liveryName);
+    this.root.appendChild(this.liveriesGrid);
+
+    const tailRow = el('div', 'msfs-ui-header msfs-ui-setup__tail', this.root);
+    el('span', 'msfs-ui-title', tailRow).textContent = translate(TAIL_NUMBER);
+    const tailHost = el('div', 'msfs-ui-setup__field', tailRow);
+
+    const actions = el('div', 'msfs-ui-setup__actions', this.root);
+    for (const [label, flow] of [
+      ['TT:GENERIC.FUEL_PAYLOAD', FLOW.fuel],
+      ['TT:GENERIC.IDENTIFICATION', FLOW.identification],
+    ] as const) {
+      const host = el('div', 'msfs-ui-setup__action', actions);
+      createComponent(this.scope, COMPONENTS.textButtonSmall, host, { Text: translate(label) }).then(
+        (button) => button.onClick(this.scope, () => launchFlow(flow)),
+        (error: unknown) => logError('a button of the setup panel could not be created', error),
+      );
+    }
+    return tailHost;
+  }
+
+  /** In place of the statistics (`Fleet_Details` › `Scroll`), which are hidden. */
+  private layout(): void {
+    const details = this.page.elt.querySelector(STATISTICS);
+    const statistics = details && details.querySelector<HTMLElement>('[name="Scroll"]');
+    if (!isShown(details) || !statistics) {
+      this.root.style.display = 'none';
+      return;
+    }
+    if (statistics.style.visibility !== 'hidden') statistics.style.visibility = 'hidden';
+    const origin = this.page.elt.getBoundingClientRect();
+    const rect = statistics.getBoundingClientRect();
+    const unit = uiUnit();
+    const style = this.root.style;
+    style.display = '';
+    style.left = `${rect.left - origin.left}px`;
+    style.top = `${rect.top - origin.top}px`;
+    style.width = `${rect.width}px`;
+    style.height = `${rect.height}px`;
+    // Thumbnail height from its width: the panel's padding (6) and the gaps between thumbnails (6).
+    const width = (rect.width - 12 * unit - (LIVERY_COLUMNS - 1) * 6 * unit) / LIVERY_COLUMNS;
+    // Whole pixels: the third thumbnail of a row takes the rest (aircraft-setup.css), so the row ends at the edge.
+    style.setProperty('--livery-w', `${Math.floor(width)}px`);
+    style.setProperty('--livery-h', `${Math.round(width * LIVERY_RATIO)}px`);
+    if (Math.round(rect.width) !== this.fittedWidth) {
+      this.fittedWidth = Math.round(rect.width);
+      this.fitVariants();
+    }
+  }
+
+  private restoreStatistics(): void {
+    const statistics = this.page.elt.querySelector<HTMLElement>(`${STATISTICS} [name="Scroll"]`);
+    if (statistics) statistics.style.visibility = '';
+  }
+
+  // ----- Data -----
+
+  /** Sets the configurator on the current aircraft (variant and livery) unless it already is. True when ready. */
+  private async syncConfigurator(): Promise<boolean> {
+    const ready = await syncConfiguratorToCurrent();
+    if (!ready) logError('the configurator cannot be set on the current aircraft');
+    return ready;
+  }
+
+  /** Before acting: the configurator is ready and the item belongs to its aircraft; otherwise the panel reloads. */
+  private async canApply(itemVariationId: string): Promise<boolean> {
+    const ready = await this.syncConfigurator();
+    const details = (await configurator.Details()) as { variationId: string } | null;
+    if (ready && details && details.variationId === itemVariationId) return true;
+    logError(`choice ignored (configurator on ${details ? details.variationId : '?'}, item of ${itemVariationId})`);
+    this.scheduleReload();
+    return false;
+  }
+
+  private scheduleReload(): void {
+    clearTimeout(this.reloadTimer);
+    this.reloadTimer = setTimeout(() => this.reload().catch((error: unknown) => logError('the setup panel could not be updated', error)), RELOAD_DELAY_MS);
+  }
+
+  private async reload(): Promise<void> {
+    const number = ++this.reloadNumber;
+    const [variants, liveries, details] = await Promise.all([
+      readArray<ConfiguratorItem>(configurator.Items),
+      readArray<ConfiguratorLivery>(configurator.Liveries),
+      configurator.Details() as Promise<ConfiguratorDetails | null>,
+    ]);
+    if (this.scope.disposed || number !== this.reloadNumber) return;
+    const items = variants.filter((item) => !!item);
+    const selected = items.filter((item) => item.isSelected)[0];
+    this.details = details;
+    this.variationTitle = items.length > 1 && selected ? selected.title : '';
+    this.renderVariants(items);
+    this.renderLiveries(liveries.filter((livery) => !!livery));
+    await aircraft.UpdateCurrentAircraftIdentification.request();
+  }
+
+  // ----- Variants -----
+
+  private renderVariants(items: ConfiguratorItem[]): void {
+    this.variants = items;
+    const key = items.map((item) => item.id).join('|');
+    if (key !== this.variantKey) {
+      this.variantKey = key;
+      if (this.variantScope) this.variantScope.dispose();
+      const scope = (this.variantScope = this.scope.child());
+      this.variantTiles.clear();
+      this.variantsRow.innerHTML = '';
+      this.variantsLayout = '';
+      items.forEach((item) => {
+        const host = el('div', 'msfs-ui-setup__variant msfs-ui-compact-tile', this.variantsRow);
+        createComponent(scope, COMPONENTS.tileButton, host, { Title: translate(item.title) }).then(
+          (tile) => {
+            // A component of a list rebuilt since (another aircraft) is dropped with its scope.
+            if (scope.disposed) return;
+            this.variantTiles.set(item.id, tile);
+            tile.onClick(scope, () => this.chooseVariant(item.id));
+            this.updateVariants();
+            this.fitVariants();
+          },
+          (error: unknown) => logError('a variant tile could not be created', error),
+        );
+      });
+      this.arrangeVariants(Math.min(3, Math.max(1, items.length)));
+    }
+    this.updateVariants();
+  }
+
+  /**
+   * Lays the variant tiles out `perRow` per row, in whole pixels (the engine rounds computed widths down): the last
+   * tile of a full row takes the rest and ends at the panel edge; a row that is not full keeps the same widths, so
+   * its tiles stay aligned on the columns above.
+   */
+  private arrangeVariants(perRow: number): void {
+    const row = this.variantsRow.getBoundingClientRect().width;
+    const gap = 6 * uiUnit();
+    const width = row > 0 ? Math.floor((row - gap * (perRow - 1)) / perRow) : 0;
+    const key = `${perRow}/${width}`;
+    if (key === this.variantsLayout) return;
+    this.variantsLayout = key;
+    const hosts = this.variantsRow.children;
+    for (let at = 0; at < hosts.length; at++) {
+      const host = hosts[at] as HTMLElement;
+      const last = at % perRow === perRow - 1;
+      if (width <= 0) host.style.width = `calc((100% - var(--u) * ${6 * (perRow - 1)}) / ${perRow})`;
+      else host.style.width = last ? `calc(100% - ${width * (perRow - 1)}px - var(--u) * ${6 * (perRow - 1)})` : `${width}px`;
+      host.style.marginRight = last ? '0' : '';
+    }
+  }
+
+  /**
+   * As many tiles per row (3, 2 or 1) as let every name show whole, room for the selection corner included: the
+   * engine shows no ellipsis, a long name would be cut. Measured once every tile exists, and when the panel's width
+   * changes (layout).
+   */
+  private fitVariants(): void {
+    if (this.variants.length === 0 || this.variantTiles.size < this.variants.length) return;
+    const unit = uiUnit();
+    const row = this.variantsRow.getBoundingClientRect().width;
+    if (row <= 0) return;
+    let widest = 0;
+    let padding = 0;
+    this.variantTiles.forEach((tile) => {
+      const title = tile.element.querySelector<HTMLElement>('[name="Title"]');
+      const content = tile.element.querySelector<HTMLElement>('[name="Content"]');
+      if (!title || !content) return;
+      const style = window.getComputedStyle(content);
+      padding = Math.max(padding, parseFloat(style.paddingLeft) + parseFloat(style.paddingRight));
+      // The text's own width: a probe inside the title takes its font.
+      const probe = el('span', '', title);
+      probe.style.whiteSpace = 'nowrap';
+      probe.textContent = title.textContent;
+      widest = Math.max(widest, probe.getBoundingClientRect().width);
+      title.removeChild(probe);
+    });
+    const needed = widest + padding + CORNER_UNITS * unit;
+    let perRow = Math.min(3, this.variants.length);
+    while (perRow > 1 && (row - 6 * unit * (perRow - 1)) / perRow < needed) perRow--;
+    this.arrangeVariants(perRow);
+  }
+
+  private updateVariants(): void {
+    for (const item of this.variants) {
+      const tile = this.variantTiles.get(item.id);
+      if (!tile) continue;
+      tile.select(item.isSelected);
+      tile.disable(item.isDisabled);
+    }
+  }
+
+  private chooseVariant(id: string): void {
+    const item = this.variants.filter((candidate) => candidate.id === id)[0];
+    if (!item || item.isSelected) return;
+    // The variants listed belong to the configurator's aircraft: check that it is the current aircraft.
+    const selected = this.variants.filter((candidate) => candidate.isSelected)[0];
+    this.canApply(selected ? selected.id : '')
+      .then((ok) => (ok ? configurator.SelectItem.request(id) : undefined))
+      .catch((error: unknown) => logError('the variant could not be chosen', error));
+  }
+
+  // ----- Liveries -----
+
+  private isFavorite(livery: ConfiguratorLivery, favorites = loadFavoriteLiveries()): boolean {
+    return !!livery.directoryPath && findFavoriteLivery(favorites, variationOf(livery.id), livery.directoryPath) >= 0;
+  }
+
+  private renderLiveries(items: ConfiguratorLivery[]): void {
+    const favorites = loadFavoriteLiveries();
+    const ordered = orderLiveries(items, (livery) => this.isFavorite(livery, favorites), this.liveryOrder);
+    this.liveryOrder = ordered.order;
+    this.liveries = ordered.items;
+    const selected = items.filter((livery) => livery.isSelected)[0];
+    this.selectedLiveryTitle = selected ? translate(selected.title) : '';
+    this.liveryName.textContent = this.selectedLiveryTitle;
+
+    const key = ordered.items.map((livery) => livery.id).join('|');
+    if (key !== this.liveryKeyList) {
+      this.liveryKeyList = key;
+      this.buildLiveries(ordered.items);
+      if (ordered.reordered) this.liveriesGrid.scrollTop = 0;
+    }
+    this.updateLiveries(favorites);
+  }
+
+  private buildLiveries(items: ConfiguratorLivery[]): void {
+    if (this.liveryScope) this.liveryScope.dispose();
+    const scope = (this.liveryScope = this.scope.child());
+    this.liveryTiles.clear();
+    this.liveriesGrid.innerHTML = '';
+    for (const livery of items) {
+      const host = el('div', 'msfs-ui-setup__livery', this.liveriesGrid);
+      const buttonHost = el('div', 'msfs-ui-setup__thumbnail', host);
+      const heartHost = livery.directoryPath ? el('div', 'msfs-ui-setup__heart', host) : null;
+      scope.listen(host, 'mouseenter', () => (this.liveryName.textContent = translate(livery.title)));
+      scope.listen(host, 'mouseleave', () => (this.liveryName.textContent = this.selectedLiveryTitle));
+      Promise.all([
+        createComponent(scope, COMPONENTS.liveryButton, buttonHost),
+        heartHost ? createComponent(scope, COMPONENTS.wishlistButton, heartHost) : Promise.resolve(null),
+      ]).then(
+        ([button, heart]) => {
+          if (scope.disposed) return;
+          const thumbnail = button.manipulator<LiveryButtonManipulator>();
+          if (thumbnail) thumbnail.setData(livery.imageUrl, () => this.chooseLivery(livery.id));
+          const tile = { button, heart, host };
+          this.liveryTiles.set(livery.id, tile);
+          const current = this.liveries.filter((candidate) => candidate.id === livery.id)[0];
+          if (current) this.updateLivery(current, tile, loadFavoriteLiveries());
+        },
+        (error: unknown) => logError('a livery thumbnail could not be created', error),
+      );
+    }
+  }
+
+  private updateLiveries(favorites: ReturnType<typeof loadFavoriteLiveries>): void {
+    for (const livery of this.liveries) {
+      const tile = this.liveryTiles.get(livery.id);
+      if (tile) this.updateLivery(livery, tile, favorites);
+    }
+  }
+
+  /**
+   * Selection, favourite heart and availability of one thumbnail. ImageButton_Livery has no Disabled state of its
+   * own: an unavailable livery is dimmed by its host (aircraft-setup.css), and a click on it is ignored.
+   */
+  private updateLivery(livery: ConfiguratorLivery, tile: LiveryTile, favorites: ReturnType<typeof loadFavoriteLiveries>): void {
+    tile.button.select(livery.isSelected);
+    toggleClass(tile.host, 'is-disabled', !!livery.isDisabled);
+    const favorite = this.isFavorite(livery, favorites);
+    toggleClass(tile.host, 'is-favorite', favorite);
+    const heart = tile.heart && tile.heart.manipulator<WishlistManipulator>();
+    if (heart) heart.setData(favorite, (checked) => this.setFavoriteLivery(livery.id, checked));
+  }
+
+  private chooseLivery(id: string): void {
+    const livery = this.liveries.filter((candidate) => candidate.id === id)[0];
+    if (!livery || livery.isSelected || livery.isDisabled) return;
+    this.canApply(variationOf(id))
+      .then((ok) => (ok ? configurator.SaveVariationId.request(id) : undefined))
+      .catch((error: unknown) => logError('the livery could not be chosen', error));
+  }
+
+  private setFavoriteLivery(id: string, favorite: boolean): void {
+    const livery = this.liveries.filter((candidate) => candidate.id === id)[0];
+    if (!livery || !livery.directoryPath) return;
+    const variationId = variationOf(id);
+    const favorites = loadFavoriteLiveries();
+    const at = findFavoriteLivery(favorites, variationId, livery.directoryPath);
+    if (!favorite && at >= 0) favorites.splice(at, 1);
+    else if (favorite && at < 0) {
+      const details = this.details && this.details.variationId === variationId ? this.details : null;
+      favorites.push({
+        variationId,
+        dir: liveryKey(livery.directoryPath),
+        title: livery.title,
+        image: livery.imageUrl,
+        displayName: details ? details.displayName : undefined,
+        creator: details ? details.creator : undefined,
+        variation: details ? this.variationTitle : undefined,
+        usedAt: livery.isSelected ? Date.now() : 0,
+      });
+    } else {
+      return;
+    }
+    // The event redraws this panel (hearts) and the gallery; the order of the thumbnails stays.
+    saveFavoriteLiveries(favorites);
+  }
+
+  // ----- Tail number -----
+
+  private onIdentification(identification: { identificationInfos?: IdentificationField[] } | null): void {
+    const fields = identification && identification.identificationInfos;
+    this.tailInfo = (fields && fields.filter((field) => field.dataName === TAIL_NUMBER)[0]) || null;
+    if (this.tail) this.tail.value = this.tailInfo ? this.tailInfo.value : '';
+  }
+
+  private maxTailLength(): number {
+    return this.tailInfo && this.tailInfo.allowedLength > 0 ? this.tailInfo.allowedLength : DEFAULT_TAIL_LENGTH;
+  }
+
+  private selectedLiveryId(): string | null {
+    const selected = this.liveries.filter((livery) => livery.isSelected)[0];
+    return selected ? selected.id : null;
+  }
+
+  /** The value is cleaned as it is typed. */
+  private onTailTyped(value: string): void {
+    const clean = cleanTail(value, this.maxTailLength());
+    if (clean !== value && this.tail) this.tail.replace(clean);
+    if (this.edit) this.edit.value = clean;
+  }
+
+  /**
+   * Sends the tail number when the field is left or on Enter, not while typing: each value sent is kept for the
+   * livery (tail-number.ts), so partial values would be kept too. A value typed for a livery that is no longer
+   * selected is dropped. `stillEditing` (Enter): the field keeps the keyboard, so a later change is sent too.
+   */
+  private commitTail(stillEditing: boolean): void {
+    const edit = this.edit;
+    if (!edit) return;
+    this.edit = stillEditing ? { livery: edit.livery, value: edit.value } : null;
+    if (!this.tailInfo) return;
+    const value = cleanTail(edit.value, this.maxTailLength());
+    if (edit.livery !== this.selectedLiveryId()) {
+      if (this.tail && !this.scope.disposed) this.tail.value = this.tailInfo.value;
+      return;
+    }
+    if (!value || value === this.tailInfo.value) return;
+    aircraft.SetCurrentAircraftIdentification.request(`${TAIL_NUMBER}%%${value}`).catch((error: unknown) => logError('the tail number could not be set', error));
+  }
+}

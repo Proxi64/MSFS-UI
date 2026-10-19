@@ -1,0 +1,139 @@
+{
+  "$schema": "./schema/features.schema.json",
+  "schemaVersion": 1,
+  "modVersion": "1.0.0",
+  "features": [
+    {
+      "id": "fastMenus",
+      "title": "Fast menus",
+      "description": "Shortens the menu's scripted animations and shows images as soon as they are loaded, without the fade.",
+      "screen": "All menus",
+      "enabledByDefault": true,
+      "options": [
+        {
+          "id": "speed",
+          "type": "number",
+          "title": "Animation speed",
+          "description": "How much faster the menu animations run: 2 makes them twice as short, 1 keeps the sim's speed. Looping animations (loading indicators) keep their pace.",
+          "default": 2,
+          "min": 1,
+          "max": 4,
+          "step": 0.5,
+          "unit": "×"
+        },
+        {
+          "id": "instantImages",
+          "type": "boolean",
+          "title": "Images without fade",
+          "description": "Shows images at once instead of fading them in.",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "weatherBar",
+      "title": "Weather and time bar",
+      "description": "A bar on Free Flight with one-click weather presets and times of day (dawn, day, dusk, night, computed from the sun at the departure airport).",
+      "screen": "Free Flight",
+      "enabledByDefault": true,
+      "options": [
+        {
+          "id": "remember",
+          "type": "boolean",
+          "title": "Remember the last choice",
+          "description": "Applies the last weather, time of day, traffic and multiplayer choice again when the sim starts.",
+          "default": true
+        },
+        {
+          "id": "metar",
+          "type": "boolean",
+          "title": "METAR section",
+          "description": "Shows the real weather (METAR) at the departure airport with its flight category, and the simulated weather when Live is off.",
+          "default": true
+        },
+        {
+          "id": "traffic",
+          "type": "boolean",
+          "title": "Traffic section",
+          "description": "Shows buttons for air traffic and multiplayer.",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "timeWheel",
+      "title": "Mouse wheel on the time",
+      "description": "The mouse wheel over the Flight Conditions widget moves the time: later upwards, earlier downwards. With live weather it moves within the last 24 hours.",
+      "screen": "Free Flight",
+      "enabledByDefault": true,
+      "options": [
+        {
+          "id": "step",
+          "type": "number",
+          "title": "Step",
+          "description": "Time shift for one notch of the wheel.",
+          "default": 60,
+          "min": 10,
+          "max": 3600,
+          "step": 10,
+          "unit": "s"
+        },
+        {
+          "id": "fastStep",
+          "type": "number",
+          "title": "Step with Shift",
+          "description": "Time shift for one notch of the wheel while Shift is held.",
+          "default": 600,
+          "min": 60,
+          "max": 21600,
+          "step": 60,
+          "unit": "s"
+        }
+      ]
+    },
+    {
+      "id": "tailNumber",
+      "title": "Tail number per livery",
+      "description": "Each livery keeps its own tail number: the one you type is applied again whenever that livery is selected.",
+      "screen": "Aircraft selection",
+      "enabledByDefault": true,
+      "options": []
+    },
+    {
+      "id": "aircraftSetup",
+      "title": "Aircraft setup panel",
+      "description": "A panel in the aircraft selection with the variants, the liveries as thumbnails, favourite liveries and the tail number.",
+      "screen": "Aircraft selection",
+      "enabledByDefault": true,
+      "options": [
+        {
+          "id": "widenColumn",
+          "type": "number",
+          "title": "Widen the left column",
+          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width.",
+          "default": 50,
+          "min": 0,
+          "max": 200,
+          "step": 10,
+          "unit": "units"
+        }
+      ]
+    },
+    {
+      "id": "aircraftGallery",
+      "title": "Aircraft gallery and list",
+      "description": "Replaces the aircraft list with a gallery or a compact list, with favourites per aircraft and per livery, a filter and the sim's sort orders.",
+      "screen": "Aircraft selection",
+      "enabledByDefault": true,
+      "options": []
+    },
+    {
+      "id": "freeflightFavorites",
+      "title": "Favourites on Free Flight",
+      "description": "A Favorites block on Free Flight to pick a favourite aircraft or livery directly, and a record of recently used aircraft.",
+      "screen": "Free Flight",
+      "enabledByDefault": true,
+      "options": []
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+/*
+ * Layout of the Favorites block only: its background and header are the sim's card layers (core/theme.ts), its rows
+ * the sim's horizontal tile and heart, its list the sim's scrolling list. Sizes in units; the heights match
+ * panel.ts (header 36, rows 77 with 6 between them, 6 of padding).
+ */
+
+.msfs-ui-fav { display: flex; flex-direction: column; }
+/* While an aircraft loads, only the list is dimmed and inactive: the block keeps the mouse lock (core/theme.ts). */
+.msfs-ui-fav.is-loading .msfs-ui-fav__list { opacity: 0.6; pointer-events: none; }
+.msfs-ui-fav__list { position: relative; flex-grow: 1; min-height: 0; }
+/* 6 units around the rows; on the right, room for the scroll bar when the list scrolls. */
+.msfs-ui-fav__list .scroll__content { box-sizing: border-box; padding: calc(var(--u) * 6) !important; }
+.msfs-ui-fav.is-scrolling .scroll__content { padding-right: calc(var(--u) * 24) !important; }
+.msfs-ui-fav__empty { padding: calc(var(--u) * 6); opacity: 0.75; }
+
+/* A row: the sim's horizontal tile, full width (its content is absolute). */
+.msfs-ui-fav__row { position: relative; width: 100%; height: calc(var(--u) * 77); margin-bottom: calc(var(--u) * 6); }
+.msfs-ui-fav__row:last-child { margin-bottom: 0; }
+.msfs-ui-fav__card { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+/*
+ * The marketplace tile, as in the gallery's list view but on its own two lines: the name in its bold Title, then
+ * "variant · livery · tail number" in its light Creator. Its rating and separator, price banner and own heart are
+ * hidden; the image box takes the thumbnails' ratio (720 x 344); the text stops before the row's heart.
+ */
+.msfs-ui-fav__row [name="Rating_Overview"],
+.msfs-ui-fav__row [name="Details"] [name="Separator"],
+.msfs-ui-fav__row [name="Banner"],
+.msfs-ui-fav__row [name="WishlistBlock"] { display: none !important; }
+.msfs-ui-fav__row [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
+.msfs-ui-fav__row [name="TitleBlock"] {
+  left: calc(var(--u) * 167) !important;
+  right: calc(var(--u) * 42) !important;
+  top: 0 !important;
+  height: 100% !important;
+  justify-content: center !important;
+}
+.msfs-ui-fav__row img[name="Image"] {
+  background-image: linear-gradient(to bottom, rgb(165, 173, 198), rgb(150, 164, 193) 50%, rgb(100, 118, 152)) !important;
+}
+
+/* The sim's heart, at the end of the row and centred in its height. */
+.msfs-ui-fav__heart {
+  position: absolute;
+  top: calc(50% - var(--u) * 15);
+  right: calc(var(--u) * 6);
+  width: calc(var(--u) * 30);
+  height: calc(var(--u) * 30);
+}

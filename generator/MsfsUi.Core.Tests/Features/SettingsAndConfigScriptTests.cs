@@ -1,0 +1,154 @@
+using MsfsUi.Core.Features;
+
+namespace MsfsUi.Core.Tests.Features;
+
+[TestClass]
+public sealed class SettingsAndConfigScriptTests
+{
+    private static readonly FeatureCatalog Catalog = FeatureCatalog.Parse(FeatureTestData.Catalog);
+
+    private static FeatureSettings Settings(string json) => FeatureSettings.TryParse(json) ?? throw new AssertFailedException("unreadable test settings");
+
+    [TestMethod]
+    public void NoSettingsGiveTheCatalogueDefaults()
+    {
+        var result = SettingsNormalizer.Normalize(Catalog, null);
+
+        Assert.IsEmpty(result.Adjustments);
+        var fastMenus = result.Selection.Find("fastMenus")!;
+        Assert.IsTrue(fastMenus.Enabled);
+        Assert.AreEqual(OptionValue.FromNumber(2), fastMenus.Options[0].Value);
+        Assert.AreEqual(OptionValue.FromBoolean(true), fastMenus.Options[1].Value);
+        Assert.IsFalse(result.Selection.Find("tailNumber")!.Enabled);
+    }
+
+    [TestMethod]
+    public void StoredChoicesAreKeptWhenValid()
+    {
+        var result = SettingsNormalizer.Normalize(Catalog, Settings("""
+            { "schemaVersion": 1, "features": {
+              "fastMenus": { "enabled": false, "options": { "speed": 3.5, "instantImages": false } },
+              "tailNumber": { "enabled": true }
+            } }
+            """));
+
+        Assert.IsEmpty(result.Adjustments);
+        var fastMenus = result.Selection.Find("fastMenus")!;
+        Assert.IsFalse(fastMenus.Enabled);
+        Assert.AreEqual(OptionValue.FromNumber(3.5), fastMenus.Options[0].Value);
+        Assert.AreEqual(OptionValue.FromBoolean(false), fastMenus.Options[1].Value);
+        Assert.IsTrue(result.Selection.Find("tailNumber")!.Enabled);
+    }
+
+    [TestMethod]
+    public void InvalidChoicesAreRepairedAndReported()
+    {
+        var result = SettingsNormalizer.Normalize(Catalog, Settings("""
+            { "schemaVersion": 1, "features": {
+              "oldFeature": { "enabled": true },
+              "fastMenus": { "options": { "speed": 9, "instantImages": "yes", "removed": 1 } }
+            } }
+            """));
+
+        var fastMenus = result.Selection.Find("fastMenus")!;
+        Assert.AreEqual(OptionValue.FromNumber(4), fastMenus.Options[0].Value, "clamped to max");
+        Assert.AreEqual(OptionValue.FromBoolean(true), fastMenus.Options[1].Value, "wrong type: default");
+        Assert.IsTrue(fastMenus.Enabled, "missing enabled: default");
+        CollectionAssert.AreEqual(ExpectedRepairs, result.Adjustments.ToArray());
+    }
+
+    private static readonly string[] ExpectedRepairs =
+    [
+        "Unknown feature 'oldFeature' dropped.",
+        "Unknown option 'fastMenus.removed' dropped.",
+        "Option 'fastMenus.speed' adjusted from 9 to 4 (range or step).",
+        "Option 'fastMenus.instantImages' is not a boolean: default used.",
+    ];
+
+    [TestMethod]
+    [DataRow(2.2, 2.0)]
+    [DataRow(2.3, 2.5)]
+    [DataRow(1.25, 1.5)]
+    [DataRow(0.1, 1.0)]
+    [DataRow(3.9, 4.0)]
+    public void NumbersSnapToTheirStepFromTheMinimum(double stored, double expected)
+    {
+        var speed = Catalog.Find("fastMenus")!.Options[0];
+
+        Assert.AreEqual(expected, SettingsNormalizer.Constrain(speed, stored));
+    }
+
+    [TestMethod]
+    [DataRow(1.0, 0.8)]
+    [DataRow(0.9, 0.8)]
+    [DataRow(0.5, 0.4)]
+    [DataRow(-3.0, 0.0)]
+    public void WhenTheRangeIsNotAWholeNumberOfStepsTheTopIsTheLastGridPoint(double stored, double expected)
+    {
+        var option = new OptionDefinition("ratio", OptionType.Number, "Ratio", string.Empty, System.Text.Json.JsonSerializer.SerializeToElement(0.4), Min: 0, Max: 1, Step: 0.4);
+
+        Assert.AreEqual(expected, SettingsNormalizer.Constrain(option, stored));
+    }
+
+    [TestMethod]
+    public void SettingsFromANewerVersionAreFlagged()
+    {
+        var result = SettingsNormalizer.Normalize(Catalog, Settings("""{ "schemaVersion": 2, "features": {} }"""));
+
+        Assert.IsTrue(result.FromNewerVersion);
+        StringAssert.Contains(result.Adjustments[0], "newer MSFS-UI-GENERATOR (schema 2)");
+        Assert.IsFalse(SettingsNormalizer.Normalize(Catalog, null).FromNewerVersion);
+    }
+
+    [TestMethod]
+    public void SelectionRoundTripsThroughStoredSettings()
+    {
+        var selection = SettingsNormalizer.Normalize(Catalog, Settings("""
+            { "schemaVersion": 1, "features": { "fastMenus": { "enabled": false, "options": { "speed": 1.5 } } } }
+            """)).Selection;
+
+        var reread = SettingsNormalizer.Normalize(Catalog, FeatureSettings.TryParse(selection.ToSettings().ToJson()));
+
+        Assert.IsEmpty(reread.Adjustments);
+        Assert.AreEqual(ConfigScript.Generate(selection, "1.0.0"), ConfigScript.Generate(reread.Selection, "1.0.0"));
+    }
+
+    [TestMethod]
+    public void ConfigScriptIsAnEsModuleWithTheSelection()
+    {
+        var selection = SettingsNormalizer.Normalize(Catalog, null).Selection;
+
+        var script = ConfigScript.Generate(selection, "1.0.0");
+
+        Assert.AreEqual(
+            "// Generated by MSFS-UI-GENERATOR 1.0.0. Do not edit: change the settings in MSFS-UI-GENERATOR.\n"
+            + "export default {\n"
+            + "  \"schemaVersion\": 1,\n"
+            + "  \"features\": {\n"
+            + "    \"fastMenus\": {\n"
+            + "      \"enabled\": true,\n"
+            + "      \"speed\": 2,\n"
+            + "      \"instantImages\": true\n"
+            + "    },\n"
+            + "    \"tailNumber\": {\n"
+            + "      \"enabled\": false\n"
+            + "    }\n"
+            + "  }\n"
+            + "};\n",
+            script);
+    }
+
+    [TestMethod]
+    public void ConfigScriptNeverContainsRawLineSeparators()
+    {
+        var lineSeparator = (char)0x2028;
+        var paragraphSeparator = (char)0x2029;
+        var selection = new FeatureSelection([new FeatureChoice($"odd{lineSeparator}id{paragraphSeparator}", true, [])]);
+
+        var script = ConfigScript.Generate(selection, "1.0.0");
+
+        Assert.IsFalse(script.Contains(lineSeparator, StringComparison.Ordinal));
+        Assert.IsFalse(script.Contains(paragraphSeparator, StringComparison.Ordinal));
+        StringAssert.Contains(script, "odd\\u2028id\\u2029");
+    }
+}

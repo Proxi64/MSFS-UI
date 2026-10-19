@@ -1,0 +1,244 @@
+{
+  "$schema": "./schema/compat.schema.json",
+  "$comment": "What the menu mod relies on in the sim (ADR-0001), read by the app's compatibility check. Owned by the mod: a change that adds a dependency on the sim updates this file in the same commit. liveChecks[].run is an ES2017 function evaluated in the mainUi page; it receives ctx = { store, engineUi, utils, flight, aircraft } and returns { ok, detail } (or a promise of it).",
+  "schemaVersion": 1,
+  "exports": [
+    { "module": "engine_ui.bundle.js", "names": ["GuidToManipulator", "UITimeline", "UITransition", "GuidToTrait", "AttachTrait"] },
+    { "module": "shared/utils.js", "names": ["UniversalProxy", "RegisterViewListener"] },
+    { "module": "shared/store.js", "names": ["ReadableStore"] }
+  ],
+  "screens": [
+    { "label": "Free Flight", "guid": "{3C7A4EC5-E7F6-4761-B27F-A0EA89C0F081}", "className": "FreeFlightPageManipulator" },
+    { "label": "Aircraft selection", "guid": "{7822664D-7F34-4A46-904A-F82929865103}", "className": "PlaneSelectionFreeflightPageManipulator" }
+  ],
+  "components": [
+    { "label": "Choice tile", "guid": "{68CB981E-3551-4AB9-8C2C-54470940600B}", "name": "TileButton", "attributes": ["Title"], "states": ["Selected", "Disabled", "Hover"], "children": ["Content", "CornerWhite", "Title"] },
+    { "label": "Icon button", "guid": "{4DA5F24F-8B9F-4157-8700-19F5E06B68E9}", "name": "IconButton_Squared", "attributes": ["Icon"], "states": ["Selected", "Disabled", "Hover"] },
+    { "label": "Tab", "guid": "{B3646052-B1D6-44DA-854F-F3C6301FE03C}", "name": "TextTab", "attributes": ["Text"], "states": ["Selected", "Hover"] },
+    { "label": "Flight category", "guid": "{6C8546B4-5DC2-4565-8344-02BEC2D16F6B}", "name": "FreeFlight_IFR", "attributes": ["Status", "StatusColor"], "values": ["Color_VFR", "Color_MVFR", "Color_IFR", "Color_LIFR"] },
+    { "label": "Small button", "guid": "{18790BAC-6BA6-45F1-A5B0-4719AAA02CAB}", "name": "TextButton_Small", "attributes": ["Text"], "states": ["Hover"] },
+    { "label": "Livery thumbnail", "guid": "{4F4F64CD-07F8-4B9C-8822-4E076700DB75}", "name": "ImageButton_Livery", "attributes": ["Image"], "states": ["Selected", "Hover"] },
+    { "label": "Favourite heart", "guid": "{A1BD480B-7FFA-4C9E-A63C-346F3974B5EC}", "name": "IconButton_Light_Wishlist", "states": ["State_Full", "State_Empty"] },
+    { "label": "Text field", "guid": "{996A0E75-BA4D-4EB4-BD27-683B1013B42C}", "name": "Search_Input", "attributes": ["Placeholder"], "states": ["State_Input"] },
+    { "label": "Aircraft tile", "guid": "{4624E83D-9CA8-48D6-B42C-FE4E2810951F}", "name": "TileButton_Fleet", "attributes": ["AircraftImage", "AircraftName", "Subtitle", "Distance"], "states": ["Selected", "Disabled", "Hover"], "children": ["ImageBlock", "Distance", "Content", "Background"] },
+    { "label": "Horizontal tile", "guid": "{35A4F244-E2BB-4DF1-984E-BCBE663FC209}", "name": "Marketplace_Tile_Horizontal", "attributes": ["Image", "Title", "Creator"], "states": ["Selected", "Disabled", "Hover"], "children": ["Title", "Details", "Rating_Overview", "Separator", "Banner", "WishlistBlock", "TitleBlock", "ImageBlock", "Image"] },
+    { "label": "Dropdown", "guid": "{3321B59E-EA1D-4C72-8D69-3F1BB530437C}", "name": "Dropdown", "attributes": ["Title", "List_Size"], "states": ["State_Unwrapped", "Disabled"] }
+  ],
+  "anchors": [
+    "FreeFlight_AircraftButton",
+    "Search",
+    "Flight_Conditions_History_Widget",
+    "FreeFlight_Runways",
+    "FreeFlight_Traffic",
+    "PlaneSelection_Content",
+    "LeftBlock",
+    "RightBlock",
+    "Fleet_Details",
+    "Scroll",
+    "Header",
+    "Worldmap_Filters",
+    "TextButton_Large_EFB"
+  ],
+  "componentPatterns": [
+    {
+      "group": "Aircraft selection columns",
+      "label": "LeftBlock (width) and RightBlock (left) as \"* Npx / 1080\"",
+      "component": "name=\"PlaneSelection_Content\"",
+      "patterns": [
+        "name=\"LeftBlock\"[^>]*width: calc\\(var\\(--unscaledScreenHeight\\) \\* -?[\\d.]+px / 1080\\)",
+        "name=\"RightBlock\"[^>]*left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* -?[\\d.]+px / 1080\\)\\)"
+      ],
+      "failure": "unexpected format: the left column cannot be widened"
+    }
+  ],
+  "symbols": [
+    { "group": "Component manipulators", "names": ["SearchInputManipulator", "addSubmitCallback", "addChangeCallback", "addEnterCallback", "addExitCallback", "setSearchValue", "forceInput", "IconButtonLightWishlistManipulator", "ImageButtonLiveryManipulator", "TileButtonManipulator", "DropdownManipulator", "selectedCallback", "setEmptyTitle", "MarketplaceTileHorizontalManipulator", "isOwnedBySubscription", "tileClickDisabled", "real-scroll", "marquee__trigger", "scroll__content", "scroll__bar-container", "ui-scroll", "scrollToPosition", "updateSizes"] },
+    {
+      "group": "Data model",
+      "names": [
+        "timeData",
+        "weatherIndex",
+        "isUsingLiveTimeBuffer",
+        "liveTimeOffset",
+        "SetDepartureTime",
+        "ResetToSystemTime",
+        "SetLiveOffset",
+        "PresetList",
+        "SetWeatherPreset",
+        "InteractionBlocked",
+        "CurrentAircraft",
+        "AircraftList",
+        "FilteredCategory",
+        "GetAircraftFromVariationId",
+        "SetAircraftForConfigurator",
+        "SelectItem",
+        "SaveVariationId",
+        "UpdateCurrentAircraftIdentification",
+        "CurrentIdentification",
+        "SetCurrentAircraftIdentification",
+        "isLiveWeather",
+        "GetWeatherFromMetarAtLocation",
+        "GetWeatherAtLocation",
+        "CurrentFlight.FlightConditions",
+        "UpdateFlightConditions",
+        "SetFlightConditionConfiguration",
+        "AIRTRAFFICLIVE",
+        "AIRTRAFFICAI",
+        "AIRTRAFFICOFF",
+        "MULTIPLAYERLIVE",
+        "MULTIPLAYERALL",
+        "MULTIPLAYEROFF",
+        "GetAircraftSortingOptions",
+        "SetAircraftSortingOption"
+      ]
+    },
+    {
+      "group": "Events",
+      "names": [
+        "tileClick",
+        "tileHover",
+        "updateAircraftList",
+        "LAUNCH_FLOW_EVENT_TO_GLOBAL_FLOW_FROM_VIEW",
+        "GOTO_WORLDMAP_PLANECONFIGURATION_FUEL_XML",
+        "GOTO_WORLDMAP_PLANECONFIGURATION_IDENTIFICATION_XML",
+        "mousePressOutsideView"
+      ]
+    },
+    {
+      "group": "Text input",
+      "names": ["JS_LISTENER_INPUT_STACK", "JS_LISTENER_INPUTBAR", "ENTER_INPUT_FIELD", "EXIT_INPUT_FIELD", "REGISTER_INPUT_BAR", "SET_INPUT_BAR", "REMOVE_INPUT_BAR", "SCANNING"]
+    },
+    { "group": "Styles", "names": ["img-fade--enabled"] },
+    { "group": "Sim look", "names": ["blurredBackground", "inputLocker"] }
+  ],
+  "files": ["components/shared/resources/Icons/General/Sort.svg"],
+  "colorVariables": ["--colorPrimary", "--colorGradient", "--colorSecondary", "--colorComplementary1", "--colorComplementary2", "--fontSizeXS", "--unscaledScreenHeight", "--backgroundOpacity"],
+  "translations": [
+    "TT:GENERIC.LIST",
+    "TT:GENERIC.SORT_BY",
+    "TT:MENU.NAME",
+    "TT:MENU.ACPROPUI_MAX_RANGE",
+    "TT:MANUFACTURE.BREADCRUMB.VARIATION",
+    "TT:GENERIC.LIVERY",
+    "TT:MENU.AIRCRAFT.TAIL_NUMBER",
+    "TT:GENERIC.FUEL_PAYLOAD",
+    "TT:GENERIC.IDENTIFICATION",
+    "TT:GENERIC.TRAFFIC",
+    "TT:GENERIC.AIRPORT",
+    "TT:WEATHER.AIR_TRAFFIC_TITLE",
+    "TT:WEATHER.MULTIPLAYER_TITLE",
+    "TT:GENERIC.LIVE",
+    "TT:MENU.FLIGHTCONDITION.AI",
+    "TT:MENU.WEATHERLAYER_OFF",
+    "TT:MENU.FLIGHTCONDITION.ALL_PLAYERS",
+    "TT:MENU.FLIGHTCONDITION.MULTIPLAYER_OFF"
+  ],
+  "liveChecks": [
+    {
+      "group": "Sim components",
+      "label": "ResourcesManager.createElementFromGuid",
+      "run": "(ctx) => ({ ok: !!window.ResourcesManager && typeof window.ResourcesManager.createElementFromGuid === 'function' })"
+    },
+    {
+      "group": "Sim components",
+      "label": "trait \"selectable\" in GuidToTrait",
+      "run": "(ctx) => { let found = false; ctx.engineUi.GuidToTrait.forEach((trait) => { if (trait && trait.traitName === 'selectable') found = true; }); return { ok: found }; }"
+    },
+    {
+      "group": "Prototypes",
+      "label": "UITimeline.prototype.add / addEvent",
+      "run": "(ctx) => ({ ok: !!ctx.engineUi.UITimeline && typeof ctx.engineUi.UITimeline.prototype.add === 'function' && typeof ctx.engineUi.UITimeline.prototype.addEvent === 'function' })"
+    },
+    {
+      "group": "Prototypes",
+      "label": "UITransition.prototype.getTransitionStr",
+      "run": "(ctx) => ({ ok: !!ctx.engineUi.UITransition && typeof ctx.engineUi.UITransition.prototype.getTransitionStr === 'function' })"
+    },
+    {
+      "group": "Prototypes",
+      "label": "UniversalProxy, RegisterViewListener",
+      "run": "(ctx) => ({ ok: typeof ctx.utils.UniversalProxy === 'function' && typeof ctx.utils.RegisterViewListener === 'function' })"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Aircraft.CurrentAircraft",
+      "run": "(ctx) => ctx.aircraft.CurrentAircraft().then((v) => ({ ok: !!(v && v.variationId && v.displayName), detail: v ? v.displayName + ' / ' + v.variation : 'empty' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Aircraft.AircraftList",
+      "run": "(ctx) => ctx.aircraft.AircraftList.requestRange(0, 1000).then((n) => ({ ok: typeof n === 'number', detail: n ? n + ' aircraft in the tab' : 'empty (normal outside aircraft selection)' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Aircraft.FilteredCategory",
+      "run": "(ctx) => ctx.aircraft.FilteredCategory().then((v) => ({ ok: true, detail: v === undefined || v === null || v === '' ? 'empty (normal outside aircraft selection)' : String(v) }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Aircraft.Configurator.Details",
+      "run": "(ctx) => ctx.aircraft.Configurator.Details().then((v) => ({ ok: true, detail: v && v.variationId ? 'on ' + v.variationId : 'released (normal outside aircraft selection)' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Aircraft.CurrentIdentification (Tail number)",
+      "run": "(ctx) => ctx.aircraft.UpdateCurrentAircraftIdentification.request().then(() => ctx.aircraft.CurrentIdentification()).then((v) => { const field = v && v.identificationInfos && v.identificationInfos.find((i) => i.dataName === 'TT:MENU.AIRCRAFT.TAIL_NUMBER'); return { ok: !!field, detail: field ? field.value + ', at most ' + field.allowedLength + ' characters' : 'field missing' }; })"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "GameFlight.timeData",
+      "run": "(ctx) => ctx.flight.timeData().then((v) => ({ ok: !!(v && v.localTime && typeof v.localTime.value === 'number'), detail: v && v.localTime ? v.localTime.valueStr : 'empty' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "GameFlight.weatherIndex",
+      "run": "(ctx) => ctx.flight.weatherIndex().then((v) => ({ ok: typeof v === 'number' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "GameFlight.isUsingLiveTimeBuffer",
+      "run": "(ctx) => ctx.flight.isUsingLiveTimeBuffer().then((v) => ({ ok: typeof v === 'boolean' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "GameFlight.liveTimeOffset",
+      "run": "(ctx) => ctx.flight.liveTimeOffset().then((v) => ({ ok: typeof v === 'number' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "GameFlight.departure",
+      "run": "(ctx) => ctx.flight.departure().then((v) => ({ ok: v !== undefined, detail: v && v.worldLocation ? v.worldLocation.iCAO || 'no ICAO' : 'no departure' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Weather.FlightConditions.PresetList",
+      "run": "(ctx) => { const list = ctx.store.Game.Weather.FlightConditions.PresetList; return list.requestRange(0, 1000).then((n) => list.getElement(0).then((p) => ({ ok: n > 0 && !!p && !!p.iconUrl && !!p.title, detail: n + ' presets' }))); }"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Elements.FlightConditions.InteractionBlocked",
+      "run": "(ctx) => ctx.store.Elements.FlightConditions.InteractionBlocked().then((v) => ({ ok: typeof v === 'boolean' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "GameFlight.isLiveWeather",
+      "run": "(ctx) => ctx.flight.isLiveWeather().then((v) => ({ ok: typeof v === 'boolean' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.CurrentFlight.FlightConditions (traffic, multiplayer)",
+      "run": "(ctx) => ctx.store.Game.CurrentFlight.UpdateFlightConditions.request('').then(() => ctx.store.Game.CurrentFlight.FlightConditions()).then((v) => { const ids = (g) => (v && v[g] ? v[g].map((b) => b.id) : []); const has = (g, wanted) => wanted.every((id) => ids(g).indexOf(id) >= 0); const ok = has('airtraffic', ['AIRTRAFFICLIVE', 'AIRTRAFFICAI', 'AIRTRAFFICOFF']) && has('multiplayer', ['MULTIPLAYERLIVE', 'MULTIPLAYERALL', 'MULTIPLAYEROFF']); return { ok: ok, detail: ok ? ids('airtraffic').concat(ids('multiplayer')).join(', ') : 'unexpected buttons' }; })"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Aircraft.GetAircraftSortingOptions",
+      "run": "(ctx) => ctx.aircraft.GetAircraftSortingOptions.request('').then((v) => ({ ok: Array.isArray(v) && v.length > 0, detail: Array.isArray(v) ? v.length + ' options' : 'empty' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Weather.GetWeatherFromMetarAtLocation (departure)",
+      "timeoutMs": 4000,
+      "run": "(ctx) => ctx.flight.departure().then((d) => { if (!d || !d.id) return { ok: true, detail: 'no departure (normal)' }; const icao = (d.worldLocation && d.worldLocation.iCAO) || 'departure ' + d.id; return ctx.store.Game.Weather.GetWeatherFromMetarAtLocation.request(String(d.id)).then((w) => (w ? { ok: w.windSpeed !== undefined, detail: icao + ' ' + (w.flightRules || 'no category') } : { ok: true, detail: icao + ': no METAR' })); })"
+    }
+  ]
+}

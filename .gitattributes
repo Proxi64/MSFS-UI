@@ -1,0 +1,8 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+# Windows scripts: CRLF line endings
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+# Golden test fixtures must stay byte-identical (no line-ending conversion)
+generator/MsfsUi.Core.Tests/Golden/** -text
+mod/test/fixtures/** -text

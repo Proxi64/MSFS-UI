@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Application
+    x:Class="MsfsUi.App.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!--  Page layout shared by every page of the navigation view: content on the left, up to PageMaxWidth (as Windows Settings).  -->
+            <Thickness x:Key="PagePadding">36,24,36,24</Thickness>
+            <x:Double x:Key="PageMaxWidth">1000</x:Double>
+
+            <!--  A card of a page: the Fluent card surface (as Windows Settings).  -->
+            <Style x:Key="CardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="{StaticResource OverlayCornerRadius}" />
+                <Setter Property="Padding" Value="20,16,20,20" />
+            </Style>
+
+            <!--  A label of a card's value list.  -->
+            <Style
+                x:Key="FieldLabelStyle"
+                BasedOn="{StaticResource BodyTextBlockStyle}"
+                TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="Margin" Value="0,0,24,0" />
+            </Style>
+
+            <!--  A value of a card's value list: selectable, wraps long paths.  -->
+            <Style
+                x:Key="FieldValueStyle"
+                BasedOn="{StaticResource BodyTextBlockStyle}"
+                TargetType="TextBlock">
+                <Setter Property="IsTextSelectionEnabled" Value="True" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

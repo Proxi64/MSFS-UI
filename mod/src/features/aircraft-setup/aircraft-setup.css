@@ -1,0 +1,72 @@
+/*
+ * Layout of the setup panel only: colours, backgrounds and states come from the sim's components and the section
+ * headers of core/theme.css. The panel has no background of its own: it sits in the sim's left column, which has
+ * one. Alignment on the sim's block: its "Configure your aircraft" button is set 6 units inside its frame; the
+ * panel's padding stops at the same edges. Gaps of 6 units, no negative margins (Coherent does not widen the element).
+ */
+
+.msfs-ui-setup {
+  position: absolute;
+  z-index: 50;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--u) * 6);
+  /* One unit of the sim's mock-ups (1/1080 of the screen height), from the sim's own variable. */
+  --u: calc(var(--unscaledScreenHeight) * 1px / 1080);
+  color: var(--colorComplementary1);
+  font-size: var(--fontSizeXS);
+  pointer-events: auto;
+}
+.msfs-ui-setup .msfs-ui-header { margin-bottom: calc(var(--u) * 6); }
+.msfs-ui-setup__value { margin-left: calc(var(--u) * 12); flex-grow: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: right; }
+
+/* Variants: up to three tiles per row sharing the width (widths and the last margin of each row: panel.ts). */
+.msfs-ui-setup__variants { display: flex; flex-wrap: wrap; align-items: flex-start; flex-shrink: 0; margin-bottom: calc(var(--u) * 6); }
+.msfs-ui-setup__variant {
+  position: relative;
+  height: calc(var(--u) * 36);
+  margin: 0 calc(var(--u) * 6) calc(var(--u) * 6) 0;
+}
+
+/* Liveries: three thumbnails per row, 6 units apart; width and height in whole pixels (--livery-w, --livery-h: panel.ts). */
+.msfs-ui-setup__liveries {
+  flex-grow: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  margin-bottom: calc(var(--u) * 6);
+}
+.msfs-ui-setup__livery {
+  position: relative;
+  width: var(--livery-w);
+  height: var(--livery-h);
+  margin: 0 calc(var(--u) * 6) calc(var(--u) * 6) 0;
+}
+.msfs-ui-setup__livery:nth-child(3n) { width: calc(100% - var(--livery-w) * 2 - var(--u) * 12); margin-right: 0; }
+/* An unavailable livery: ImageButton_Livery has no Disabled state, so its host is dimmed as the sim's components are. */
+.msfs-ui-setup__livery.is-disabled { opacity: 0.45; }
+.msfs-ui-setup__thumbnail { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+/* The sim's heart, in the top right corner: shown on hover of the thumbnail, or when the livery is a favourite. */
+.msfs-ui-setup__heart {
+  position: absolute;
+  top: calc(var(--u) * 3);
+  right: calc(var(--u) * 3);
+  width: calc(var(--u) * 30);
+  height: calc(var(--u) * 30);
+  opacity: 0;
+}
+.msfs-ui-setup__livery:hover .msfs-ui-setup__heart,
+.msfs-ui-setup__livery.is-favorite .msfs-ui-setup__heart { opacity: 1; }
+
+/* Tail number: title on the left, the sim's field on the right. */
+.msfs-ui-setup__tail { padding-right: calc(var(--u) * 3); margin-top: auto; }
+.msfs-ui-setup__field { position: relative; width: 45%; height: calc(var(--u) * 30); }
+
+/* Fuel and Identification. */
+.msfs-ui-setup__actions { display: flex; flex-shrink: 0; }
+.msfs-ui-setup__action { position: relative; flex-grow: 1; flex-basis: 0; height: calc(var(--u) * 30); }
+.msfs-ui-setup__action + .msfs-ui-setup__action { margin-left: calc(var(--u) * 6); }

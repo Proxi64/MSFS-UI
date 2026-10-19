@@ -1,0 +1,27 @@
+<Project>
+  <!-- Settings shared by every project of the MSFS-UI solution. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Quality bar: every analyzer warning breaks the build. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Needed for IDE0005 (unused usings) in the build; public API of the Core library must be documented
+         (CS1591 is waived in the app and test projects). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- The version is 1.0.0, without the Git commit the SDK would append; no Source Link either (its table in the
+         symbols maps the local path of the sources to the repository's URL). -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <EnableSourceLink>false</EnableSourceLink>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+    <Product>MSFS-UI-GENERATOR</Product>
+    <Company>Proxi64</Company>
+    <Copyright>Copyright © 2026 Proxi64</Copyright>
+    <!-- The app version follows the mod version (mod/features.json, modVersion). -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+</Project>

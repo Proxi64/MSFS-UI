@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "msfs-2024-sdk": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["tools/msfs-sdk-mcp/server/index.js"]
+    }
+  }
+}

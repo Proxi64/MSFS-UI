@@ -1,0 +1,9 @@
+{
+  // Code run by Node (type stripping, no compilation): the build (build/) and the tests (test/).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2024", "dom"],
+    "types": ["node"]
+  },
+  "include": ["build/**/*.ts", "test/**/*.ts", "src/env.d.ts", "types/**/*.d.ts"]
+}

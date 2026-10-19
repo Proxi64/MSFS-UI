@@ -1,0 +1,11 @@
+<Project>
+  <!-- Release binaries hold no path of the build machine (it would show the user's folder): the paths the compiler writes
+       in the binaries and symbols are mapped, for the repository and for the NuGet cache (the Windows App SDK compiles
+       a source file of its own into the app). Here rather than in Directory.Build.props: the NuGet cache's folder is
+       known only once the restore's properties are imported. Debug keeps the real paths, for the debugger; the test
+       projects too (they find the repository from their own source files) and are never shipped. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and !$(MSBuildProjectName.EndsWith('Tests'))">
+    <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))=/MSFS-UI</PathMap>
+    <PathMap Condition="'$(NuGetPackageRoot)' != ''">$(PathMap),$([System.IO.Path]::GetFullPath('$(NuGetPackageRoot)').TrimEnd('\'))=/nuget</PathMap>
+  </PropertyGroup>
+</Project>

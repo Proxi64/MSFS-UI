@@ -1,0 +1,25 @@
+{
+  // The mod, loaded by Coherent GT in the sim's main menu. Type-checked here, bundled by esbuild (build/build.ts).
+  "compilerOptions": {
+    "target": "es2017",
+    "lib": ["es2017", "dom"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    // The sim's modules (`/Global/...`) are resolved by Coherent GT at runtime; hand-written types in types/Global.
+    "paths": { "/Global/*": ["./types/Global/*"] },
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    // Imports name their `.ts` file, so the pure modules also run under `node --test` (type stripping).
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "types": [],
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "types/**/*.d.ts"]
+}

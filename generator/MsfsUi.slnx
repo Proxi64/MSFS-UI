@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="MsfsUi.App/MsfsUi.App.csproj" />
+  <Project Path="MsfsUi.App.UITests/MsfsUi.App.UITests.csproj" />
+  <Project Path="MsfsUi.Core.Tests/MsfsUi.Core.Tests.csproj" />
+  <Project Path="MsfsUi.Core/MsfsUi.Core.csproj" />
+  <Project Path="MsfsUi.DevTool/MsfsUi.DevTool.csproj" />
+</Solution>

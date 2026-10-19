@@ -1,0 +1,77 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>MsfsUi.App</RootNamespace>
+    <AssemblyName>MSFS-UI-GENERATOR</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishProfile>win-x64.pubxml</PublishProfile>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <EnableMsixTooling>true</EnableMsixTooling>
+
+    <!-- Delivered as a self-contained folder (xcopy): no package identity, .NET and the Windows App SDK
+         runtime ship next to MSFS-UI.exe, nothing to install on the target machine. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+
+    <!-- XAML-generated members are not documented. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">true</PublishReadyToRun>
+    <!-- Trimming is decided in the release step (it needs trim-safe JSON and WinRT code). -->
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\AppIcon.ico" />
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinUIAnalyzer" PrivateAssets="all" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MsfsUi.Core\MsfsUi.Core.csproj" />
+  </ItemGroup>
+
+  <!-- The menu mod ships inside the exe (ADR-0001): its module, its feature catalogue and what it needs from the sim.
+       Services/ModResources.cs reads them by these names. -->
+  <PropertyGroup>
+    <MenuModFolder>$(MSBuildThisFileDirectory)..\..\mod\</MenuModFolder>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(MenuModFolder)dist\main.js" LogicalName="MsfsUi.Mod.main.js" Visible="false" />
+    <EmbeddedResource Include="$(MenuModFolder)features.json" LogicalName="MsfsUi.Mod.features.json" Visible="false" />
+    <EmbeddedResource Include="$(MenuModFolder)compat.json" LogicalName="MsfsUi.Mod.compat.json" Visible="false" />
+  </ItemGroup>
+  <Target Name="CheckMenuModBuilt" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(MenuModFolder)dist\main.js')" Text="mod\dist\main.js is missing: run `npm run check` in mod first (the app embeds the built mod)." />
+  </Target>
+</Project>

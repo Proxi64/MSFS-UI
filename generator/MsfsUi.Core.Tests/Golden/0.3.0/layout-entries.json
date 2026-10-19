@@ -1,0 +1,30 @@
+{
+  "version": "0.3.0",
+  "entries": [
+    {
+      "path": "cookedcomps/{7DA60FBA-EF32-48F2-974D-F8BEA35337A4}.html",
+      "size": 572,
+      "fileTime": "134366564985538212"
+    },
+    {
+      "path": "cookedcomps/{7DA60FBA-EF32-48F2-974D-F8BEA35337A4}.json",
+      "size": 15,
+      "fileTime": "134366564985587658"
+    },
+    {
+      "path": "html_ui/msfs-ui/main.js",
+      "size": 380556,
+      "fileTime": "134366564985538212"
+    },
+    {
+      "path": "html_ui/msfs-ui/px.gif",
+      "size": 42,
+      "fileTime": "134366564985538212"
+    },
+    {
+      "path": "msfs-ui.json",
+      "size": 203,
+      "fileTime": "134366564985597672"
+    }
+  ]
+}
