@@ -19,16 +19,16 @@
             <Grid>
                 <TextBlock
                     FontFamily="Cascadia Mono, Consolas"
-                    FontSize="12"
                     IsTextSelectionEnabled="True"
+                    Style="{StaticResource CaptionTextBlockStyle}"
                     Text="{x:Bind Text, Mode=OneTime}"
                     TextWrapping="Wrap"
                     Visibility="{x:Bind IsNormal, Mode=OneTime}" />
                 <TextBlock
                     FontFamily="Cascadia Mono, Consolas"
-                    FontSize="12"
                     Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                     IsTextSelectionEnabled="True"
+                    Style="{StaticResource CaptionTextBlockStyle}"
                     Text="{x:Bind Text, Mode=OneTime}"
                     TextWrapping="Wrap"
                     Visibility="{x:Bind IsProblem, Mode=OneTime}" />

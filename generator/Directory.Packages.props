@@ -11,7 +11,7 @@
     <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.9" />
     <!-- WinUI 2.3.9 asks for InteractiveExperiences 2.1.8, which was never published: the one the metapackage uses. -->
     <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.9" />
-    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.251221100" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.260930100" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.WinUIAnalyzer" Version="0.7.1" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />

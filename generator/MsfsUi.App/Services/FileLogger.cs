@@ -12,12 +12,15 @@ namespace MsfsUi.App.Services;
 public sealed record LogEntry(DateTimeOffset Time, LogLevel Level, string Category, string Message);
 
 /// <summary>
-/// The app's log: one file per day in <c>%LOCALAPPDATA%\MSFS-UI\logs</c>, and the latest lines in memory for the
-/// Log page.
+/// The app's log: one file per day in <c>%LOCALAPPDATA%\MSFS-UI-GENERATOR\logs</c>, kept for <see cref="KeptDays"/>
+/// days, and the latest lines in memory for the Log page.
 /// </summary>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
     private const int KeptInMemory = 500;
+
+    /// <summary>Log files older than this are deleted when the app starts.</summary>
+    public const int KeptDays = 30;
 
     private readonly string _folder;
     private readonly TimeProvider _time;
@@ -28,6 +31,32 @@ public sealed class FileLoggerProvider : ILoggerProvider
     {
         _folder = folder;
         _time = time;
+        DeleteOldFiles();
+    }
+
+    /// <summary>The files of days older than <see cref="KeptDays"/>: one file a day would otherwise pile up for good.</summary>
+    private void DeleteOldFiles()
+    {
+        try
+        {
+            if (!Directory.Exists(_folder))
+            {
+                return;
+            }
+
+            var limit = _time.GetUtcNow().UtcDateTime.AddDays(-KeptDays);
+            foreach (var file in Directory.EnumerateFiles(_folder, "msfs-ui-*.log"))
+            {
+                if (File.GetLastWriteTimeUtc(file) < limit)
+                {
+                    File.Delete(file);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The log must never break the app: old files stay until the next start.
+        }
     }
 
     /// <summary>Raised after each line, on the thread that wrote it.</summary>

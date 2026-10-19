@@ -23,21 +23,37 @@ public sealed partial class FeaturesViewModel : ObservableObject
     private readonly PackageInstaller _installer;
     private readonly CoherentInspector _inspector;
     private readonly SimSession _session;
+    private readonly IDialogService _dialogs;
     private readonly ILogger<FeaturesViewModel> _logger;
 
     /// <summary>The choices as saved, to tell what changed.</summary>
     private string _savedJson = string.Empty;
     private bool _loading;
 
-    public FeaturesViewModel(ModResources mod, SettingsStore store, PackageInstaller installer, CoherentInspector inspector, SimSession session, ILogger<FeaturesViewModel> logger)
+    /// <summary>
+    /// The saved settings come from a newer MSFS-UI-GENERATOR: applying here would drop what only that version knows,
+    /// so Apply asks first.
+    /// </summary>
+    private bool _savedByNewerVersion;
+
+    public FeaturesViewModel(ModResources mod, SettingsStore store, PackageInstaller installer, CoherentInspector inspector, SimSession session, IDialogService dialogs, ILogger<FeaturesViewModel> logger)
     {
         _mod = mod;
         _store = store;
         _installer = installer;
         _inspector = inspector;
         _session = session;
+        _dialogs = dialogs;
         _logger = logger;
         Features = [.. mod.Catalog.Features.Select(feature => new FeatureItemViewModel(feature, OnChoiceChanged))];
+        // Apply updates the package: not while Home installs or removes it. (Both live as long as the app.)
+        _session.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SimSession.PackageOperation))
+            {
+                ApplyCommand.NotifyCanExecuteChanged();
+            }
+        };
     }
 
     public IReadOnlyList<FeatureItemViewModel> Features { get; }
@@ -93,10 +109,15 @@ public sealed partial class FeaturesViewModel : ObservableObject
         var normalized = SettingsNormalizer.Normalize(_mod.Catalog, load.Settings);
         Show(normalized.Selection);
         _savedJson = Json(normalized.Selection);
+        _savedByNewerVersion = normalized.FromNewerVersion;
         Refresh();
         if (load.Problem is not null)
         {
             ShowMessage(InfoBarSeverity.Warning, Strings.Get("FeaturesSettingsUnreadable"), load.Problem);
+        }
+        else if (normalized.FromNewerVersion)
+        {
+            ShowMessage(InfoBarSeverity.Warning, Strings.Get("FeaturesSettingsNewer"), Strings.Get("FeaturesSettingsNewerDetail"));
         }
         else if (normalized.Adjustments.Count > 0)
         {
@@ -104,7 +125,7 @@ public sealed partial class FeaturesViewModel : ObservableObject
         }
     }
 
-    private bool CanApply() => HasChanges && !IsBusy;
+    private bool CanApply() => HasChanges && !IsBusy && _session.PackageOperation is null;
 
     private bool CanDiscard() => HasChanges && !IsBusy;
 
@@ -114,6 +135,13 @@ public sealed partial class FeaturesViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanApply))]
     private async Task ApplyAsync()
     {
+        // The stored settings of a newer version are only replaced with the user's consent.
+        if (_savedByNewerVersion
+            && !await _dialogs.ConfirmAsync(Strings.Get("FeaturesNewerConfirmTitle"), Strings.Get("FeaturesNewerConfirmMessage"), Strings.Get("FeaturesNewerConfirm")))
+        {
+            return;
+        }
+
         IsBusy = true;
         IsMessageOpen = false;
         try
@@ -121,6 +149,7 @@ public sealed partial class FeaturesViewModel : ObservableObject
             var selection = Selection();
             await _store.SaveFeatureSettingsAsync(selection.ToSettings());
             _savedJson = Json(selection);
+            _savedByNewerVersion = false;
             // The values are shown as saved (numbers brought into range and onto their step).
             Show(selection);
             Refresh();
@@ -166,18 +195,32 @@ public sealed partial class FeaturesViewModel : ObservableObject
             return;
         }
 
+        // An installation of the session: Home offers none meanwhile (the installer also runs them one at a time).
+        using var operation = _session.BeginPackageOperation(Strings.Get("FeaturesBusyApply"));
         var result = await _installer.InstallAsync(sim, PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, selection));
         switch (result.NextStep)
         {
             case NextStep.ReloadMod:
-                var reload = await _inspector.ReloadModAsync();
-                if (reload.Ok)
+                // The package is updated whatever happens here: a failed reload is a warning, not a failed Apply.
+                string? reloadError;
+                try
+                {
+                    var reload = await _inspector.ReloadModAsync();
+                    reloadError = reload.Ok ? null : reload.Error ?? string.Empty;
+                }
+                catch (InspectorUnavailableException ex)
+                {
+                    LogReloadFailed(ex);
+                    reloadError = ex.Message;
+                }
+
+                if (reloadError is null)
                 {
                     ShowMessage(InfoBarSeverity.Success, Strings.Get("FeaturesApplied"), Strings.Get("FeaturesAppliedReloaded"));
                 }
                 else
                 {
-                    ShowMessage(InfoBarSeverity.Warning, Strings.Get("FeaturesApplied"), Strings.Format("FeaturesAppliedReloadFailed", reload.Error));
+                    ShowMessage(InfoBarSeverity.Warning, Strings.Get("FeaturesApplied"), Strings.Format("FeaturesAppliedReloadFailed", reloadError));
                 }
 
                 break;
@@ -242,4 +285,7 @@ public sealed partial class FeaturesViewModel : ObservableObject
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The feature settings could not be applied")]
     private partial void LogApplyFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Settings applied, but the mod could not be reloaded in the sim")]
+    private partial void LogReloadFailed(Exception exception);
 }

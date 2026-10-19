@@ -24,6 +24,7 @@
                     Grid.Column="1"
                     MinWidth="0"
                     HorizontalAlignment="Right"
+                    AutomationProperties.AutomationId="{x:Bind AutomationId, Mode=OneTime}"
                     AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                     IsOn="{x:Bind BoolValue, Mode=TwoWay}"
                     Visibility="{x:Bind IsBoolean, Mode=OneTime}" />
@@ -35,6 +36,7 @@
                     Visibility="{x:Bind IsNumber, Mode=OneTime}">
                     <NumberBox
                         Width="150"
+                        AutomationProperties.AutomationId="{x:Bind AutomationId, Mode=OneTime}"
                         AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                         LargeChange="{x:Bind Step, Mode=OneTime}"
                         Maximum="{x:Bind Maximum, Mode=OneTime}"
@@ -83,6 +85,7 @@
                                     <Expander
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Stretch"
+                                        AutomationProperties.AutomationId="{x:Bind AutomationId, Mode=OneTime}"
                                         AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                                         Visibility="{x:Bind HasOptions, Mode=OneTime}">
                                         <Expander.Header>
@@ -106,6 +109,7 @@
                                                 <ToggleSwitch
                                                     Grid.Column="1"
                                                     MinWidth="0"
+                                                    AutomationProperties.AutomationId="{x:Bind SwitchAutomationId, Mode=OneTime}"
                                                     AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                                                     IsOn="{x:Bind IsEnabled, Mode=TwoWay}" />
                                             </Grid>
@@ -146,6 +150,7 @@
                                                 Grid.Column="1"
                                                 MinWidth="0"
                                                 Margin="0,0,44,0"
+                                                AutomationProperties.AutomationId="{x:Bind SwitchAutomationId, Mode=OneTime}"
                                                 AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                                                 IsOn="{x:Bind IsEnabled, Mode=TwoWay}" />
                                         </Grid>

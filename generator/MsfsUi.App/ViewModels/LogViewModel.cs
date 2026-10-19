@@ -13,7 +13,7 @@ using Windows.ApplicationModel.DataTransfer;
 namespace MsfsUi.App.ViewModels;
 
 /// <summary>
-/// Log: the app's operations (as written to <c>%LOCALAPPDATA%\MSFS-UI\logs</c>, live), and the mod's
+/// Log: the app's operations (as written to <c>%LOCALAPPDATA%\MSFS-UI-GENERATOR\logs</c>, live), and the mod's
 /// <c>[msfs-ui]</c> lines read from the console of the sim's main menu on demand.
 /// </summary>
 public sealed partial class LogViewModel : ObservableObject, IDisposable

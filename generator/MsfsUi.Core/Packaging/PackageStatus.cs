@@ -42,13 +42,31 @@ public enum UpdateReason
 /// <param name="Reasons">Why an update is needed (empty unless <see cref="PackageStatusKind.UpdateNeeded"/>).</param>
 /// <param name="Conflicts">Other Community packages that also replace the MasterPage (only one can win).</param>
 /// <param name="SimRunning">Whether the sim is running.</param>
+/// <remarks>
+/// Equal when the values are, lists included (compared item by item): a status read again without any change equals
+/// the previous one, so the pages are not refreshed for nothing at every poll.
+/// </remarks>
 public sealed record PackageStatus(
     PackageStatusKind Kind,
     string PackageFolder,
     PackageState? Installed,
     IReadOnlyList<UpdateReason> Reasons,
     IReadOnlyList<string> Conflicts,
-    bool SimRunning);
+    bool SimRunning)
+{
+    /// <inheritdoc/>
+    public bool Equals(PackageStatus? other) =>
+        other is not null
+        && Kind == other.Kind
+        && string.Equals(PackageFolder, other.PackageFolder, StringComparison.Ordinal)
+        && Equals(Installed, other.Installed)
+        && Reasons.SequenceEqual(other.Reasons)
+        && Conflicts.SequenceEqual(other.Conflicts, StringComparer.Ordinal)
+        && SimRunning == other.SimRunning;
+
+    /// <inheritdoc/>
+    public override int GetHashCode() => HashCode.Combine(Kind, PackageFolder, Installed, Reasons.Count, Conflicts.Count, SimRunning);
+}
 
 /// <summary>What the user has to do in the sim after an installation.</summary>
 public enum NextStep

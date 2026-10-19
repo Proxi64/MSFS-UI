@@ -5,9 +5,10 @@ namespace MsfsUi.Core.Packaging;
 
 /// <summary>
 /// Installs, inspects and removes the package in the sim's Community folder. A <c>msfs-ui</c> folder without our
-/// state file is never modified.
+/// state file is never modified. Installations and removals run one at a time (they share the staging folder and the
+/// package folder): one asked while another runs waits for it.
 /// </summary>
-public sealed partial class PackageInstaller
+public sealed partial class PackageInstaller : IDisposable
 {
     /// <summary>Files copied last, in this order: the package only claims to be the new build once it is complete.</summary>
     private static readonly string[] FilesCopiedLast = [PackageLayout.LayoutFile, PackageLayout.ManifestFile, PackageLayout.StateFile];
@@ -16,6 +17,7 @@ public sealed partial class PackageInstaller
     private readonly SimLocator _simLocator;
     private readonly AppPaths _paths;
     private readonly ILogger<PackageInstaller> _logger;
+    private readonly SemaphoreSlim _operation = new(1, 1);
 
     /// <summary>Creates the installer.</summary>
     public PackageInstaller(PackageBuilder builder, SimLocator simLocator, AppPaths paths, ILogger<PackageInstaller> logger)
@@ -79,6 +81,43 @@ public sealed partial class PackageInstaller
         ArgumentNullException.ThrowIfNull(sim);
         ArgumentNullException.ThrowIfNull(inputs);
 
+        await _operation.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await InstallExclusiveAsync(sim, inputs, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _operation.Release();
+        }
+    }
+
+    /// <summary>Removes the package from Community. Returns false if it was not installed.</summary>
+    /// <remarks>
+    /// The state file is deleted last: if a file is locked (the running sim may hold one open), the folder keeps it,
+    /// so it is still recognised as ours and the removal can be tried again.
+    /// </remarks>
+    /// <exception cref="MsfsUiException">The <c>msfs-ui</c> folder is not ours, or a file is locked.</exception>
+    public async Task<bool> RemoveAsync(SimInstallation sim, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sim);
+
+        await _operation.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await RemoveExclusiveAsync(sim, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _operation.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose() => _operation.Dispose();
+
+    private async Task<InstallResult> InstallExclusiveAsync(SimInstallation sim, PackageInputs inputs, CancellationToken cancellationToken)
+    {
         if (!Directory.Exists(sim.CommunityPath))
         {
             throw new MsfsUiException($"Community folder not found: {sim.CommunityPath}. Check the sim folders.");
@@ -131,12 +170,8 @@ public sealed partial class PackageInstaller
         return new InstallResult(state, target, previous is null, masterPageChanged, conflicts, nextStep);
     }
 
-    /// <summary>Removes the package from Community. Returns false if it was not installed.</summary>
-    /// <exception cref="MsfsUiException">The <c>msfs-ui</c> folder is not ours, or a file is locked.</exception>
-    public async Task<bool> RemoveAsync(SimInstallation sim, CancellationToken cancellationToken = default)
+    private async Task<bool> RemoveExclusiveAsync(SimInstallation sim, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(sim);
-
         var target = PackageFolder(sim);
         if (!Directory.Exists(target))
         {
@@ -146,7 +181,28 @@ public sealed partial class PackageInstaller
         try
         {
             await RequireOwnPackageAsync(target, cancellationToken).ConfigureAwait(false);
-            Directory.Delete(target, recursive: true);
+            // Not Directory.Delete(target, recursive): it goes on when a file is locked and may delete the state
+            // file before failing, which would leave a folder taken for someone else's, never touched again.
+            var stateFile = Path.Combine(target, PackageLayout.StateFile);
+            foreach (var entry in Directory.EnumerateFileSystemEntries(target).ToList())
+            {
+                if (string.Equals(entry, stateFile, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (Directory.Exists(entry))
+                {
+                    Directory.Delete(entry, recursive: true);
+                }
+                else
+                {
+                    File.Delete(entry);
+                }
+            }
+
+            File.Delete(stateFile);
+            Directory.Delete(target);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

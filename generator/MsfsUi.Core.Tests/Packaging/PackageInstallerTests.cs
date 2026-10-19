@@ -39,7 +39,11 @@ public sealed class PackageInstallerTests
 
         public string Package => PackageInstaller.PackageFolder(Sim);
 
-        public void Dispose() => Folder.Dispose();
+        public void Dispose()
+        {
+            Installer.Dispose();
+            Folder.Dispose();
+        }
     }
 
     [TestMethod]
@@ -262,6 +266,61 @@ public sealed class PackageInstallerTests
 
         Assert.IsFalse(Directory.Exists(setup.Package));
         Assert.IsTrue(Directory.Exists(setup.Folder["Community"]));
+    }
+
+    [TestMethod]
+    public async Task ARemovalStoppedByALockedFileLeavesAPackageStillOurs()
+    {
+        using var setup = new Setup();
+        await setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+
+        // The running sim may hold a file of the package open.
+        using (File.Open(Path.Combine(setup.Package, "html_ui", "msfs-ui", "main.js"), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            await Assert.ThrowsExactlyAsync<MsfsUiException>(() => setup.Installer.RemoveAsync(setup.Sim, TestContext.CancellationToken));
+        }
+
+        Assert.IsTrue(File.Exists(Path.Combine(setup.Package, PackageLayout.StateFile)), "the state file is deleted last");
+        var status = await setup.Installer.GetStatusAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+        Assert.AreNotEqual(PackageStatusKind.Foreign, status.Kind);
+        Assert.IsTrue(await setup.Installer.RemoveAsync(setup.Sim, TestContext.CancellationToken), "tried again once the file is free");
+        Assert.IsFalse(Directory.Exists(setup.Package));
+    }
+
+    [TestMethod]
+    public async Task AStatusReadAgainWithoutAnyChangeEqualsThePreviousOne()
+    {
+        using var setup = new Setup();
+        await setup.Installer.InstallAsync(setup.Sim, Inputs with { ConfigScript = "export default { a: 2 };\n" }, TestContext.CancellationToken);
+        setup.Folder.Write("Community/other-ui/cookedcomps/{7DA60FBA-EF32-48F2-974D-F8BEA35337A4}.html", "<ui-resource-element></ui-resource-element>");
+
+        // Each read gives new lists (reasons, conflicts): equal by value all the same, so the pages are not refreshed.
+        var first = await setup.Installer.GetStatusAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+        var second = await setup.Installer.GetStatusAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+
+        Assert.AreNotSame(first.Reasons, second.Reasons);
+        Assert.AreEqual(first, second);
+        Assert.AreEqual(first.GetHashCode(), second.GetHashCode());
+        Assert.AreNotEqual(first, second with { Conflicts = [] });
+    }
+
+    [TestMethod]
+    public async Task InstallationsAndRemovalsAskedTogetherRunOneAtATime()
+    {
+        using var setup = new Setup();
+
+        // Two pages of the app may ask at the same time: they share the staging folder and the package folder.
+        await Task.WhenAll(
+            setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken),
+            setup.Installer.InstallAsync(setup.Sim, Inputs with { ConfigScript = "export default { a: 2 };\n" }, TestContext.CancellationToken),
+            setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken));
+
+        var status = await setup.Installer.GetStatusAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+        Assert.AreEqual(PackageStatusKind.UpToDate, status.Kind, "the last installation is complete");
+        await Task.WhenAll(
+            setup.Installer.RemoveAsync(setup.Sim, TestContext.CancellationToken),
+            setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken));
+        Assert.IsTrue(File.Exists(Path.Combine(setup.Package, PackageLayout.StateFile)) || !Directory.Exists(setup.Package), "never half a package");
     }
 
     [TestMethod]

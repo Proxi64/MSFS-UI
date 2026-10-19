@@ -40,9 +40,9 @@ The navigation is on the left; **Readme**, at the bottom, explains how the app a
   - *Another msfs-ui folder is in Community*: a folder the app did not create, which it never touches.
 
   Other Community packages that also replace the menu's root page are listed: only one of them can win.
-- **Generate & install** builds the package from the sim installed on this machine and your settings, and installs it. When the sim is running and only reads the files again, the mod is reloaded at once; when a restart is needed (first install, sim update), the app says so.
+- **Generate & install** builds the package from the sim installed on this machine and your settings, and installs it. When the sim is running and only reads the files again, the mod is reloaded at once; when a restart is needed (first install, sim update), the app says so. If the reload does not get through (the sim's menu not on screen), the package is installed all the same: use **Reload in sim** later. While an installation or a removal runs, from Home or from Features, the other actions wait for it.
 - **Reload in sim** reloads the mod in the running sim.
-- **Remove** deletes the package, after confirmation.
+- **Remove** deletes the package, after confirmation. If the running sim holds one of its files, the removal stops and says so: the package stays recognised, and **Remove** works once the sim is closed.
 
 ### Features
 
@@ -50,6 +50,7 @@ One card per feature of the mod, with its switch, its description and the screen
 
 - **Apply** saves the choices. When the package is installed, it is updated (only the settings change) and, when the sim is running, the mod is reloaded: the change is live at once, without restarting the sim.
 - **Discard changes** goes back to the saved choices; **Reset to defaults** shows the defaults, which **Apply** then saves.
+- Settings saved by a newer version of the app are shown as this version understands them, with a warning; **Apply** asks before replacing them, since the choices only the newer version knows would be lost.
 - *Unsaved changes* shows while something differs from what is saved. Changes not applied are kept when you visit another page.
 
 ### Compatibility
@@ -58,7 +59,7 @@ What the mod needs from the sim, checked in the sim's files and, while the sim r
 
 ### Log
 
-- **App**: what the app did, live (also written to `%LOCALAPPDATA%\MSFS-UI-GENERATOR\logs`, one file per day).
+- **App**: what the app did, live (also written to `%LOCALAPPDATA%\MSFS-UI-GENERATOR\logs`, one file per day, kept 30 days).
 - **Mod in the sim**: the mod's own lines, read from the console of the sim's main menu (the sim must be running). **Read again** reads them again.
 - **Copy** copies the log shown; **Open log folder** opens the folder of the log files.
 

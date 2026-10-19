@@ -40,7 +40,8 @@ internal sealed class AppSession : IDisposable
     public static bool RealSimRunning => Process.GetProcessesByName("FlightSimulator2024").Length > 0;
 
     /// <summary>Prepares the profile and starts the app; inconclusive when the app is not built.</summary>
-    public static AppSession Start()
+    /// <param name="settingsJson">The user's settings (<c>settings.json</c>) the profile starts with, if any.</param>
+    public static AppSession Start(string? settingsJson = null)
     {
         var exe = FindApp() ?? throw new AssertInconclusiveException("MSFS-UI-GENERATOR.exe is not built: build generator/MsfsUi.slnx first.");
         var root = Path.Combine(Path.GetTempPath(), "msfs-ui-uitests", Guid.NewGuid().ToString("N"));
@@ -54,6 +55,10 @@ internal sealed class AppSession : IDisposable
         File.WriteAllText(
             Path.Combine(root, "data", "app.json"),
             $"{{\"communityPath\":{Json(Path.Combine(root, "Community"))},\"fsBaseUiPath\":{Json(fsBaseUi)}}}");
+        if (settingsJson is not null)
+        {
+            File.WriteAllText(Path.Combine(root, "data", "settings.json"), settingsJson);
+        }
 
         var start = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
         start.Environment["MSFS_UI_DATA_ROOT"] = Path.Combine(root, "data");
@@ -126,16 +131,28 @@ internal sealed class AppSession : IDisposable
             .Distinct());
 
     /// <summary>The text of an element (by automation id) once it contains <paramref name="expected"/>.</summary>
-    public string WaitForText(string automationId, string expected) =>
-        WaitFor(
-            () =>
-            {
-                var element = TryFind(automationId);
-                var text = element is null ? null : element.Current.Name + " | " + Texts(element);
-                return text is not null && text.Contains(expected, StringComparison.Ordinal) ? text : null;
-            },
-            $"'{expected}' in {automationId}",
-            DefaultTimeout);
+    public string WaitForText(string automationId, string expected)
+    {
+        string? last = null;
+        try
+        {
+            return WaitFor(
+                () =>
+                {
+                    var element = TryFind(automationId);
+                    var text = element is null ? null : element.Current.Name + " | " + Texts(element);
+                    last = text ?? last;
+                    return text is not null && text.Contains(expected, StringComparison.Ordinal) ? text : null;
+                },
+                $"'{expected}' in {automationId}",
+                DefaultTimeout);
+        }
+        catch (AssertFailedException ex)
+        {
+            // What the element said instead, to tell a slow page from a wrong text.
+            throw new AssertFailedException($"{ex.Message} Last text: {last ?? "(element not found)"}", ex);
+        }
+    }
 
     /// <summary>The dialog with this title, once shown (a ContentDialog shows as a Popup window).</summary>
     public AutomationElement Dialog(string title) =>

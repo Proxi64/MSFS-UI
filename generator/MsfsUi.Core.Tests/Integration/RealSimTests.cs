@@ -81,7 +81,7 @@ public sealed class RealSimTests
         var locator = new SimLocator(new WindowsSimEnvironment(), NullLogger<SimLocator>.Instance);
         var sim = await locator.LocateAsync(cancellationToken: TestContext.CancellationToken);
         using var folder = new TempFolder();
-        var installer = new PackageInstaller(
+        using var installer = new PackageInstaller(
             new PackageBuilder(TimeProvider.System, NullLogger<PackageBuilder>.Instance),
             locator,
             new AppPaths(folder.Path),

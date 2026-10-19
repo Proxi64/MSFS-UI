@@ -99,9 +99,16 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     // ----- Actions -----
 
+    /// <summary>
+    /// An action of this page runs, or an installation or removal started elsewhere (Features, or this page before
+    /// it was left and opened again): the page is a new one at each visit, the operation is the session's.
+    /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InstallCommand), nameof(RemoveCommand), nameof(ReloadCommand), nameof(ChooseFoldersCommand), nameof(UseDetectedFoldersCommand))]
     public partial bool IsBusy { get; private set; }
+
+    /// <summary>The busy text of this page's own action, while it runs.</summary>
+    private string? _ownBusyText;
 
     [ObservableProperty]
     public partial string BusyText { get; private set; } = string.Empty;
@@ -142,23 +149,22 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunAsync(Strings.Get("HomeBusyInstall"), Strings.Get("HomeInstallFailed"), async () =>
+        await RunAsync(Strings.Get("HomeBusyInstall"), Strings.Get("HomeInstallFailed"), packageOperation: true, async () =>
         {
             var result = await _installer.InstallAsync(sim, inputs);
-            var next = result.NextStep switch
+            var (next, severity) = result.NextStep switch
             {
-                NextStep.RestartSim => Strings.Get("HomeNextRestart"),
+                NextStep.RestartSim => (Strings.Get("HomeNextRestart"), InfoBarSeverity.Warning),
                 NextStep.ReloadMod => await ReloadAfterInstallAsync(),
-                _ => Strings.Get("HomeNextNone"),
+                _ => (Strings.Get("HomeNextNone"), InfoBarSeverity.Success),
             };
-            var severity = result.NextStep == NextStep.RestartSim ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
             ShowMessage(severity, Strings.Format("HomeInstalled", result.State.Version), next);
         });
     }
 
     /// <summary>Reloads the mod in the running sim: it reads its files and settings again.</summary>
     [RelayCommand(CanExecute = nameof(CanReload))]
-    private Task ReloadAsync() => RunAsync(Strings.Get("HomeBusyReload"), Strings.Get("HomeReloadFailed"), async () =>
+    private Task ReloadAsync() => RunAsync(Strings.Get("HomeBusyReload"), Strings.Get("HomeReloadFailed"), packageOperation: false, async () =>
     {
         var result = await _inspector.ReloadModAsync();
         if (result.Ok)
@@ -187,7 +193,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunAsync(Strings.Get("HomeBusyRemove"), Strings.Get("HomeRemoveFailed"), async () =>
+        await RunAsync(Strings.Get("HomeBusyRemove"), Strings.Get("HomeRemoveFailed"), packageOperation: true, async () =>
         {
             var removed = await _installer.RemoveAsync(sim);
             ShowMessage(InfoBarSeverity.Success, Strings.Get(removed ? "HomeRemoved" : "HomeNothingToRemove"), _session.SimRunning ? Strings.Get("HomeRemovedRestart") : string.Empty);
@@ -210,7 +216,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunAsync(Strings.Get("HomeBusyLocate"), Strings.Get("HomeFoldersFailed"), async () =>
+        await RunAsync(Strings.Get("HomeBusyLocate"), Strings.Get("HomeFoldersFailed"), packageOperation: false, async () =>
         {
             // The other preferences (the theme) are kept.
             var current = await _store.LoadPreferencesAsync();
@@ -221,7 +227,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     /// <summary>Forgets the folders chosen by hand: the sim is detected again.</summary>
     [RelayCommand(CanExecute = nameof(CanUseDetectedFolders))]
-    private Task UseDetectedFoldersAsync() => RunAsync(Strings.Get("HomeBusyLocate"), Strings.Get("HomeFoldersFailed"), async () =>
+    private Task UseDetectedFoldersAsync() => RunAsync(Strings.Get("HomeBusyLocate"), Strings.Get("HomeFoldersFailed"), packageOperation: false, async () =>
     {
         var current = await _store.LoadPreferencesAsync();
         await _store.SavePreferencesAsync(current with { CommunityPath = null, FsBaseUiPath = null });
@@ -230,12 +236,16 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     public void Dispose() => _session.PropertyChanged -= OnSessionChanged;
 
-    /// <summary>Runs an action with the busy state, reports a failure, and refreshes the state afterwards.</summary>
-    private async Task RunAsync(string busyText, string failureTitle, Func<Task> action)
+    /// <summary>
+    /// Runs an action with the busy state, reports a failure, and refreshes the state afterwards. An installation or
+    /// a removal (<paramref name="packageOperation"/>) is also the session's, so that no other page starts one.
+    /// </summary>
+    private async Task RunAsync(string busyText, string failureTitle, bool packageOperation, Func<Task> action)
     {
-        IsBusy = true;
-        BusyText = busyText;
+        _ownBusyText = busyText;
+        UpdateBusy();
         IsMessageOpen = false;
+        var operation = packageOperation ? _session.BeginPackageOperation(busyText) : null;
         try
         {
             await action();
@@ -247,16 +257,38 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         }
         finally
         {
+            operation?.Dispose();
             await _session.RefreshAsync(locate: true);
-            IsBusy = false;
+            _ownBusyText = null;
+            UpdateBusy();
         }
     }
 
-    /// <summary>The sim runs and only re-reads the files: the mod is reloaded at once.</summary>
-    private async Task<string> ReloadAfterInstallAsync()
+    /// <summary>Busy while this page's action runs, or while an installation or removal started elsewhere does.</summary>
+    private void UpdateBusy()
     {
-        var reload = await _inspector.ReloadModAsync();
-        return reload.Ok ? Strings.Get("HomeNextReloaded") : Strings.Format("HomeNextReloadFailed", reload.Error);
+        IsBusy = _ownBusyText is not null || _session.PackageOperation is not null;
+        BusyText = _ownBusyText ?? _session.PackageOperation ?? string.Empty;
+    }
+
+    /// <summary>
+    /// The sim runs and only re-reads the files: the mod is reloaded at once. The package is installed whatever
+    /// happens here: a reload that fails, or an inspector that does not answer, is a warning, not a failed install.
+    /// </summary>
+    private async Task<(string Text, InfoBarSeverity Severity)> ReloadAfterInstallAsync()
+    {
+        try
+        {
+            var reload = await _inspector.ReloadModAsync();
+            return reload.Ok
+                ? (Strings.Get("HomeNextReloaded"), InfoBarSeverity.Success)
+                : (Strings.Format("HomeNextReloadFailed", reload.Error), InfoBarSeverity.Warning);
+        }
+        catch (InspectorUnavailableException ex)
+        {
+            LogReloadFailed(ex);
+            return (Strings.Format("HomeNextReloadFailed", ex.Message), InfoBarSeverity.Warning);
+        }
     }
 
     private void ShowMessage(InfoBarSeverity severity, string title, string text)
@@ -290,6 +322,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         Community = sim?.CommunityPath ?? string.Empty;
         SimState = Strings.Get(_session.SimRunning ? "HomeSimRunning" : "HomeSimNotRunning");
 
+        UpdateBusy();
         UpdatePackage(_session.Status);
         InstallCommand.NotifyCanExecuteChanged();
         RemoveCommand.NotifyCanExecuteChanged();
@@ -304,7 +337,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             PackageHeadline = Strings.Get(_session.StatusError is null ? "HomePackageUnknown" : "HomePackageUnreadable");
             PackageDetail = _session.StatusError ?? Strings.Get("HomePackageNeedsSim");
             PackageSeverity = _session.StatusError is null ? InfoBarSeverity.Informational : InfoBarSeverity.Error;
-            Reasons = [];
+            SetReasons([]);
             Conflicts = string.Empty;
             HasConflicts = false;
             IsSimUpdated = false;
@@ -321,10 +354,19 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         PackageDetail = status.Installed is { } installed
             ? Strings.Format("HomePackageInstalledDetail", installed.Version, BuiltAt(installed.BuiltAt), installed.FsBaseUiVersion, status.PackageFolder)
             : status.Kind == PackageStatusKind.Foreign ? Strings.Format("HomePackageForeignDetail", status.PackageFolder) : Strings.Get("HomePackageNotInstalledDetail");
-        Reasons = [.. status.Reasons.Select(reason => Strings.Get($"HomeReason{reason}"))];
+        SetReasons([.. status.Reasons.Select(reason => Strings.Get($"HomeReason{reason}"))]);
         Conflicts = string.Join(Environment.NewLine, status.Conflicts);
         HasConflicts = status.Conflicts.Count > 0;
         IsSimUpdated = status.Reasons.Contains(UpdateReason.SimUpdated);
+    }
+
+    /// <summary>A new list only when the reasons change: the list on the page is not rebuilt at every refresh.</summary>
+    private void SetReasons(IReadOnlyList<string> reasons)
+    {
+        if (!reasons.SequenceEqual(Reasons, StringComparer.Ordinal))
+        {
+            Reasons = reasons;
+        }
     }
 
     /// <summary>The generation time, in the user's local time.</summary>
@@ -335,6 +377,9 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{Action}")]
     private partial void LogActionFailed(string action, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Package installed, but the mod could not be reloaded in the sim")]
+    private partial void LogReloadFailed(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Folders chosen by hand: Community {Community}, fs-base-ui {FsBaseUi}")]
     private partial void LogFoldersChosen(string community, string fsBaseUi);

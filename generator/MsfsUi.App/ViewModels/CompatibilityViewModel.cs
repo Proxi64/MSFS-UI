@@ -65,12 +65,12 @@ public sealed partial class CompatibilityViewModel : ObservableObject
 
             var sections = new List<CheckSection>
             {
-                CheckSection.From(Strings.Format("CompatibilityOfflineTitle", sim.FsBaseUiVersion), await _checker.CheckOfflineAsync(_mod.Compat, sim.FsBaseUiPath)),
+                CheckSection.From("Offline", Strings.Format("CompatibilityOfflineTitle", sim.FsBaseUiVersion), await _checker.CheckOfflineAsync(_mod.Compat, sim.FsBaseUiPath)),
             };
             var live = await _checker.CheckLiveAsync(_mod.Compat);
             if (live is not null)
             {
-                sections.Add(CheckSection.From(Strings.Get("CompatibilityLiveTitle"), live));
+                sections.Add(CheckSection.From("Live", Strings.Get("CompatibilityLiveTitle"), live));
             }
 
             var failed = sections.Sum(section => section.Failed);
@@ -116,11 +116,14 @@ public sealed partial class CompatibilityViewModel : ObservableObject
 /// <summary>Checks of one origin (the sim's files, or the running sim), by group.</summary>
 public sealed record CheckSection(string Title, string Summary, IReadOnlyList<CheckGroup> Groups, int Failed, int Total)
 {
-    public static CheckSection From(string title, IReadOnlyList<CheckResult> results)
+    /// <param name="key">Short name of the origin (<c>Offline</c>, <c>Live</c>), in the automation ids of its groups.</param>
+    /// <param name="title">The section's title.</param>
+    /// <param name="results">Its checks.</param>
+    public static CheckSection From(string key, string title, IReadOnlyList<CheckResult> results)
     {
         var groups = results
             .GroupBy(result => result.Group, StringComparer.Ordinal)
-            .Select(group => CheckGroup.From(group.Key, [.. group]))
+            .Select(group => CheckGroup.From(group.Key, [.. group], $"Compatibility{key}_{group.Key}"))
             .ToList();
         var failed = results.Count(result => !result.Ok);
         return new CheckSection(title, Strings.Format("CompatibilityCount", results.Count - failed, results.Count), groups, failed, results.Count);
@@ -128,16 +131,22 @@ public sealed record CheckSection(string Title, string Summary, IReadOnlyList<Ch
 }
 
 /// <summary>A group of checks (exports, screens, components…); opened when one of them failed.</summary>
-public sealed record CheckGroup(string Name, string Summary, bool HasFailures, IReadOnlyList<CheckItem> Items)
+/// <param name="Name">The group's name, as the manifest gives it.</param>
+/// <param name="Summary">Passed checks out of all.</param>
+/// <param name="HasFailures">One of its checks failed: the group is shown open.</param>
+/// <param name="Items">Its checks, failures first.</param>
+/// <param name="AutomationId">Stable id of its expander, for UI Automation (the section's key and the group's name).</param>
+public sealed record CheckGroup(string Name, string Summary, bool HasFailures, IReadOnlyList<CheckItem> Items, string AutomationId)
 {
-    public static CheckGroup From(string name, IReadOnlyList<CheckResult> results)
+    public static CheckGroup From(string name, IReadOnlyList<CheckResult> results, string automationId)
     {
         var passed = results.Count(result => result.Ok);
         return new CheckGroup(
             name,
             Strings.Format("CompatibilityCount", passed, results.Count),
             passed < results.Count,
-            [.. results.OrderBy(result => result.Ok).Select(result => new CheckItem(result.Label, result.Ok, result.Detail ?? string.Empty))]);
+            [.. results.OrderBy(result => result.Ok).Select(result => new CheckItem(result.Label, result.Ok, result.Detail ?? string.Empty))],
+            automationId);
     }
 }
 

@@ -12,10 +12,16 @@ public sealed partial class FeatureItemViewModel : ObservableObject
     {
         Definition = definition;
         _changed = changed;
-        Options = [.. definition.Options.Select(option => new OptionItemViewModel(option, changed))];
+        Options = [.. definition.Options.Select(option => new OptionItemViewModel(definition.Id, option, changed))];
     }
 
     public FeatureDefinition Definition { get; }
+
+    /// <summary>Stable id of the feature's card for UI Automation (from the catalogue's id).</summary>
+    public string AutomationId => $"Feature_{Definition.Id}";
+
+    /// <summary>Stable id of the feature's switch for UI Automation.</summary>
+    public string SwitchAutomationId => $"FeatureSwitch_{Definition.Id}";
 
     public string Title => Definition.Title;
 
@@ -55,13 +61,17 @@ public sealed partial class OptionItemViewModel : ObservableObject
 {
     private readonly Action _changed;
 
-    public OptionItemViewModel(OptionDefinition definition, Action changed)
+    public OptionItemViewModel(string featureId, OptionDefinition definition, Action changed)
     {
         Definition = definition;
         _changed = changed;
+        AutomationId = $"Option_{featureId}_{definition.Id}";
     }
 
     public OptionDefinition Definition { get; }
+
+    /// <summary>Stable id of the option's switch or number box for UI Automation (feature and option ids).</summary>
+    public string AutomationId { get; }
 
     public string Title => Definition.Title;
 

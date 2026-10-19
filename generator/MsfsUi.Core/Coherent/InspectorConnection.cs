@@ -54,6 +54,12 @@ internal sealed class InspectorConnection : IAsyncDisposable
             socket.Dispose();
             throw new InspectorUnavailableException($"Cannot connect to the Coherent inspector at {address}: {ex.Message}", ex);
         }
+        catch
+        {
+            // Cancelled by the caller, or any other failure: the socket is not kept either.
+            socket.Dispose();
+            throw;
+        }
     }
 
     /// <summary>Sends a request and returns its <c>result</c>.</summary>
@@ -221,9 +227,12 @@ internal sealed class InspectorConnection : IAsyncDisposable
             {
                 EventReceived?.Invoke(name, root.TryGetProperty("params", out var parameters) ? parameters : default);
             }
-            catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or FormatException)
+#pragma warning disable CA1031 // As documented on EventReceived: a handler that fails must not end the receive loop.
+            catch (Exception)
+#pragma warning restore CA1031
             {
-                // An event handler choked on an unexpected shape: the event is dropped, the connection lives on.
+                // An event handler choked on an unexpected shape: the event is dropped, the connection lives on (a
+                // failure here would fault the receive loop, fail every pending request and resurface on dispose).
             }
         }
     }

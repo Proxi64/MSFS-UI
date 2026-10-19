@@ -13,7 +13,10 @@ namespace MsfsUi.App.Services;
 /// Community compared with what the app would generate now, and the inputs to generate it (the embedded mod with the
 /// user's settings). Refreshed every few seconds while the app runs, and on demand after an action.
 /// </summary>
-/// <remarks>Its properties change on the thread that awaits <see cref="RefreshAsync"/>: the UI thread.</remarks>
+/// <remarks>
+/// Its properties change on the thread that awaits <see cref="RefreshAsync"/>, the UI thread; the reads behind them
+/// (files, processes, the Community folder) run on a worker thread.
+/// </remarks>
 public sealed partial class SimSession : ObservableObject, IDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
@@ -65,6 +68,20 @@ public sealed partial class SimSession : ObservableObject, IDisposable
     /// <summary>What a generation would install now: the embedded mod with the user's settings.</summary>
     public PackageInputs? Inputs { get; private set; }
 
+    /// <summary>
+    /// The installation or removal in progress, whichever page started it (its busy text), or null. The pages offer
+    /// no other one meanwhile: they share the package folder (the installer also runs them one at a time).
+    /// </summary>
+    [ObservableProperty]
+    public partial string? PackageOperation { get; private set; }
+
+    /// <summary>Marks an installation or removal as in progress until the result is disposed. UI thread.</summary>
+    public IDisposable BeginPackageOperation(string busyText)
+    {
+        PackageOperation = busyText;
+        return new OperationScope(this);
+    }
+
     /// <summary>Refreshes at once, then every few seconds until cancelled.</summary>
     public async Task RunAsync(CancellationToken cancellationToken)
     {
@@ -94,15 +111,18 @@ public sealed partial class SimSession : ObservableObject, IDisposable
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            await ReadUserFilesAsync(cancellationToken);
-
-            if (locate || (Sim is null && LocateError is null))
-            {
-                await LocateAsync(cancellationToken);
-            }
-
-            SimRunning = _locator.IsSimRunning();
-            await ReadStatusAsync(cancellationToken);
+            // Read on a worker thread (a Community folder may hold hundreds of packages, on a slow drive), from the
+            // values known now; the properties then change here, on the UI thread.
+            var known = new Snapshot(Preferences, SettingsProblem, Inputs, Sim, LocateError, SimRunning, Status, StatusError);
+            var read = await Task.Run(() => ReadAsync(known, locate || (Sim is null && LocateError is null), cancellationToken), cancellationToken);
+            Preferences = read.Preferences;
+            SettingsProblem = read.SettingsProblem;
+            Inputs = read.Inputs;
+            Sim = read.Sim;
+            LocateError = read.LocateError;
+            SimRunning = read.SimRunning;
+            Status = read.Status;
+            StatusError = read.StatusError;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -117,69 +137,96 @@ public sealed partial class SimSession : ObservableObject, IDisposable
 
     public void Dispose() => _gate.Dispose();
 
+    /// <summary>Everything a refresh reads.</summary>
+    private sealed record Snapshot(
+        AppPreferences Preferences,
+        string? SettingsProblem,
+        PackageInputs? Inputs,
+        SimInstallation? Sim,
+        string? LocateError,
+        bool SimRunning,
+        PackageStatus? Status,
+        string? StatusError);
+
+    /// <summary>The values after a refresh, starting from <paramref name="known"/>. Runs off the UI thread.</summary>
+    private async Task<Snapshot> ReadAsync(Snapshot known, bool locate, CancellationToken cancellationToken)
+    {
+        var read = await ReadUserFilesAsync(known, cancellationToken).ConfigureAwait(false);
+        if (locate)
+        {
+            read = await LocateAsync(read, cancellationToken).ConfigureAwait(false);
+        }
+
+        read = await ReadStatusAsync(read, cancellationToken).ConfigureAwait(false);
+        // The status already tells whether the sim runs: the processes are listed once.
+        return read with { SimRunning = read.Status?.SimRunning ?? _locator.IsSimRunning() };
+    }
+
     /// <summary>
     /// The preferences and the settings, and the inputs of a generation. A file being written at that moment keeps
     /// the previous values until the next refresh.
     /// </summary>
-    private async Task ReadUserFilesAsync(CancellationToken cancellationToken)
+    private async Task<Snapshot> ReadUserFilesAsync(Snapshot known, CancellationToken cancellationToken)
     {
         try
         {
-            Preferences = await _store.LoadPreferencesAsync(cancellationToken);
-            var load = await _store.LoadFeatureSettingsAsync(cancellationToken);
-            SettingsProblem = load.Problem;
-            Inputs = PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, SettingsNormalizer.Normalize(_mod.Catalog, load.Settings).Selection);
+            var preferences = await _store.LoadPreferencesAsync(cancellationToken).ConfigureAwait(false);
+            var load = await _store.LoadFeatureSettingsAsync(cancellationToken).ConfigureAwait(false);
+            var inputs = PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, SettingsNormalizer.Normalize(_mod.Catalog, load.Settings).Selection);
+            return known with { Preferences = preferences, SettingsProblem = load.Problem, Inputs = inputs };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            SettingsProblem = ex.Message;
-            Inputs ??= PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, SettingsNormalizer.Normalize(_mod.Catalog, null).Selection);
+            var inputs = known.Inputs ?? PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, SettingsNormalizer.Normalize(_mod.Catalog, null).Selection);
+            return known with { SettingsProblem = ex.Message, Inputs = inputs };
         }
     }
 
-    private async Task LocateAsync(CancellationToken cancellationToken)
+    private async Task<Snapshot> LocateAsync(Snapshot known, CancellationToken cancellationToken)
     {
         try
         {
-            Sim = await _locator.LocateAsync(Preferences.ToLocatorOptions(), cancellationToken);
-            LocateError = null;
+            var sim = await _locator.LocateAsync(known.Preferences.ToLocatorOptions(), cancellationToken).ConfigureAwait(false);
+            return known with { Sim = sim, LocateError = null };
         }
         catch (Exception ex) when (ex is MsfsUiException or IOException or UnauthorizedAccessException)
         {
-            if (ex.Message != LocateError)
+            if (ex.Message != known.LocateError)
             {
                 LogNotFound(ex.Message);
             }
 
-            Sim = null;
-            LocateError = ex.Message;
+            return known with { Sim = null, LocateError = ex.Message };
         }
     }
 
-    private async Task ReadStatusAsync(CancellationToken cancellationToken)
+    private async Task<Snapshot> ReadStatusAsync(Snapshot known, CancellationToken cancellationToken)
     {
-        if (Sim is null || Inputs is null)
+        if (known.Sim is null || known.Inputs is null)
         {
-            Status = null;
-            StatusError = null;
-            return;
+            return known with { Status = null, StatusError = null };
         }
 
         try
         {
-            Status = await _installer.GetStatusAsync(Sim, Inputs, cancellationToken);
-            StatusError = null;
+            var status = await _installer.GetStatusAsync(known.Sim, known.Inputs, cancellationToken).ConfigureAwait(false);
+            return known with { Status = status, StatusError = null };
         }
         catch (Exception ex) when (ex is MsfsUiException or IOException or UnauthorizedAccessException)
         {
-            if (ex.Message != StatusError)
+            if (ex.Message != known.StatusError)
             {
                 LogStatusUnreadable(ex.Message);
             }
 
-            Status = null;
-            StatusError = ex.Message;
+            return known with { Status = null, StatusError = ex.Message };
         }
+    }
+
+    /// <summary>Ends the package operation when disposed.</summary>
+    private sealed class OperationScope(SimSession session) : IDisposable
+    {
+        public void Dispose() => session.PackageOperation = null;
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The sim's state could not be refreshed")]

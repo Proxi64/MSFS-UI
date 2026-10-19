@@ -142,6 +142,33 @@ public sealed class AppTests
     }
 
     [TestMethod]
+    public void FeaturesAskBeforeReplacingTheSettingsOfANewerVersion()
+    {
+        const string NewerSettings = """{ "schemaVersion": 2, "features": { "aFutureFeature": { "enabled": true } } }""";
+        using var app = AppSession.Start(NewerSettings);
+        var settingsFile = Path.Combine(app.DataRoot, "settings.json");
+
+        app.Navigate("NavFeatures");
+        app.WaitForText("FeaturesMessage", "Settings saved by a newer version");
+        AppSession.Toggle(app.Find("FeatureSwitch_tailNumber"));
+
+        // Cancel keeps the newer settings as they are.
+        app.Invoke("FeaturesApply");
+        var dialog = app.Dialog("Replace the newer settings?");
+        AppSession.Invoke(dialog.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.NameProperty, "Cancel")));
+        Assert.AreEqual(NewerSettings, File.ReadAllText(settingsFile), "nothing written");
+
+        app.Invoke("FeaturesApply");
+        dialog = app.Dialog("Replace the newer settings?");
+        AppSession.Invoke(dialog.FindFirst(TreeScope.Descendants, new AndCondition(
+            new PropertyCondition(AutomationElement.NameProperty, "Apply anyway"),
+            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button))));
+        // The text of a save without package (the warning above also starts with "Settings saved").
+        app.WaitForText("FeaturesMessage", "The package is not installed");
+        StringAssert.Contains(File.ReadAllText(settingsFile), "\"tailNumber\": {\n      \"enabled\": false");
+    }
+
+    [TestMethod]
     public void CompatibilityChecksTheSimFilesAndSkipsTheLiveChecks()
     {
         using var app = AppSession.Start();

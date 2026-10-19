@@ -138,14 +138,7 @@ public sealed partial class CompatibilityChecker
     private static async Task RunLiveProbeAsync(InspectorSession session, CompatManifest manifest, List<CheckResult> results, CancellationToken cancellationToken)
     {
         var probe = await session.EvaluateAsync(LiveProbe(manifest), LiveProbeTimeout(manifest), cancellationToken).ConfigureAwait(false);
-        if (probe.Ok && probe.Value is { ValueKind: JsonValueKind.Array } value)
-        {
-            results.AddRange(JsonSerializer.Deserialize(value, CompatJsonContext.Default.ListCheckResult) ?? []);
-        }
-        else
-        {
-            results.Add(new CheckResult("Mod", "live probe", false, probe.Error ?? "unexpected answer"));
-        }
+        results.AddRange(ProbeResults(probe));
 
         // The console keeps the whole session: errors of versions unloaded by a hot reload since do not count.
         var lines = await session.ReadConsoleAsync(cancellationToken).ConfigureAwait(false);
@@ -160,6 +153,31 @@ public sealed partial class CompatibilityChecker
             .Where(line => line.Contains("[error] [msfs-ui]", StringComparison.Ordinal))
             .ToList();
         results.Add(Result("Console", "no [error] [msfs-ui] since the mod was loaded", errors.Count == 0, errors.FirstOrDefault() ?? string.Empty));
+    }
+
+    /// <summary>
+    /// The results the live probe answered; one failed "live probe" result when it failed or answered another shape
+    /// (never an exception: a check of the manifest that returns an unexpected value must not bring the app down).
+    /// </summary>
+    internal static IReadOnlyList<CheckResult> ProbeResults(EvalResult probe)
+    {
+        var problem = probe.Error;
+        if (probe.Ok && probe.Value is { ValueKind: JsonValueKind.Array } value)
+        {
+            try
+            {
+                if (JsonSerializer.Deserialize(value, CompatJsonContext.Default.ListCheckResult) is { } results)
+                {
+                    return results;
+                }
+            }
+            catch (JsonException ex)
+            {
+                problem = $"unexpected answer: {ex.Message}";
+            }
+        }
+
+        return [new CheckResult("Mod", "live probe", false, problem ?? "unexpected answer")];
     }
 
     /// <summary>The first line the mod logs when it is loaded (mod/src/main.ts).</summary>
@@ -187,7 +205,7 @@ public sealed partial class CompatibilityChecker
         return $$"""
             (async () => {
               const results = [];
-              const add = (group, label, ok, detail) => results.push({ group: group, label: label, ok: !!ok, detail: detail || '' });
+              const add = (group, label, ok, detail) => results.push({ group: String(group), label: String(label), ok: !!ok, detail: detail === undefined || detail === null ? '' : String(detail) });
               const timeout = (promise, ms) => Promise.race([
                 Promise.resolve(promise),
                 new Promise((resolve, reject) => setTimeout(() => reject(new Error('no answer within ' + ms + ' ms')), ms)),

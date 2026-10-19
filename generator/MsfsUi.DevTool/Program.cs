@@ -22,7 +22,7 @@ var time = TimeProvider.System;
 var paths = AppPaths.ForCurrentUser();
 var locator = new SimLocator(new WindowsSimEnvironment(), loggers.CreateLogger<SimLocator>());
 var builder = new PackageBuilder(time, loggers.CreateLogger<PackageBuilder>());
-var installer = new PackageInstaller(builder, locator, paths, loggers.CreateLogger<PackageInstaller>());
+using var installer = new PackageInstaller(builder, locator, paths, loggers.CreateLogger<PackageInstaller>());
 var inspector = new CoherentInspector(http, new CoherentInspectorOptions(), time, loggers.CreateLogger<CoherentInspector>());
 var checker = new CompatibilityChecker(inspector, loggers.CreateLogger<CompatibilityChecker>());
 

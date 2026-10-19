@@ -132,7 +132,11 @@ The cost: the mod's start-up waits for `config.js`, and both files are a contrac
 
 - Services are composed in `App.xaml.cs`, the Core services as `msfs-ui-dev` composes them.
 - `Services/SimSession.cs` keeps the sim, its running state, the package status and the generation inputs up to date (every 5 s) for every page. `RefreshAsync` never throws but when cancelled: the pages refresh in `finally` blocks and the polling goes on.
-- One view model per page (`ViewModels/`, CommunityToolkit.Mvvm partial properties), pages bound with `x:Bind` (with an explicit `Mode`: `OneTime` for values that never change). A row command of a list belongs to the row.
+- One view model per page (`ViewModels/`, CommunityToolkit.Mvvm partial properties), pages bound with `x:Bind`: values with an explicit `Mode` (`OneTime` for values that never change), command and event bindings with the default. A row command of a list belongs to the row.
+- `SimSession` reads (files, processes, the Community folder) on a worker thread and changes its properties on the UI thread. `PackageStatus` compares by value, so a poll that finds nothing new changes nothing on the pages.
+- Installations and removals run one at a time: `PackageInstaller` serialises them, and `SimSession.PackageOperation` tells every page that one runs (Home is a new page at each visit; Features applies from its own page), so none offers another meanwhile. A removal deletes the package's state file last: a locked file leaves a folder still recognised as ours.
+- A hot reload that fails after a successful installation is a warning, not a failed installation. Settings saved by a newer app version are replaced only after a confirmation.
+- Templated controls get a stable `AutomationId` from the catalogue's ids (`Feature_<id>`, `FeatureSwitch_<id>`, `Option_<feature>_<option>`, `CompatibilityOffline_<group>` / `CompatibilityLive_<group>`).
 - Texts in `Strings/en-us/Resources.resw` (`x:Uid` in XAML, `Strings.Get` in code); dialogs through `IDialogService`; the theme through `ThemeService`.
 - No colour in XAML (theme resources only, for dark and high contrast); every focusable element has an accessible name; a result shown by an icon also has it in its accessible name.
 - Page content sits on the left up to `PageMaxWidth`, in a `Grid` whose single star column has that `MaxWidth`. A closed `InfoBar` still counts in a `StackPanel`'s `Spacing`: its `Visibility` follows its `IsOpen`.

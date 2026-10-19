@@ -270,6 +270,24 @@
   <data name="FeaturesAppliedNextStart" xml:space="preserve">
     <value>The package was updated: the sim will use these settings at its next start.</value>
   </data>
+  <data name="FeaturesBusyApply" xml:space="preserve">
+    <value>Applying the settings…</value>
+  </data>
+  <data name="FeaturesSettingsNewer" xml:space="preserve">
+    <value>Settings saved by a newer version</value>
+  </data>
+  <data name="FeaturesSettingsNewerDetail" xml:space="preserve">
+    <value>A newer MSFS-UI-GENERATOR saved these settings. They are shown as this version understands them; Apply asks before replacing them.</value>
+  </data>
+  <data name="FeaturesNewerConfirmTitle" xml:space="preserve">
+    <value>Replace the newer settings?</value>
+  </data>
+  <data name="FeaturesNewerConfirmMessage" xml:space="preserve">
+    <value>A newer MSFS-UI-GENERATOR saved these settings. Applying them here keeps only what this version knows: the choices only the newer version has are lost.</value>
+  </data>
+  <data name="FeaturesNewerConfirm" xml:space="preserve">
+    <value>Apply anyway</value>
+  </data>
   <data name="CompatibilityRun.Content" xml:space="preserve">
     <value>Check again</value>
   </data>

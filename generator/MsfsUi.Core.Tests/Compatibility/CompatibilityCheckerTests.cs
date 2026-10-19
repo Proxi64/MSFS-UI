@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using MsfsUi.Core.Coherent;
 using MsfsUi.Core.Compatibility;
 using MsfsUi.Core.Tests.Coherent;
 using MsfsUi.Core.Tests.TestSupport;
@@ -183,6 +185,28 @@ public sealed class CompatibilityCheckerTests
 
         CollectionAssert.AreEquivalent(ExpectedExports, names.ToArray(), "cycles are followed once");
         Assert.IsEmpty(CompatibilityChecker.ModuleExports(scripts, "Global/missing.js"));
+    }
+
+    [TestMethod]
+    public void TheLiveProbeAnswerIsReadAndAnUnexpectedShapeIsAFailedProbe()
+    {
+        static EvalResult Answer(string json) => new(true, JsonDocument.Parse(json).RootElement.Clone(), null);
+
+        var read = CompatibilityChecker.ProbeResults(Answer("""[{ "group": "Mod", "label": "loaded", "ok": true, "detail": "1.0.0" }]"""));
+        Assert.AreEqual(new CheckResult("Mod", "loaded", true, "1.0.0"), read.Single());
+
+        // A detail that is not text (a check of compat.json returning a number) must not throw.
+        var odd = CompatibilityChecker.ProbeResults(Answer("""[{ "group": "Mod", "label": "loaded", "ok": true, "detail": 42 }]"""));
+        Assert.IsTrue(odd.Single() is { Group: "Mod", Label: "live probe", Ok: false });
+        Assert.IsTrue(CompatibilityChecker.ProbeResults(EvalResult.Failure("boom")).Single() is { Ok: false, Detail: "boom" });
+        Assert.IsTrue(CompatibilityChecker.ProbeResults(Answer("{}")).Single() is { Ok: false, Detail: "unexpected answer" });
+    }
+
+    [TestMethod]
+    public void TheLiveProbeTurnsEveryDetailIntoText()
+    {
+        // Its add() gives the shape ProbeResults reads, whatever a live check returns.
+        StringAssert.Contains(CompatibilityChecker.LiveProbe(RealManifest()), "detail: detail === undefined || detail === null ? '' : String(detail)");
     }
 
     [TestMethod]
