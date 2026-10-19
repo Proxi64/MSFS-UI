@@ -7,6 +7,7 @@ A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.18, `fs-base-ui` 0.1.1
 - **MSFS-UI-GENERATOR**: the Windows app (`generator/`, exe `MSFS-UI-GENERATOR.exe`, data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`).
 - **msfs-ui**: the package installed in the sim's Community folder; the mod's sources are in `mod/`.
 - `docs/` (user guide, development, sim reference, next steps, feature ideas, `images/` for the README's screenshots), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `build-release.ps1` (the release; output in `release/`, ignored by Git).
+- `LICENSE`: MIT, © 2026 Proxi64 (also in `mod/package.json` and `tools/msfs-sdk-mcp`); the README opens with a disclaimer (not affiliated with Microsoft or Asobo, use at your own risk) and ends with the licence.
 - The C# projects keep their internal names (`MsfsUi.App`, `MsfsUi.Core`, `MsfsUi.Core.Tests`, `MsfsUi.App.UITests`, `MsfsUi.DevTool`).
 
 ## Language
