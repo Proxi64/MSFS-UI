@@ -12,7 +12,7 @@ namespace MsfsUi.Core.Features;
 public sealed record NormalizationResult(FeatureSelection Selection, IReadOnlyList<string> Adjustments, bool FromNewerVersion = false);
 
 /// <summary>
-/// Turns the user's stored settings into a complete selection valid for the catalogue (ADR-0001): unknown
+/// Turns the user's stored settings into a complete selection valid for the catalogue (see Contracts in docs/development.md): unknown
 /// features and options are dropped, missing ones take their defaults, numbers are snapped to their step and
 /// clamped to their range, values of the wrong type are replaced by the default.
 /// </summary>

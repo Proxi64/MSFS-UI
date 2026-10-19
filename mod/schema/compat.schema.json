@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://msfs-ui.local/schema/compat.schema.json",
   "title": "MSFS-UI compatibility manifest",
-  "description": "What the menu mod relies on in the sim (ADR-0001). Read by the app's compatibility check (MsfsUi.Core CompatibilityChecker). Every name must be precise enough not to be found elsewhere in the sim's files.",
+  "description": "What the menu mod relies on in the sim (see Contracts in docs/development.md). Read by the app's compatibility check (MsfsUi.Core CompatibilityChecker). Every name must be precise enough not to be found elsewhere in the sim's files.",
   "type": "object",
   "required": [
     "schemaVersion",

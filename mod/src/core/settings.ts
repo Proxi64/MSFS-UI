@@ -1,4 +1,4 @@
-// Validation of the settings read from config.js against the feature catalogue (ADR-0001). The app already
+// Validation of the settings read from config.js against the feature catalogue (see Contracts in docs/development.md). The app already
 // normalises what it writes (MsfsUi.Core SettingsNormalizer, same rules): anything adjusted here means the file was
 // edited by hand or does not match this mod, so every adjustment is reported.
 

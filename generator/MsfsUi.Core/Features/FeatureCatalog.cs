@@ -18,7 +18,7 @@ public enum OptionType
 
 /// <summary>
 /// The feature catalogue (<c>mod/features.json</c>): every feature of the mod with its options and defaults.
-/// Shared by the mod build and the app (ADR-0001).
+/// Shared by the mod build and the app (see Contracts in docs/development.md).
 /// </summary>
 /// <param name="SchemaVersion">Catalogue format version; this code reads <see cref="CurrentSchemaVersion"/>.</param>
 /// <param name="ModVersion">Version of the mod the catalogue belongs to.</param>

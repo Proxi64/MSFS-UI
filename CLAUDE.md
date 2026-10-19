@@ -6,7 +6,7 @@ A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.18, `fs-base-ui` 0.1.1
 
 - **MSFS-UI-GENERATOR**: the Windows app (`generator/`, exe `MSFS-UI-GENERATOR.exe`, data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`).
 - **msfs-ui**: the package installed in the sim's Community folder; the mod's sources are in `mod/`.
-- `docs/` (user guide, development, sim reference, feature ideas, ADRs), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `build-release.ps1` (the release; output in `release/`, ignored by Git).
+- `docs/` (user guide, development, sim reference, feature ideas), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `build-release.ps1` (the release; output in `release/`, ignored by Git).
 - The C# projects keep their internal names (`MsfsUi.App`, `MsfsUi.Core`, `MsfsUi.Core.Tests`, `MsfsUi.App.UITests`, `MsfsUi.DevTool`).
 
 ## Language
@@ -48,7 +48,7 @@ $dev = "generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe"
 - **Readable exports only**: `/Global/engine_ui.bundle.js`, `/Global/shared/utils.js`, `/Global/shared/store.js`; never the minified names of `lib.js`.
 - **Every change to the sim is reversible**: it goes through a `Scope`.
 - **ES2017**, no operator before `await`, no raw U+2028 / U+2029 (`String.fromCharCode`); the build refuses them. The Write and Edit tools turn `\uXXXX` escapes into raw characters: build code points (`char.ConvertFromUtf32`, `String.fromCharCode`). In Bash, heredocs and `node -e` lose backslashes and backticks: write scripts to the scratchpad with the Write tool, then run them.
-- **Contracts** (ADR-0001): `mod/features.json` and `mod/compat.json` are shared with the app; the build refuses a feature module that does not read its options, and any sim reference (GUID, `name="…"`, `TT:` key, `/Global` import, `coui://` file, `--color…`) missing from `compat.json`.
+- **Contracts** (docs/development.md): `mod/features.json` and `mod/compat.json` are shared with the app; the build refuses a feature module that does not read its options, and any sim reference (GUID, `name="…"`, `TT:` key, `/Global` import, `coui://` file, `--color…`) missing from `compat.json`.
 - **The sim's own components** for everything visible (user's rule): `mod/src/sim/components.ts` creates them with `window.ResourcesManager.createElementFromGuid`; declare each in `compat.json` "components" (attributes, states, values, children) and the manipulator APIs called in "symbols". Text fields: the sim's `Search_Input` (`src/sim/text-field.ts`). Lists that scroll: the sim's `<real-scroll direction="y">`. A text too long for its place: the sim's `marquee__trigger` class on the tile's host. `theme.css` keeps only what the sim draws without a component (card layers, section headers).
 - **Persistent data** in `datastorage` (`MSFS_UI_` prefix), never `localStorage` (emptied at every start).
 - **App**: nullable, warnings as errors, analyzers `latest-recommended`, code style enforced (`generator/.editorconfig`), the public API of `MsfsUi.Core` documented, every package version pinned (`generator/Directory.Packages.props`). MVVM: one view model per page, `x:Bind` with an explicit `Mode`; texts in `Strings/en-us/Resources.resw`; no colour in XAML; every focusable element named; `SimSession.RefreshAsync` never throws but when cancelled; no exception thrown from `async void` handlers. Details in [docs/development.md](docs/development.md).

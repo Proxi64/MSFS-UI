@@ -74,7 +74,7 @@ export function generateCatalogModule(catalog: CatalogJson): string {
     '',
     `export const MOD_VERSION = ${JSON.stringify(catalog.modVersion)};`,
     '',
-    '/** Settings of every feature, as read from config.js (ADR-0001). */',
+    '/** Settings of every feature, as read from config.js (see Contracts in docs/development.md). */',
     'export interface Settings {',
   ];
   for (const feature of catalog.features) {

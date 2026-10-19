@@ -5,7 +5,7 @@ namespace MsfsUi.Core.Features;
 
 /// <summary>
 /// Writes <c>html_ui/msfs-ui/config.js</c>, the module the mod imports at start-up to read the user's settings
-/// (ADR-0001).
+/// (see Contracts in docs/development.md).
 /// </summary>
 /// <remarks>
 /// Format:

@@ -1,6 +1,6 @@
 # msfs-ui, the menu mod (1.0)
 
-The part of MSFS-UI that runs inside the MSFS 2024 main menu. It is one ES2017 module, `dist/main.js`, which MSFS-UI-GENERATOR embeds and copies into the Community package as `html_ui/msfs-ui/main.js`. The app also writes the user's settings next to it, as `html_ui/msfs-ui/config.js` ([ADR-0001](../docs/adr/0001-runtime-config-and-feature-catalog.md)).
+The part of MSFS-UI that runs inside the MSFS 2024 main menu. It is one ES2017 module, `dist/main.js`, which MSFS-UI-GENERATOR embeds and copies into the Community package as `html_ui/msfs-ui/main.js`. The app also writes the user's settings next to it, as `html_ui/msfs-ui/config.js` (see [Contracts between the app and the mod](../docs/development.md#contracts-between-the-app-and-the-mod)).
 
 Node is needed only to build the mod, never on the user's machine.
 

@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/compat.schema.json",
-  "$comment": "What the menu mod relies on in the sim (ADR-0001), read by the app's compatibility check. Owned by the mod: a change that adds a dependency on the sim updates this file in the same commit. liveChecks[].run is an ES2017 function evaluated in the mainUi page; it receives ctx = { store, engineUi, utils, flight, aircraft } and returns { ok, detail } (or a promise of it).",
+  "$comment": "What the menu mod relies on in the sim (see Contracts in docs/development.md), read by the app's compatibility check. Owned by the mod: a change that adds a dependency on the sim updates this file in the same commit. liveChecks[].run is an ES2017 function evaluated in the mainUi page; it receives ctx = { store, engineUi, utils, flight, aircraft } and returns { ok, detail } (or a promise of it).",
   "schemaVersion": 1,
   "exports": [
     { "module": "engine_ui.bundle.js", "names": ["GuidToManipulator", "UITimeline", "UITransition", "GuidToTrait", "AttachTrait"] },

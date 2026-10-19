@@ -7,7 +7,7 @@ using MsfsUi.Core.Features;
 namespace MsfsUi.Core.Tests.Contracts;
 
 /// <summary>
-/// The contract between the app and the menu mod (ADR-0001), on the real files of <c>mod/</c>. The settings
+/// The contract between the app and the menu mod (see Contracts in docs/development.md), on the real files of <c>mod/</c>. The settings
 /// modules generated here are kept as fixtures in <c>mod/test/fixtures/</c>, where the mod's own tests
 /// (<c>config-contract.test.ts</c>) read them with the mod's code: both sides agree on the same bytes.
 /// Set <c>MSFS_UI_UPDATE_FIXTURES=1</c> to rewrite the fixtures after a change of <c>features.json</c>.

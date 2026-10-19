@@ -61,7 +61,7 @@
     <ProjectReference Include="..\MsfsUi.Core\MsfsUi.Core.csproj" />
   </ItemGroup>
 
-  <!-- The menu mod ships inside the exe (ADR-0001): its module, its feature catalogue and what it needs from the sim.
+  <!-- The menu mod ships inside the exe (see Contracts in docs/development.md): its module, its feature catalogue and what it needs from the sim.
        Services/ModResources.cs reads them by these names. -->
   <PropertyGroup>
     <MenuModFolder>$(MSBuildThisFileDirectory)..\..\mod\</MenuModFolder>

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://msfs-ui.local/schema/features.schema.json",
   "title": "MSFS-UI feature catalogue",
-  "description": "Every feature of the menu mod with its options and defaults (ADR-0001). Read by the mod build (menu-mod/build.mjs) and by the app (MsfsUi.Core FeatureCatalog). Consistency rules that a schema cannot express (unique ids, defaults on the step grid) are checked by both readers.",
+  "description": "Every feature of the menu mod with its options and defaults (see Contracts in docs/development.md). Read by the mod build (mod/build/build.ts) and by the app (MsfsUi.Core FeatureCatalog). Consistency rules that a schema cannot express (unique ids, defaults on the step grid) are checked by both readers.",
   "type": "object",
   "required": ["schemaVersion", "modVersion", "features"],
   "additionalProperties": false,

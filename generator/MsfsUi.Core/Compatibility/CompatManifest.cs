@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace MsfsUi.Core.Compatibility;
 
 /// <summary>
-/// What the mod relies on in the sim (<c>mod/compat.json</c>, ADR-0001). The compatibility check runs
+/// What the mod relies on in the sim (<c>mod/compat.json</c>, see Contracts in docs/development.md). The compatibility check runs
 /// entirely from this file.
 /// </summary>
 public sealed record CompatManifest(

@@ -1,5 +1,5 @@
 // The settings chosen in the app, read at start-up from the module the app generates in the package,
-// html_ui/msfs-ui/config.js (ADR-0001). Without a usable file, the mod runs with the catalogue defaults.
+// html_ui/msfs-ui/config.js (see Contracts in docs/development.md). Without a usable file, the mod runs with the catalogue defaults.
 
 import { CATALOG, type Settings } from '../generated/catalog.ts';
 import { withTimeout } from './async.ts';

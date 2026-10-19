@@ -1,6 +1,6 @@
 namespace MsfsUi.Core.Tests.Features;
 
-/// <summary>A small catalogue in the format of <c>mod/features.json</c> (ADR-0001).</summary>
+/// <summary>A small catalogue in the format of <c>mod/features.json</c> (see Contracts in docs/development.md).</summary>
 internal static class FeatureTestData
 {
     public const string Catalog = """
