@@ -1,8 +1,10 @@
 # Builds the release of MSFS-UI-GENERATOR:
-#   release\MSFS-UI-GENERATOR\                  the self-contained app (no .NET, Windows App SDK or Node to install)
+#   release\MSFS-UI-GENERATOR\                  the self-contained app (no .NET, Windows App SDK or Node to install),
+#                                               with LICENSE.txt
 #   release\MSFS-UI-GENERATOR-<version>.zip     the same folder, zipped
 # Steps: the mod in release mode (checks, tests, no source map), every .NET test (UI tests included, unless
-# -SkipUiTests), the app published in Release, the zip. It stops at the first failure.
+# -SkipUiTests), the app published in Release, a check that no path of this machine is in it, the zip. It stops at
+# the first failure.
 #   pwsh -File build-release.ps1 [-SkipUiTests]
 param([switch]$SkipUiTests)
 
@@ -48,6 +50,19 @@ Invoke-Step 'App: publish' {
 }
 $exe = Join-Path $folder 'MSFS-UI-GENERATOR.exe'
 if (-not (Test-Path $exe)) { throw "$exe is missing from the published folder." }
+# The licence goes with the app (.txt: opened by a double click on Windows).
+Copy-Item LICENSE (Join-Path $folder 'LICENSE.txt')
+
+# No path of the build machine in the release (the user's folder would show the user's name): the paths are mapped
+# at compile time (generator\Directory.Build.targets); this checks it, in text and UTF-16.
+Write-Host '=== Release: no path of this machine ===' -ForegroundColor Cyan
+$profilePath = [Environment]::GetFolderPath('UserProfile')
+$leaks = Get-ChildItem $folder -Recurse -File | Where-Object {
+  $bytes = [IO.File]::ReadAllBytes($_.FullName)
+  [Text.Encoding]::Latin1.GetString($bytes).IndexOf($profilePath, [StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+  [Text.Encoding]::Unicode.GetString($bytes).IndexOf($profilePath, [StringComparison]::OrdinalIgnoreCase) -ge 0
+}
+if ($leaks) { throw "The release holds the path of the user's folder in: $(($leaks | ForEach-Object Name) -join ', ')." }
 
 Write-Host '=== Zip ===' -ForegroundColor Cyan
 Compress-Archive -Path $folder -DestinationPath $zip -CompressionLevel Optimal

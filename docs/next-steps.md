@@ -17,7 +17,7 @@ Where MSFS-UI stands, and what is suggested next, in order. Each step is present
 | 1.1 | Publish the repository | The local repository has no remote | GitHub Desktop: *File › Add local repository* on the project folder, then *Publish repository* under the Proxi64 account, private or public |
 | 1.2 | Check 1.0.1 in the sim | Installed from the release app with the sim closed: not seen running yet | Start the sim; with its main menu displayed, the app's **Compatibility** page (offline and live checks), and a look at each feature |
 | 1.3 | Try the release on a clean Windows (optional) | The release should run without .NET or the Windows App SDK installed; this has not been tried on another machine yet | Copy the folder into Windows Sandbox and run the exe: the Home page should open and say *Sim not found* |
-| 1.4 | Publish a GitHub release (optional) | A download for other users | After 1.1: tag `v1.0.1`, attach `release\MSFS-UI-GENERATOR-1.0.1.zip` |
+| 1.4 | Publish a GitHub release | A download for other users | Once the repository is public: tag `v1.0.1` on `main`, the notes of `CHANGELOG.md` with the installation steps, `release\MSFS-UI-GENERATOR-1.0.1.zip` attached (it holds `LICENSE.txt`) |
 
 ## 2. New features (step 6)
 

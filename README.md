@@ -54,6 +54,7 @@ Then run `generator\MsfsUi.App\bin\Debug\net10.0-windows10.0.26100.0\win-x64\MSF
 | [Next steps](docs/next-steps.md) | Everyone | Where the project stands and what comes next, in order |
 | [Feature ideas](docs/feature-ideas.md) | Everyone | Features that could come next, with what the sim offers and an estimate |
 | [Mod](mod/README.md) | Developers | The menu mod's build, contracts, sources and the sim's components it uses |
+| [Changelog](CHANGELOG.md) | Everyone | What each version brings |
 
 ## How it works
 

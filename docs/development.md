@@ -155,8 +155,11 @@ pwsh -File build-release.ps1 [-SkipUiTests]
 It stops at the first failure:
 1. the mod: `npm ci`, `npm run check`, then `node build/build.ts --release` (the module without its source map, which the app embeds);
 2. the app: `dotnet build` of the whole solution in Release, then every test (UI tests included unless `-SkipUiTests`; they run the Release app);
-3. `dotnet publish` of `MsfsUi.App` (profile `win-x64`: self-contained, unpackaged, ReadyToRun) to `release\MSFS-UI-GENERATOR\`;
-4. the zip `release\MSFS-UI-GENERATOR-<version>.zip`.
+3. `dotnet publish` of `MsfsUi.App` (profile `win-x64`: self-contained, unpackaged, ReadyToRun) to `release\MSFS-UI-GENERATOR\`, with `LICENSE` as `LICENSE.txt`;
+4. a check that no file of the release holds the path of the user's folder (in text and UTF-16): it would show the user's name;
+5. the zip `release\MSFS-UI-GENERATOR-<version>.zip`.
+
+A GitHub release: tag `v<version>` on `main`, the notes from `CHANGELOG.md` with the installation steps, and the zip attached.
 
 The version comes from `mod/features.json` (`modVersion`) and must equal `<Version>` in `generator/Directory.Build.props`. The `release\` folder is ignored by Git. Afterwards `mod/dist/main.js` is the release module: `npm run check` builds the development one again.
 
