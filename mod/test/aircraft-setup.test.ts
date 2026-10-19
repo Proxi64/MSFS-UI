@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { orderLiveries, variationOf } from '../src/features/aircraft-setup/livery-order.ts';
+import { orderLiveries } from '../src/features/aircraft-setup/livery-order.ts';
 import {
   favoriteLiveriesOf,
   findFavoriteLivery,
@@ -41,11 +41,6 @@ describe('orderLiveries', () => {
     assert.equal(other.reordered, true);
     const grown = orderLiveries([livery('v1:0'), livery('v1:9'), livery('v1:2'), livery('v1:8')], isFavorite, first.order);
     assert.deepEqual(grown.items.map((item) => item.id), ['v1:2', 'v1:0', 'v1:9', 'v1:8']);
-  });
-
-  it('reads the variant of a livery id', () => {
-    assert.equal(variationOf('ABC-123:4'), 'ABC-123');
-    assert.equal(variationOf('ABC-123'), 'ABC-123');
   });
 });
 

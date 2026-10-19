@@ -21,6 +21,31 @@ export function liveryKey(path: string): string {
     .toLowerCase();
 }
 
+/** Variant of a configurator livery id: `<variationId>:<n>`. */
+export function variationOf(liveryId: string): string {
+  const at = liveryId.indexOf(':');
+  return at < 0 ? liveryId : liveryId.slice(0, at);
+}
+
+/** A livery of the configurator, as far as finding one goes. */
+export interface LiveryCandidate {
+  /** `<variationId>:<n>`. */
+  id: string;
+  title: string;
+  directoryPath: string;
+}
+
+/**
+ * The livery of variant `variationId` for `wanted`: same folder (either form), otherwise same title. Liveries of
+ * another variant are never taken: right after a change of variant, the configurator's list may still be the previous
+ * variant's, and choosing one of its liveries would bring that variant back.
+ */
+export function matchLivery<T extends LiveryCandidate>(liveries: readonly T[], variationId: string, wanted: { dir: string; title: string }): T | undefined {
+  const own = liveries.filter((livery) => !!livery && variationOf(livery.id) === variationId);
+  const key = liveryKey(wanted.dir);
+  return own.filter((livery) => liveryKey(livery.directoryPath) === key)[0] || own.filter((livery) => !!wanted.title && livery.title === wanted.title)[0];
+}
+
 /** Folder of a livery from its thumbnail: `…/liveries/<author>/<livery>/thumbnail/thumbnail.png`. */
 export function liveryDirectory(thumbnailPath: string): string {
   const parts = thumbnailPath.split('/');

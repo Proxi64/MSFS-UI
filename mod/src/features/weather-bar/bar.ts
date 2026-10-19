@@ -79,7 +79,7 @@ const gameFlight = flight.GameFlight;
 
 declare global {
   interface Window {
-    /** The last choice is applied once per sim session, not at every reload of the mod. */
+    /** The last choice is applied once per sim session, not at every reload of the mod: set once it has been applied. */
     __msfsUiWeatherRestored?: boolean;
   }
 }
@@ -87,6 +87,11 @@ declare global {
 /** A translated label without its final precision in brackets. */
 function shortLabel(key: string): string {
   return translate(key).replace(/\s*\([^)]*\)\s*$/, '');
+}
+
+/** `promise`, or a rejection naming `what` when the sim does not answer within WEATHER_TIMEOUT_MS. */
+function within<T>(promise: Promise<T>, what: string): Promise<T> {
+  return withTimeout(promise, WEATHER_TIMEOUT_MS, `${what}: no answer after ${WEATHER_TIMEOUT_MS} ms`);
 }
 
 /** The value, or null if the promise rejects or does not settle within `ms`; the failure is logged as `what`. */
@@ -136,6 +141,8 @@ export class WeatherBar {
   /** Number of the last weather request: an older answer is ignored. */
   private metarRequest = 0;
   private conditions: FlightConditions | null = null;
+  /** The last choice is tried once per display of the screen, until it has been applied once in the session. */
+  private restoreTried = false;
   private tab: Tab = loadData<Tab>(TAB_KEY, 'weather') === 'airport' ? 'airport' : 'weather';
   /** The sim card moved under the tabs: its original style, its position without our margin, the window size then. */
   private heldCard: { element: HTMLElement; marginTop: string; visibility: string; naturalTop: number; size: string } | null = null;
@@ -329,9 +336,15 @@ export class WeatherBar {
     }
     // At start-up the sim activates Free Flight behind the scenes, then resets the flight conditions: the last choice
     // is applied once the bar is really on the screen.
-    if (this.settings.remember && !window.__msfsUiWeatherRestored) {
-      window.__msfsUiWeatherRestored = true;
-      this.run('the last choice of the weather bar could not be applied', this.restore());
+    // A failure (or the screen closed meanwhile) leaves it to the next display of the screen.
+    if (this.settings.remember && !window.__msfsUiWeatherRestored && !this.restoreTried) {
+      this.restoreTried = true;
+      this.restore().then(
+        (applied) => {
+          if (applied) window.__msfsUiWeatherRestored = true;
+        },
+        (error: unknown) => logError('the last choice of the weather bar could not be applied (tried again at the next display)', error),
+      );
     }
     const origin = this.page.elt.getBoundingClientRect();
     const rect = anchor.getBoundingClientRect();
@@ -599,26 +612,30 @@ export class WeatherBar {
     saveData(MEMORY_KEY, Object.assign(loadData<Memory>(MEMORY_KEY, { weather: null, time: null }), change));
   }
 
-  private async restore(): Promise<void> {
+  /** Applies the last choice; false when the screen closed before (nothing was applied). Every wait is bounded. */
+  private async restore(): Promise<boolean> {
     const memory = loadData<Memory>(MEMORY_KEY, { weather: null, time: null });
     // Read now rather than taken from the watches, which may not have answered yet at the first display.
-    const [time, liveBuffer, liveOffset, departure, weatherIndex] = await Promise.all([
-      gameFlight.timeData() as Promise<TimeInfo>,
-      gameFlight.isUsingLiveTimeBuffer() as Promise<boolean>,
-      gameFlight.liveTimeOffset() as Promise<number>,
-      gameFlight.departure() as Promise<FlightLocation>,
-      gameFlight.weatherIndex() as Promise<number>,
-    ]);
-    if (this.scope.disposed) return;
+    const [time, liveBuffer, liveOffset, departure, weatherIndex] = await within(
+      Promise.all([
+        gameFlight.timeData() as Promise<TimeInfo>,
+        gameFlight.isUsingLiveTimeBuffer() as Promise<boolean>,
+        gameFlight.liveTimeOffset() as Promise<number>,
+        gameFlight.departure() as Promise<FlightLocation>,
+        gameFlight.weatherIndex() as Promise<number>,
+      ]),
+      'the flight conditions',
+    );
+    if (this.scope.disposed) return false;
     this.time = time;
     this.liveBuffer = !!liveBuffer;
     this.liveOffset = liveOffset || 0;
     this.departureDms = (departure && departure.worldLocation && departure.worldLocation.dms) || '';
     this.weatherIndex = weatherIndex;
     if (memory.weather !== null && memory.weather !== this.weatherIndex && this.presets.some((preset) => preset.index === memory.weather)) {
-      await store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(memory.weather));
+      await within(store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(memory.weather)), 'the weather preset');
     }
-    if (memory.time) await this.applyTime(memory.time);
+    if (memory.time) await within(this.applyTime(memory.time), 'the time');
     const restored: string[] = [];
     if (this.settings.traffic) {
       // The conditions are read again: applying the weather may have changed them.
@@ -629,11 +646,12 @@ export class WeatherBar {
         const id = memory[group];
         const target = id ? this.conditionButton(group, id) : undefined;
         if (!target || target.disabled || target.selected) continue;
-        await flight.SetFlightConditionConfiguration.request(target.id);
+        await within(flight.SetFlightConditionConfiguration.request(target.id), `the flight condition ${target.id}`);
         restored.push(target.id);
       }
     }
     log(`weather bar: last choice applied (weather ${memory.weather}, time ${memory.time}${restored.length > 0 ? `, ${restored.join(', ')}` : ''})`);
+    return true;
   }
 }
 

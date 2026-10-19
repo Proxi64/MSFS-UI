@@ -9,12 +9,12 @@ import type { Scope } from '../../core/scope.ts';
 import { syncConfiguratorToCurrent, type ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, findFavoriteLivery, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
-import { liveryKey, TAIL_NUMBER } from '../../sim/liveries.ts';
+import { liveryKey, TAIL_NUMBER, variationOf } from '../../sim/liveries.ts';
 import { cleanTail } from '../../sim/registration.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
-import { orderLiveries, variationOf, type LiveryOrder } from './livery-order.ts';
+import { orderLiveries, type LiveryOrder } from './livery-order.ts';
 
 /** A variant of the configurator (`Configurator.Items`). */
 interface ConfiguratorItem {

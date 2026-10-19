@@ -4,7 +4,10 @@
  * (Coherent does not widen the element).
  */
 
-.msfs-ui-wx.is-blocked { opacity: 0.4; pointer-events: none; }
+/* While the sim blocks the flight conditions: dimmed, its sections inactive. The panel itself keeps the mouse lock
+   (core/theme.ts): with pointer-events: none on the panel, a click or the wheel would reach the map under it. */
+.msfs-ui-wx.is-blocked { opacity: 0.4; }
+.msfs-ui-wx.is-blocked .msfs-ui-wx__section { pointer-events: none; }
 /* Compact: the bar must end above the map buttons (Worldmap_Filters) with the tabs and the full METAR. */
 .msfs-ui-wx__body { padding: calc(var(--u) * 8) calc(var(--u) * 12); }
 /* align-items: a one-line flex-wrap container stretches its items in Coherent (align-content does not apply). */

@@ -138,6 +138,13 @@ export class Gallery {
   private sortDropdown: SimComponent | null = null;
   /** The sorts available: SORTS, without the sim's ones it does not offer. */
   private sorts: SortChoice[] = SORTS.filter((sort) => !sort.sim);
+  /**
+   * The sim's own order: the first of its sort options, not reversed, as its own (disabled) sort dropdown starts.
+   * The gallery puts it back when it closes if it sent another one.
+   */
+  private defaultSimSort = 'TT:MENU.NAME';
+  /** The option last sent to `SetAircraftSortingOption`, if any. */
+  private sentSimSort: string | null = null;
   private readonly viewTabs = new Map<View, SimComponent>();
 
   private items: AircraftItem[] = [];
@@ -171,6 +178,10 @@ export class Gallery {
     this.body.setAttribute('data-input-group', 'inputLocker');
     scope.append(this.page.elt, this.root);
     scope.add(() => this.showStockGrid(true));
+    // Every change to the sim is undone: the sim's list gets its own order back.
+    scope.add(() => {
+      if (this.sentSimSort !== null && this.sentSimSort !== this.defaultSimSort) this.sendSimSort(this.defaultSimSort);
+    });
     this.layout();
     scope.interval(() => {
       this.layout();
@@ -196,6 +207,7 @@ export class Gallery {
       (options: unknown) => {
         if (scope.disposed) return;
         const offered = Array.isArray(options) ? (options as string[]) : [];
+        if (typeof offered[0] === 'string' && offered[0]) this.defaultSimSort = offered[0];
         this.sorts = SORTS.filter((sort) => !sort.sim || offered.indexOf(sort.sim) >= 0);
         if (this.memory.sort && !this.sortChoice()) this.memory.sort = null;
         this.applySort();
@@ -296,13 +308,17 @@ export class Gallery {
 
   /**
    * The sim's sorts are applied to its list; the mod's are applied when the tiles are drawn (render), and the sim's
-   * list goes back to its Name order so that it is not left on another sort (Default view, the sim's own dropdown).
+   * list goes back to its own order so that it is not left on another sort (Default view).
    */
   private applySort(): void {
     const sort = this.memory.sort;
     const choice = this.sortChoice();
     if (!sort || !choice) return;
-    const option = choice.sim ? `${sort.reversed ? '!' : ''}${choice.sim}` : 'TT:MENU.NAME';
+    this.sendSimSort(choice.sim ? `${sort.reversed ? '!' : ''}${choice.sim}` : this.defaultSimSort);
+  }
+
+  private sendSimSort(option: string): void {
+    this.sentSimSort = option;
     aircraft.SetAircraftSortingOption.request(option).catch((error: unknown) => logError('the aircraft could not be sorted', error));
   }
 

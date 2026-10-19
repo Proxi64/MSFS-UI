@@ -1,6 +1,6 @@
 # Next steps
 
-Where MSFS-UI stands, and what is suggested next, in order. Each step is presented, approved, done, validated in the sim, then committed, one at a time (see the working method in [development.md](development.md#working-method)). Last updated on 2026-10-19.
+Where MSFS-UI stands, and what is suggested next, in order. Each step is presented, approved, done, validated in the sim, then committed, one at a time (see the working method in [development.md](development.md#working-method)). Last updated on 2026-10-19 (after the code review of the mod).
 
 ## Where things stand
 
@@ -67,6 +67,7 @@ Each new feature adds a minor version (1.1.0, 1.2.0…): `modVersion` in `mod/fe
 | Translate `tools/msfs-sdk-mcp` into English | Its code, tool descriptions and messages are still in French (it came from another project); the project's rule is English everywhere | S |
 | Livery thumbnails of the setup panel in the sim's `real-scroll` | They still scroll with the mod's own `wheel` handler (`mod/src/features/aircraft-setup/panel.ts`), unlike the gallery and the Free Flight favourites; the sim's scroll bar would show | S |
 | A *choice* option type in `features.json` | Only `boolean` and `number` exist; features such as E1 / E2 (which tiles or icons to hide) need a list. Both readers change: the mod's build and settings validation, and the app's catalogue, settings normaliser and Features page | M, when first needed |
+| Rest of the mod's code review (2026-10-19) | Points 1 to 4 are fixed (blocked weather bar, bounded waits, livery of the right variant, the sim's sort put back). Left: `Scope.timeout` keeps its cleanup after firing; the setup panel's wheel takes a horizontal scroll for an upward one (gone with `real-scroll`, above); the gallery's *List* tab is translated when the module loads; duplicated manipulator types and the tail number lookup; dead code (`button`, `loadSvg`, `deleteData`, `icons.ts`) and stale comments; `text-overflow: ellipsis` that the engine ignores, and the studio gradient written twice. Optional: typed reads of the data model, the aircraft list read item by item (to measure), accents in the search | S |
 | After every sim update | The mod depends on undocumented parts of the menu | **Generate & install**, then **Compatibility** with the sim running; update [sim-reference.md](sim-reference.md), `compat.json` and the tested version in the README and the user guide |
 
 ## Not planned
