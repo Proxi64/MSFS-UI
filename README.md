@@ -5,7 +5,7 @@ A personal mod of the **Microsoft Flight Simulator 2024** main menu, and the Win
 - **MSFS-UI-GENERATOR**, the app: choose the features and their options, generate the `msfs-ui` package and install it in the sim's Community folder, check that the sim still offers what the mod needs.
 - **msfs-ui**, the package: faster menus; a weather and time bar on Free Flight with presets, METAR, sun times and traffic; the wheel on the time; favourite aircraft and liveries loaded in one click; an aircraft gallery and list with search, favourites and sorts; a setup panel for variants, liveries and tail number; a tail number per livery. Everything it shows is made of the sim's own components.
 
-Version 1.0.0, tested on MSFS 2024 1.9.18 (Steam), base package `fs-base-ui` 0.1.10.
+Version 1.0.1, tested on MSFS 2024 1.9.18 (Steam), base package `fs-base-ui` 0.1.10.
 
 ## Screenshots
 

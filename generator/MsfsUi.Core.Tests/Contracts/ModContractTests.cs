@@ -76,7 +76,8 @@ public sealed class ModContractTests
         Assert.AreEqual(expected, File.ReadAllText(path), $"{name} is out of date: run the tests with MSFS_UI_UPDATE_FIXTURES=1, then the mod's tests");
     }
 
-    private static FeatureCatalog RealCatalog() => FeatureCatalog.Parse(File.ReadAllText(Path.Combine(ModFolder(), "features.json")));
+    /// <summary>The mod's real catalogue (<c>mod/features.json</c>).</summary>
+    internal static FeatureCatalog RealCatalog() => FeatureCatalog.Parse(File.ReadAllText(Path.Combine(ModFolder(), "features.json")));
 
     /// <summary>The repository's <c>mod</c> folder, found from this source file.</summary>
     private static string ModFolder([CallerFilePath] string source = "") =>

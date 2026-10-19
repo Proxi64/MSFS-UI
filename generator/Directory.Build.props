@@ -13,7 +13,7 @@
          (CS1591 is waived in the app and test projects). -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-    <!-- The version is 1.0.0, without the Git commit the SDK would append; no Source Link either (its table in the
+    <!-- The version alone, without the Git commit the SDK would append; no Source Link either (its table in the
          symbols maps the local path of the sources to the repository's URL). -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <EnableSourceLink>false</EnableSourceLink>
@@ -22,6 +22,6 @@
     <Company>Proxi64</Company>
     <Copyright>Copyright © 2026 Proxi64</Copyright>
     <!-- The app version follows the mod version (mod/features.json, modVersion). -->
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 </Project>

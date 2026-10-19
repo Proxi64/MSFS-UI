@@ -187,7 +187,7 @@ public sealed class AppTests
         app.Navigate("NavReadme");
 
         app.WaitForText("ReadmeNoSimFile", "No file of the simulator is modified");
-        app.WaitForText("ReadmeVersion", "MSFS-UI-GENERATOR 1.0.0");
+        app.WaitForText("ReadmeVersion", "MSFS-UI-GENERATOR 1.0.1");
     }
 
     [TestMethod]
