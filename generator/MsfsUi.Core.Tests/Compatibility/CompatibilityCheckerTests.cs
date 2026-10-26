@@ -209,6 +209,59 @@ public sealed class CompatibilityCheckerTests
         StringAssert.Contains(CompatibilityChecker.LiveProbe(RealManifest()), "detail: detail === undefined || detail === null ? '' : String(detail)");
     }
 
+    /// <summary>The storage part of the live probe, run in a fake page after <paramref name="setup"/>.</summary>
+    private static Dictionary<string, CheckResult> StorageChecks(string setup, IReadOnlyDictionary<string, string>? storage = null)
+    {
+        using var page = new FakeCoherentPage(storage);
+        var (_, thrown) = page.Evaluate(setup);
+        Assert.IsNull(thrown, thrown);
+        var (value, error) = page.Evaluate($"JSON.stringify(({CompatibilityChecker.StorageProbe})(window))");
+        Assert.IsNull(error, error);
+        return JsonSerializer.Deserialize<List<JsonElement>>(value!.ToString())!
+            .Select(item => new CheckResult("Storage", item.GetProperty("label").GetString()!, item.GetProperty("ok").GetBoolean(), item.GetProperty("detail").GetString()!))
+            .ToDictionary(result => result.Label);
+    }
+
+    [TestMethod]
+    public void TheStorageProbeFindsTheSimsStorageAndTheModsKeys()
+    {
+        var checks = StorageChecks("0", new Dictionary<string, string> { ["MSFS_UI_FAVORITE_AIRCRAFT"] = "[]", ["LAYOUT_MAIN"] = "{}" });
+
+        Assert.IsTrue(checks.Values.All(check => check.Ok), "searchData is not required: the mod does not call it");
+        Assert.AreEqual("on window (object)", checks["datastorage"].Detail);
+        Assert.AreEqual("stored: FAVORITE_AIRCRAFT", checks["mod data (MSFS_UI_ keys)"].Detail);
+        Assert.HasCount(5, checks);
+    }
+
+    [TestMethod]
+    public void TheStorageProbeFindsTheStorageOfTheTopPage()
+    {
+        var checks = StorageChecks("window.top = { datastorage: window.datastorage }; delete window.datastorage;");
+
+        Assert.AreEqual("on window.top (object)", checks["datastorage"].Detail);
+        Assert.AreEqual("none stored yet", checks["mod data (MSFS_UI_ keys)"].Detail);
+    }
+
+    [TestMethod]
+    public void TheStorageProbeNamesAMissingMethodAndWhatTheStorageHas()
+    {
+        var checks = StorageChecks("window.datastorage = { getData: window.datastorage.getData, setItem: function () {}, deleteData: 'none' };");
+
+        Assert.IsTrue(checks["datastorage.getData"].Ok);
+        Assert.AreEqual("undefined; members: getData, setItem, deleteData", checks["datastorage.setData"].Detail);
+        Assert.AreEqual("string; members: getData, setItem, deleteData", checks["datastorage.deleteData"].Detail);
+    }
+
+    [TestMethod]
+    public void TheStorageProbeListsGlobalsLikeAMissingStorage()
+    {
+        var checks = StorageChecks("delete window.datastorage; window.DataStorageService = {};");
+
+        Assert.AreEqual(1, checks.Count);
+        // __storage is the fake page's own content.
+        Assert.AreEqual("missing on window and window.top; globals like it: __storage, DataStorageService", checks["datastorage"].Detail);
+    }
+
     [TestMethod]
     public async Task LiveChecksAreSkippedWhenTheSimIsClosed()
     {

@@ -184,6 +184,51 @@ public sealed partial class CompatibilityChecker
     public const string ModLoadedMarker = "[msfs-ui] module loaded";
 
     /// <summary>
+    /// The storage part of the live probe, an ES2017 function of the page's <c>window</c> returning
+    /// <c>{ label, ok, detail }</c> items, read only: where <c>datastorage</c> is (or the page's globals that look like
+    /// it), each method the mod calls (mod/src/core/storage.ts) with the object's members when one is missing, and the
+    /// mod's keys found in it. The details tell what another version of the sim exposes.
+    /// </summary>
+    internal const string StorageProbe = """
+        function (page) {
+          const results = [];
+          const names = (o) => {
+            const found = [];
+            try { for (const name in o) found.push(name); } catch (e) { /* not enumerable */ }
+            try { Object.getOwnPropertyNames(o).forEach((name) => { if (found.indexOf(name) < 0) found.push(name); }); } catch (e) { /* not an object */ }
+            return found;
+          };
+          let top = null;
+          try { top = page.top; } catch (e) { /* no access to the top page */ }
+          const own = page.datastorage;
+          const onTop = top && top !== page ? top.datastorage : undefined;
+          const ds = own || onTop;
+          if (!ds) {
+            const similar = [];
+            [page, top].forEach((scope) => {
+              if (!scope) return;
+              names(scope).forEach((name) => { if (/storage|datastore/i.test(name) && similar.indexOf(name) < 0) similar.push(name); });
+            });
+            results.push({ label: 'datastorage', ok: false, detail: 'missing on window and window.top; globals like it: ' + (similar.join(', ') || 'none') });
+            return results;
+          }
+          results.push({ label: 'datastorage', ok: true, detail: (own ? 'on window' : 'on window.top') + ' (' + typeof ds + ')' });
+          ['getData', 'setData', 'deleteData'].forEach((method) => {
+            const type = typeof ds[method];
+            results.push({ label: 'datastorage.' + method, ok: type === 'function', detail: type === 'function' ? '' : type + '; members: ' + (names(ds).slice(0, 40).join(', ') || 'none') });
+          });
+          if (typeof ds.getData === 'function') {
+            const stored = [];
+            ['WEATHER_BAR', 'WEATHER_BAR_TAB', 'FAVORITE_AIRCRAFT', 'FAVORITE_LIVERIES', 'AIRCRAFT_GALLERY', 'AIRCRAFT_USES', 'LIVERY_TAILS', 'BASE_TAIL'].forEach((key) => {
+              try { if (ds.getData('MSFS_UI_' + key)) stored.push(key); } catch (e) { /* counted as absent */ }
+            });
+            results.push({ label: 'mod data (MSFS_UI_ keys)', ok: true, detail: stored.length ? 'stored: ' + stored.join(', ') : 'none stored yet' });
+          }
+          return results;
+        }
+        """;
+
+    /// <summary>
     /// The ES2017 program run in the main menu: mod loaded, screens in the registry, the manifest's live checks
     /// (each with its time limit), translation keys, colour variables and the storage API.
     /// </summary>
@@ -239,9 +284,9 @@ public sealed partial class CompatibilityChecker
                 const value = (rootStyle.getPropertyValue(name) || bodyStyle.getPropertyValue(name)).trim();
                 add('Sim look', name, value !== '', value || 'variable missing');
               }
-              const ds = window.datastorage || window.top.datastorage;
-              const isFn = (f) => typeof f === 'function';
-              add('Storage', 'datastorage (getData, setData, deleteData, searchData)', ds && isFn(ds.getData) && isFn(ds.setData) && isFn(ds.deleteData) && isFn(ds.searchData));
+              for (const check of ({{StorageProbe}})(window)) {
+                add('Storage', check.label, check.ok, check.detail);
+              }
               return results;
             })()
             """;

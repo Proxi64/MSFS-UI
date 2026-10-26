@@ -141,7 +141,7 @@ With `singleton = true`, `RegisterViewListener` shares the existing listener.
 
 | Element | Use |
 |---|---|
-| `datastorage.getData(key)`, `setData(key, text)`, `deleteData(key)`, `searchData(prefix)` | **Persistent** native storage (global in `mainUi`, otherwise `window.top.datastorage`); the mod's keys start with `MSFS_UI_` |
+| `datastorage.getData(key)`, `setData(key, text)`, `deleteData(key)`, `searchData(prefix)` | **Persistent** native storage (global in `mainUi`, otherwise `window.top.datastorage`); the mod's keys start with `MSFS_UI_`; the mod calls the first three only. On another user's sim (version not known, 2026-10-26), the storage was missing or of another shape: the favourites were not kept |
 | `localStorage` | Available but **emptied at every start** of the sim |
 | `window.top.g_localization.Translate('TT:…')` | Translates a key of the sim; the English texts are in `fs-base\en-US.locPak` |
 
