@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 (2026-10-26)
+
+- **Compatibility**: the Storage check says what the sim offers. It shows where the sim's storage is, checks each method the mod calls, names what the storage has when a method is missing, and lists the mod's data stored. `searchData` is no longer required: the mod does not call it. If your favourites or tail numbers are not kept after a restart, open the Storage group of the Compatibility page and report what it shows, with your sim version (Steam or Microsoft Store, and its number).
+- The mod itself is unchanged.
+
 ## 1.0.1 (2026-10-19)
 
 The first public release.

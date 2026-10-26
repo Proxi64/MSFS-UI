@@ -8,7 +8,7 @@ A mod of the **Microsoft Flight Simulator 2024** main menu, and the Windows app 
 > [!WARNING]
 > A personal project, not affiliated with, endorsed by or supported by Microsoft or Asobo Studio. The mod relies on undocumented parts of the sim's menu that an update may change: use it at your own risk. **Remove** on the app's Home page brings the original menu back; no file of the sim is ever modified.
 
-Version 1.0.1, tested on MSFS 2024 1.9.18 (Steam), base package `fs-base-ui` 0.1.10.
+Version 1.0.2, tested on MSFS 2024 1.9.18 (Steam), base package `fs-base-ui` 0.1.10.
 
 ## Screenshots
 

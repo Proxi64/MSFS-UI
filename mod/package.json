@@ -1,6 +1,6 @@
 {
   "name": "msfs-ui-mod",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "license": "MIT",
   "description": "MSFS-UI menu mod: runs in the MSFS 2024 main menu (Coherent GT, ES2017).",
