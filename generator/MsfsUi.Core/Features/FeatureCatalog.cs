@@ -130,7 +130,7 @@ public sealed record FeatureDefinition(
 
 /// <summary>An option of a feature.</summary>
 /// <param name="Id">Identifier used in <c>config.js</c> and in the mod.</param>
-/// <param name="Type">Boolean or number.</param>
+/// <param name="Type">Boolean, number or choice.</param>
 /// <param name="Title">Short title shown in the app.</param>
 /// <param name="Description">Explanation shown in the app.</param>
 /// <param name="Default">Default value, of the option's type (a choice's id for a choice).</param>

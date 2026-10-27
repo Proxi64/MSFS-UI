@@ -21,6 +21,7 @@ import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries } fro
 import { TAIL_NUMBER } from '../../sim/liveries.ts';
 import { cleanTail } from '../../sim/registration.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
+import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layout.ts';
 import { store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
@@ -43,28 +44,12 @@ interface LiveryButtonManipulator {
   setData(image: string, callback: () => void): void;
 }
 
-/** The sim's scrolling list (see the gallery): it scrolls on the wheel and draws its scroll bar. */
-interface RealScroll extends HTMLElement {
-  readonly maxScroll: number;
-  scrollToPosition(position: number): void;
-  updateSizes?(): void;
-}
-
 /** A list of the panel in the sim's scrolling list; its children go into the list's content. */
 function scrollList(className: string): RealScroll {
   const list = document.createElement('real-scroll') as RealScroll;
   list.setAttribute('direction', 'y');
   list.className = className;
   return list;
-}
-
-/**
- * Width of the list's scroll bar, beside its content: 0 while the content fits, its own width (10 pixels at 1440
- * lines) once the list scrolls, from the next frame.
- */
-function barWidth(list: RealScroll): number {
-  const bar = list.querySelector('.scroll__bar-container');
-  return bar ? bar.getBoundingClientRect().width : 0;
 }
 
 /** Empties a scrolling list child by child: the sim's list keeps its own structure (never `innerHTML`). */
@@ -269,7 +254,7 @@ export class SetupPanel {
    */
   private layoutLists(width: number, height: number, unit: number): void {
     const full = width - 2 * PADDING * unit;
-    const narrow = (list: RealScroll) => full - barWidth(list) - SCROLL_BAR_ROOM * unit;
+    const narrow = (list: RealScroll) => full - scrollBarWidth(list) - SCROLL_BAR_ROOM * unit;
     const gap = GAP * unit;
     // The panel's padding, and the gap under the two headers, the two lists and the tail number.
     // Side by side layout: the gallery shows the liveries (sim/selection-layout.ts), the panel only the variants.
@@ -422,21 +407,26 @@ export class SetupPanel {
   private measureVariants(): boolean {
     if (this.variants.length === 0 || this.variantTiles.size < this.variants.length) return false;
     const unit = uiUnit();
-    let widest = 0;
-    let padding = 0;
+    // The text's own width: a probe inside each title takes its font. Every probe is added before any is measured, so
+    // the engine lays the page out once, not once per variant (it now runs at each change of the column's width).
+    const probes: { title: HTMLElement; probe: HTMLElement; content: HTMLElement }[] = [];
     this.variantTiles.forEach((tile) => {
       const title = tile.element.querySelector<HTMLElement>('[name="Title"]');
       const content = tile.element.querySelector<HTMLElement>('[name="Content"]');
       if (!title || !content) return;
-      const style = window.getComputedStyle(content);
-      padding = Math.max(padding, parseFloat(style.paddingLeft) + parseFloat(style.paddingRight));
-      // The text's own width: a probe inside the title takes its font.
       const probe = el('span', '', title);
       probe.style.whiteSpace = 'nowrap';
       probe.textContent = title.textContent;
-      widest = Math.max(widest, probe.getBoundingClientRect().width);
-      title.removeChild(probe);
+      probes.push({ title, probe, content });
     });
+    let widest = 0;
+    let padding = 0;
+    for (const { probe, content } of probes) {
+      const style = window.getComputedStyle(content);
+      padding = Math.max(padding, parseFloat(style.paddingLeft) + parseFloat(style.paddingRight));
+      widest = Math.max(widest, probe.getBoundingClientRect().width);
+    }
+    for (const { title, probe } of probes) title.removeChild(probe);
     this.variantNeeded = widest + padding + CORNER_UNITS * unit;
     return true;
   }

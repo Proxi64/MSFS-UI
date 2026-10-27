@@ -8,7 +8,7 @@
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
-import { cellAction } from '../../core/virtual-list.ts';
+import { cellAction, layoutWidth } from '../../core/virtual-list.ts';
 import { loadData, saveData } from '../../core/storage.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
@@ -17,11 +17,12 @@ import { COMPONENTS, createComponent, type ComponentGuid, type SimComponent } fr
 import { FAVORITE_LIVERIES_CHANGED, favoriteLiveriesOf, loadFavoriteLiveries, loadFavorites, saveFavoriteLiveries, saveFavorites, type FavoriteAircraft, type FavoriteLivery } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
+import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layout.ts';
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
-import { AIRCRAFT_COLUMNS, splitColumns } from './livery-column.ts';
+import { AIRCRAFT_COLUMNS, galleryBodyClass, splitColumns } from './livery-column.ts';
 import { favoriteFrom, favoritesFirst, favoritesOf, isFavoriteAircraft, sortTiles, visibleTiles, type AircraftItem, type LocalSort, type Tile } from './tiles.ts';
 
 type View = 'gallery' | 'list' | 'stock';
@@ -77,17 +78,6 @@ interface HorizontalTileManipulator {
    * writes the tile's texts and image itself).
    */
   item?: { isOwned: boolean; isOwnedBySubscription: boolean; isFavorite: boolean };
-}
-
-/**
- * The sim's scrolling list (`<real-scroll direction="y">`, as in its own cards): it scrolls on the wheel and
- * draws its scroll bar; children appended to it go into its content. Verified on sim 1.9.18.
- */
-interface RealScroll extends HTMLElement {
-  readonly currentScroll: number;
-  readonly maxScroll: number;
-  scrollToPosition(position: number): void;
-  updateSizes?(): void;
 }
 
 /** Events of the sim's aircraft tiles, sent with their data by the mod; the tiles' own ones carry none. */
@@ -172,6 +162,8 @@ export class Gallery {
   private reloadTimer: ReturnType<typeof setTimeout> | undefined;
   private reloadNumber = 0;
 
+  /** Width of the list's scroll bar, the widest seen (0 until it first shows). */
+  private barWidth = 0;
   /** The pool of slots of the current view, and its scope. */
   private pool: ComponentPool<Cell> | null = null;
   private poolView: View | null = null;
@@ -425,19 +417,32 @@ export class Gallery {
     const halves = this.liveryColumn && !stock ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, 6 * unit) : null;
     toggleClass(this.body, 'is-side-by-side', !!halves);
     this.body.style.width = halves ? `${halves.left}px` : '';
-    // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the width the sim's list leaves to its
-    // content (its scroll bar takes some) less the room kept before the bar.
-    const content = this.list.querySelector('.scroll__content');
-    const listWidth = content instanceof HTMLElement && content.clientWidth > 0 ? content.clientWidth : rect.width;
-    // The list narrows on the next frame: until then, the half is the limit.
-    const room = Math.floor((halves ? Math.min(listWidth, halves.left) : listWidth) - SCROLL_BAR_ROOM * unit);
-    const columns = halves ? AIRCRAFT_COLUMNS : Math.max(2, Math.floor(room / (TILE_WIDTH * unit)));
-    const width = Math.floor(room / columns - 12 * unit);
-    setVariable(style, '--tile-w', `${width}px`);
-    // The image keeps the sim's tile proportions; the text banner below only takes its three lines.
-    const image = Math.round(width * TILE_RATIO * IMAGE_SHARE);
-    setVariable(style, '--tile-image-h', `${image}px`);
-    setVariable(style, '--tile-h', `${image + Math.round(BANNER_HEIGHT * unit)}px`);
+    // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
+    // before the scroll bar, and less the bar's own width when the tiles do not fit without it (core/virtual-list.ts:
+    // decided on the full width, so the bar cannot make the tiles swing between two sizes).
+    const tileAt = (listWidth: number) => {
+      const room = Math.floor(listWidth - SCROLL_BAR_ROOM * unit);
+      const columns = halves ? AIRCRAFT_COLUMNS : Math.max(2, Math.floor(room / (TILE_WIDTH * unit)));
+      const width = Math.floor(room / columns - 12 * unit);
+      // The image keeps the sim's tile proportions; the text banner below only takes its three lines.
+      const image = Math.round(width * TILE_RATIO * IMAGE_SHARE);
+      return { columns, width, image, height: image + Math.round(BANNER_HEIGHT * unit) };
+    };
+    this.barWidth = Math.max(this.barWidth, scrollBarWidth(this.list));
+    const tiles = this.memory.view === 'gallery' ? this.cells.length : 0;
+    const fit = layoutWidth(
+      halves ? halves.left : Math.round(rect.width),
+      this.barWidth,
+      (listWidth) => {
+        const tile = tileAt(listWidth);
+        return Math.ceil(tiles / tile.columns) * (tile.height + 12 * unit);
+      },
+      this.list.getBoundingClientRect().height,
+    );
+    const tile = tileAt(fit.width);
+    setVariable(style, '--tile-w', `${tile.width}px`);
+    setVariable(style, '--tile-image-h', `${tile.image}px`);
+    setVariable(style, '--tile-h', `${tile.height}px`);
     if (halves) {
       const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
       this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
@@ -550,7 +555,7 @@ export class Gallery {
     this.cellEmpty = empty;
     const scroll = this.list.currentScroll || 0;
     this.clearCells();
-    this.body.className = `msfs-ui-gal__body is-${view}`;
+    this.body.className = galleryBodyClass(view, this.liveryColumn !== null);
     if (empty) {
       const message = el('div', 'msfs-ui-gal__empty');
       message.textContent = empty;

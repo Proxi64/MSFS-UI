@@ -2,10 +2,10 @@
 // per row, with their name and tail number, favourites first; in the gallery's List view, as rows. Made of the sim's components (its aircraft tile, its
 // heart, its scrolling list); the choices go through the configurator as in the setup panel (sim/configurator.ts).
 
-import { el, uiUnit } from '../../core/dom.ts';
+import { el, setVariable, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
-import { cellAction } from '../../core/virtual-list.ts';
+import { cellAction, layoutWidth } from '../../core/virtual-list.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
@@ -13,6 +13,7 @@ import { chooseLivery, readConfigurator, setFavoriteLivery, syncConfigurator, ty
 import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
 import { atcIdFromCfg } from '../../sim/registration.ts';
+import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { store, translate, watch } from '../../sim/store.ts';
 import { orderLiveries, type LiveryOrder } from '../aircraft-setup/livery-order.ts';
 import { revealPosition } from '../aircraft-setup/setup-layout.ts';
@@ -26,13 +27,6 @@ interface WishlistManipulator {
 /** The sim's horizontal marketplace tile (see the gallery's List view): an owned item makes its hover do nothing more. */
 interface HorizontalTileManipulator {
   item?: { isOwned: boolean; isOwnedBySubscription: boolean; isFavorite: boolean };
-}
-
-/** The sim's scrolling list (see the gallery): it scrolls on the wheel and draws its scroll bar. */
-interface RealScroll extends HTMLElement {
-  readonly maxScroll: number;
-  scrollToPosition(position: number): void;
-  updateSizes?(): void;
 }
 
 /** A tile of the column: its host, and its components while near the visible part of the list (core/virtual-list.ts). */
@@ -96,6 +90,8 @@ export class LiveryColumn {
   private pool: ComponentPool<Cell> | null = null;
   private poolRows = false;
   private poolScope: Scope | null = null;
+  /** Width of the list's scroll bar, the widest seen (0 until it first shows). */
+  private barWidth = 0;
   /** Sizes last given to the tiles: the list measures its content again when they change. */
   private sizes = '';
   /** Rows (the gallery's List view) rather than tiles. */
@@ -145,15 +141,20 @@ export class LiveryColumn {
     style.height = `${rect.height}px`;
     // Two tiles per row, in whole pixels, in the width the list leaves to its content (its scroll bar takes some).
     const unit = uiUnit();
-    const content = this.list.querySelector('.scroll__content');
-    const width = content instanceof HTMLElement && content.clientWidth > 0 ? Math.min(content.clientWidth, rect.width) : rect.width;
-    const tile = liveryTileSize(width, SCROLL_BAR_ROOM * unit, GAP * unit, BANNER_HEIGHT * unit);
+    // Less the scroll bar's own width only when the tiles do not fit without it: decided on the full width
+    // (core/virtual-list.ts), since narrower tiles are also shorter and would make the list fit again.
+    const tileAt = (width: number) => liveryTileSize(width, SCROLL_BAR_ROOM * unit, GAP * unit, BANNER_HEIGHT * unit);
+    this.barWidth = Math.max(this.barWidth, scrollBarWidth(this.list));
+    const rows = Math.ceil(this.cells.length / LIVERY_COLUMNS);
+    const fit = layoutWidth(rect.width, this.barWidth, (width) => rows * (tileAt(width).height + GAP * unit), this.list.getBoundingClientRect().height);
+    const tile = tileAt(fit.width);
+    // Variables written only when they change: a write lays the page out again (core/dom.ts).
+    setVariable(style, '--tile-w', `${tile.width}px`);
+    setVariable(style, '--tile-image-h', `${tile.imageHeight}px`);
+    setVariable(style, '--tile-h', `${tile.height}px`);
     const sizes = `${tile.width}/${tile.height}/${rect.height}`;
     if (sizes !== this.sizes) {
       this.sizes = sizes;
-      style.setProperty('--tile-w', `${tile.width}px`);
-      style.setProperty('--tile-image-h', `${tile.imageHeight}px`);
-      style.setProperty('--tile-h', `${tile.height}px`);
       if (this.list.updateSizes) this.list.updateSizes();
     }
     this.reveal(this.rows ? ROW_STEP * unit : tile.height + GAP * unit);

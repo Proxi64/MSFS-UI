@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { compareNatural, favoriteFrom, favoritesFirst, isFavoriteAircraft, normalize, sortTiles, visibleTiles, type AircraftItem } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { liveryTail, liveryTileSize, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
+import { galleryBodyClass, liveryTail, liveryTileSize, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
   aircraftId: 1,
@@ -146,5 +146,12 @@ describe('livery column', () => {
     assert.equal(liveryTail(undefined, 'VH-OZG', 'Qantas VH-ABC', 9), 'VH-OZG');
     assert.equal(liveryTail(undefined, null, 'Qantas VH-ABC', 9), 'VH-ABC');
     assert.equal(liveryTail(undefined, null, 'FSReborn Livery', 9), '');
+  });
+});
+
+describe('gallery body class', () => {
+  it('keeps the side by side flag whenever the list is rebuilt', () => {
+    assert.equal(galleryBodyClass('list', true), 'msfs-ui-gal__body is-list is-side-by-side');
+    assert.equal(galleryBodyClass('gallery', false), 'msfs-ui-gal__body is-gallery');
   });
 });

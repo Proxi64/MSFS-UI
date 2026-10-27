@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { cellAction } from '../src/core/virtual-list.ts';
+import { cellAction, layoutWidth } from '../src/core/virtual-list.ts';
 
 describe('cellAction', () => {
   // A list showing 1000 to 2000 px; components made within 300 px of it, kept within 900 px.
@@ -22,5 +22,24 @@ describe('cellAction', () => {
     assert.equal(cellAction({ top: 2400, bottom: 2600 }, true, view, margins), 'none', 'between the margins: kept');
     assert.equal(cellAction({ top: 2950, bottom: 3150 }, true, view, margins), 'destroy');
     assert.equal(cellAction({ top: -100, bottom: 50 }, true, view, margins), 'destroy');
+  });
+});
+
+describe('layoutWidth', () => {
+  // Tiles in a fixed number of columns: narrower tiles are also shorter, so the content is lower in less width.
+  const contentHeight = (width: number) => Math.round(width * 1.25);
+
+  it('keeps the full width while the content fits in it', () => {
+    assert.deepEqual(layoutWidth(800, 10, contentHeight, 1000), { width: 800, scrolls: false });
+  });
+
+  it('takes the width the scroll bar leaves when the content does not fit in the full width', () => {
+    assert.deepEqual(layoutWidth(800, 10, contentHeight, 990), { width: 790, scrolls: true });
+  });
+
+  it('decides on the full width only: content that would fit once narrower still scrolls (no swing)', () => {
+    // At 790 px the content is 988 px high and would fit in 990: deciding on the current width would swing.
+    assert.equal(contentHeight(790) <= 990, true);
+    assert.deepEqual(layoutWidth(800, 10, contentHeight, 990), { width: 790, scrolls: true });
   });
 });

@@ -134,7 +134,7 @@
           "default": "classic",
           "choices": [
             { "id": "classic", "title": "Classic", "description": "The gallery fills the right side; the liveries are small thumbnails in the setup panel." },
-            { "id": "sideBySide", "title": "Side by side", "description": "The aircraft on the left half of the gallery, the liveries of the current aircraft on the right half, as large tiles with their name and tail number." }
+            { "id": "sideBySide", "title": "Side by side", "description": "The aircraft on the left part of the gallery, three per row; the liveries of the current aircraft on the right part, two per row, as large tiles with their name and tail number." }
           ]
         }
       ]

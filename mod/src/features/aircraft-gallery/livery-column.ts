@@ -47,3 +47,11 @@ export function liveryTail(chosen: string | undefined, atcId: string | null, tit
   );
   return pick ? pick.registration : '';
 }
+
+/**
+ * Class of the gallery's list for a view: written whole at every rebuild of the list, so it carries the side by side
+ * flag too (the List rows' two lines depend on it; dropped until the next layout pass, they would flicker).
+ */
+export function galleryBodyClass(view: string, sideBySide: boolean): string {
+  return `msfs-ui-gal__body is-${view}${sideBySide ? ' is-side-by-side' : ''}`;
+}

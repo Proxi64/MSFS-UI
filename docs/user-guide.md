@@ -46,7 +46,7 @@ The navigation is on the left; **Readme**, at the bottom, explains how the app a
 
 ### Features
 
-One card per feature of the mod, with its switch, its description and the screen where it acts. A feature with options opens to show them: switches, and numbers with their range, step and unit. Options are inactive while their feature is off.
+One card per feature of the mod, with its switch, its description and the screen where it acts. A feature with options opens to show them: switches, numbers with their range, step and unit, and choices as radio buttons (the selected choice's explanation under the option's). Options are inactive while their feature is off.
 
 - **Apply** saves the choices. When the package is installed, it is updated (only the settings change) and, when the sim is running, the mod is reloaded: the change is live at once, without restarting the sim.
 - **Discard changes** goes back to the saved choices; **Reset to defaults** shows the defaults, which **Apply** then saves.
@@ -145,7 +145,7 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 | Layout | What the aircraft selection shows |
 |---|---|
 | **Classic** (default) | The gallery fills the right side; the liveries are small thumbnails in the setup panel |
-| **Side by side** | The aircraft on the left part of the gallery, three per row; the liveries of the current aircraft on the right part, two per row, as large as the aircraft tiles. The left column only keeps the variants and the tail number, and is narrower (400 layout units) |
+| **Side by side** | The aircraft on the left part of the gallery, three per row; the liveries of the current aircraft on the right part, two per row, as large as the aircraft tiles. The left column keeps the variants, the tail number and the Fuel and Identification buttons, without the livery thumbnails, and is narrower (400 layout units) |
 
 In the side by side layout:
 - each livery tile shows the livery's thumbnail whole, its name and its tail number (the one you chose for it, else the `atc_id` of its `livery.cfg`, else a registration found in its name; nothing when none is found);

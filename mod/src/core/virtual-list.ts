@@ -21,3 +21,14 @@ export function cellAction(cell: Extent, created: boolean, view: Extent, margins
   if (!created) return distance <= margins.create ? 'create' : 'none';
   return distance > margins.keep ? 'destroy' : 'none';
 }
+
+/**
+ * The width a list lays its tiles out in: the full width while its content fits in it, otherwise the width its scroll
+ * bar leaves (`bar`). Decided on the full width only: tiles in a fixed number of columns are shorter when narrower, so
+ * a decision on the current width would make the content fit again once the bar shows, then scroll again once it
+ * goes, the tiles changing size at every pass.
+ */
+export function layoutWidth(full: number, bar: number, contentHeightAt: (width: number) => number, listHeight: number): { width: number; scrolls: boolean } {
+  const scrolls = contentHeightAt(full) > listHeight + 0.5;
+  return { width: scrolls ? full - bar : full, scrolls };
+}
