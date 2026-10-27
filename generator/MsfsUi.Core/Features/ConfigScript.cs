@@ -44,13 +44,17 @@ public static class ConfigScript
                 writer.WriteBoolean("enabled", feature.Enabled);
                 foreach (var option in feature.Options)
                 {
-                    if (option.Value.Type == OptionType.Boolean)
+                    switch (option.Value.Type)
                     {
-                        writer.WriteBoolean(option.Id, option.Value.Boolean);
-                    }
-                    else
-                    {
-                        writer.WriteNumber(option.Id, option.Value.Number);
+                        case OptionType.Boolean:
+                            writer.WriteBoolean(option.Id, option.Value.Boolean);
+                            break;
+                        case OptionType.Choice:
+                            writer.WriteString(option.Id, option.Value.Text);
+                            break;
+                        default:
+                            writer.WriteNumber(option.Id, option.Value.Number);
+                            break;
                     }
                 }
 

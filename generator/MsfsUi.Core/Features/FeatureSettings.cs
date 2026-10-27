@@ -4,14 +4,15 @@ using System.Text.Json.Serialization;
 
 namespace MsfsUi.Core.Features;
 
-/// <summary>A typed option value: a boolean or a number.</summary>
+/// <summary>A typed option value: a boolean, a number or the id of a choice.</summary>
 public readonly record struct OptionValue
 {
-    private OptionValue(OptionType type, bool boolean, double number)
+    private OptionValue(OptionType type, bool boolean, double number, string text)
     {
         Type = type;
         Boolean = boolean;
         Number = number;
+        Text = text;
     }
 
     /// <summary>Type of the value.</summary>
@@ -23,16 +24,29 @@ public readonly record struct OptionValue
     /// <summary>The value of a number option.</summary>
     public double Number { get; }
 
+    /// <summary>The id of the choice of a choice option; empty for the other types.</summary>
+    public string Text { get; }
+
     /// <summary>A boolean value.</summary>
-    public static OptionValue FromBoolean(bool value) => new(OptionType.Boolean, value, 0);
+    public static OptionValue FromBoolean(bool value) => new(OptionType.Boolean, value, 0, string.Empty);
 
     /// <summary>A number value.</summary>
-    public static OptionValue FromNumber(double value) => new(OptionType.Number, false, value);
+    public static OptionValue FromNumber(double value) => new(OptionType.Number, false, value, string.Empty);
+
+    /// <summary>The value of a choice option: the id of the choice.</summary>
+    public static OptionValue FromChoice(string id)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        return new(OptionType.Choice, false, 0, id);
+    }
 
     /// <inheritdoc />
-    public override string ToString() => Type == OptionType.Boolean
-        ? (Boolean ? "true" : "false")
-        : Number.ToString(CultureInfo.InvariantCulture);
+    public override string ToString() => Type switch
+    {
+        OptionType.Boolean => Boolean ? "true" : "false",
+        OptionType.Choice => Text,
+        _ => Number.ToString(CultureInfo.InvariantCulture),
+    };
 }
 
 /// <summary>
@@ -91,9 +105,12 @@ public sealed record FeatureSelection(IReadOnlyList<FeatureChoice> Features)
         return new FeatureSettings(FeatureSettings.CurrentSchemaVersion, features);
     }
 
-    private static JsonElement ToJsonElement(OptionValue value) => value.Type == OptionType.Boolean
-        ? JsonSerializer.SerializeToElement(value.Boolean, FeatureJsonContext.Default.Boolean)
-        : JsonSerializer.SerializeToElement(value.Number, FeatureJsonContext.Default.Double);
+    private static JsonElement ToJsonElement(OptionValue value) => value.Type switch
+    {
+        OptionType.Boolean => JsonSerializer.SerializeToElement(value.Boolean, FeatureJsonContext.Default.Boolean),
+        OptionType.Choice => JsonSerializer.SerializeToElement(value.Text, FeatureJsonContext.Default.String),
+        _ => JsonSerializer.SerializeToElement(value.Number, FeatureJsonContext.Default.Double),
+    };
 }
 
 /// <summary>The choice for one feature.</summary>
@@ -118,4 +135,5 @@ public sealed record OptionChoice(string Id, OptionValue Value);
 [JsonSerializable(typeof(FeatureSettings))]
 [JsonSerializable(typeof(bool))]
 [JsonSerializable(typeof(double))]
+[JsonSerializable(typeof(string))]
 internal sealed partial class FeatureJsonContext : JsonSerializerContext;

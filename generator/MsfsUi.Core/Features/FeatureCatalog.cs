@@ -14,6 +14,10 @@ public enum OptionType
     /// <summary>A number within <c>min</c> and <c>max</c>, on a <c>step</c> grid when given.</summary>
     [JsonStringEnumMemberName("number")]
     Number,
+
+    /// <summary>One of the option's <c>choices</c>, stored as its id.</summary>
+    [JsonStringEnumMemberName("choice")]
+    Choice,
 }
 
 /// <summary>
@@ -129,11 +133,12 @@ public sealed record FeatureDefinition(
 /// <param name="Type">Boolean or number.</param>
 /// <param name="Title">Short title shown in the app.</param>
 /// <param name="Description">Explanation shown in the app.</param>
-/// <param name="Default">Default value, of the option's type.</param>
+/// <param name="Default">Default value, of the option's type (a choice's id for a choice).</param>
 /// <param name="Min">Lowest value (numbers only).</param>
 /// <param name="Max">Highest value (numbers only).</param>
 /// <param name="Step">Granularity, counted from <see cref="Min"/> (numbers only, optional).</param>
 /// <param name="Unit">Unit shown next to the value (numbers only, optional).</param>
+/// <param name="Choices">The choices, in display order (choices only, at least two).</param>
 public sealed record OptionDefinition(
     string Id,
     OptionType Type,
@@ -143,12 +148,16 @@ public sealed record OptionDefinition(
     double? Min = null,
     double? Max = null,
     double? Step = null,
-    string? Unit = null)
+    string? Unit = null,
+    IReadOnlyList<ChoiceDefinition>? Choices = null)
 {
     /// <summary>The default value, typed.</summary>
-    public OptionValue DefaultValue => Type == OptionType.Boolean
-        ? OptionValue.FromBoolean(Default.GetBoolean())
-        : OptionValue.FromNumber(Default.GetDouble());
+    public OptionValue DefaultValue => Type switch
+    {
+        OptionType.Boolean => OptionValue.FromBoolean(Default.GetBoolean()),
+        OptionType.Choice => OptionValue.FromChoice(Default.GetString() ?? string.Empty),
+        _ => OptionValue.FromNumber(Default.GetDouble()),
+    };
 
     internal void Validate(string featureId)
     {
@@ -156,6 +165,12 @@ public sealed record OptionDefinition(
         if (string.IsNullOrWhiteSpace(Id) || string.IsNullOrWhiteSpace(Title))
         {
             throw new InvalidFeatureCatalogException($"Every option needs an id and a title (feature '{featureId}').");
+        }
+
+        if (Type == OptionType.Choice)
+        {
+            ValidateChoices(where);
+            return;
         }
 
         if (Type == OptionType.Boolean)
@@ -189,7 +204,41 @@ public sealed record OptionDefinition(
             throw new InvalidFeatureCatalogException($"The default of {where} is not on its step grid.");
         }
     }
+
+    private void ValidateChoices(string where)
+    {
+        if (Choices is not { Count: >= 2 })
+        {
+            throw new InvalidFeatureCatalogException($"The choice {where} needs at least two choices.");
+        }
+
+        if (Choices.Any(choice => choice is null || string.IsNullOrWhiteSpace(choice.Id) || string.IsNullOrWhiteSpace(choice.Title)))
+        {
+            throw new InvalidFeatureCatalogException($"Every choice of {where} needs an id and a title.");
+        }
+
+        var twice = Choices.GroupBy(choice => choice.Id, StringComparer.Ordinal).FirstOrDefault(group => group.Count() > 1);
+        if (twice is not null)
+        {
+            throw new InvalidFeatureCatalogException($"The choice {where} lists choice '{twice.Key}' twice.");
+        }
+
+        if (Default.ValueKind != JsonValueKind.String || !HasChoice(Default.GetString()))
+        {
+            throw new InvalidFeatureCatalogException($"The default of {where} is not one of its choices.");
+        }
+    }
+
+    /// <summary>Whether <paramref name="id"/> is the id of one of the choices.</summary>
+    internal bool HasChoice(string? id) =>
+        Choices is not null && Choices.Any(choice => string.Equals(choice.Id, id, StringComparison.Ordinal));
 }
+
+/// <summary>A choice of a choice option.</summary>
+/// <param name="Id">Identifier stored in the settings and sent to the mod.</param>
+/// <param name="Title">Short title shown in the app.</param>
+/// <param name="Description">Explanation shown in the app when the choice is selected (optional).</param>
+public sealed record ChoiceDefinition(string Id, string Title, string? Description = null);
 
 /// <summary>The feature catalogue is unreadable or inconsistent (a defect of the build, not of the user).</summary>
 public sealed class InvalidFeatureCatalogException : MsfsUiException

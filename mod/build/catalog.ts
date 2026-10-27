@@ -23,7 +23,18 @@ export interface NumberOptionJson {
   unit?: string;
 }
 
-export type OptionJson = BooleanOptionJson | NumberOptionJson;
+export interface ChoiceOptionJson {
+  id: string;
+  type: 'choice';
+  title: string;
+  description: string;
+  /** One of the choices' ids. */
+  default: string;
+  /** In display order; the app shows titles and descriptions, the mod only needs the ids. */
+  choices: { id: string; title: string; description?: string }[];
+}
+
+export type OptionJson = BooleanOptionJson | NumberOptionJson | ChoiceOptionJson;
 
 export interface FeatureJson {
   id: string;
@@ -40,7 +51,10 @@ export interface CatalogJson {
   features: FeatureJson[];
 }
 
-/** Rules beyond the schema (same as MsfsUi.Core FeatureCatalog.Validate): unique ids, defaults on the step grid. */
+/**
+ * Rules beyond the schema (same as MsfsUi.Core FeatureCatalog.Validate): unique ids, defaults on the step grid,
+ * choices: at least two, unique, the default among them.
+ */
 export function checkCatalog(catalog: CatalogJson): string[] {
   const errors: string[] = [];
   const duplicates = (ids: string[]) => ids.filter((id, at) => ids.indexOf(id) !== at);
@@ -50,8 +64,15 @@ export function checkCatalog(catalog: CatalogJson): string[] {
       errors.push(`features.json: option "${feature.id}.${id}" is listed twice`);
     }
     for (const option of feature.options) {
-      if (option.type !== 'number') continue;
       const name = `features.json: option "${feature.id}.${option.id}"`;
+      if (option.type === 'choice') {
+        const ids = option.choices.map((choice) => choice.id);
+        if (ids.length < 2) errors.push(`${name} has fewer than two choices`);
+        else if (ids.indexOf(option.default) < 0) errors.push(`${name} has its default outside its choices`);
+        for (const id of duplicates(ids)) errors.push(`${name} lists choice "${id}" twice`);
+        continue;
+      }
+      if (option.type !== 'number') continue;
       if (option.min > option.max) errors.push(`${name} has min > max`);
       else if (option.default < option.min || option.default > option.max) errors.push(`${name} has its default outside its range`);
       else if (Math.abs(constrain(option, option.default) - option.default) > 1e-9) errors.push(`${name} has its default off its step grid`);
@@ -81,7 +102,8 @@ export function generateCatalogModule(catalog: CatalogJson): string {
     lines.push(`  /** ${comment(feature.title)} (${comment(feature.screen)}). */`, `  ${feature.id}: {`, '    enabled: boolean;');
     for (const option of feature.options) {
       const range = option.type === 'number' ? ` ${option.min} to ${option.max}${option.unit ? ` ${option.unit}` : ''}.` : '';
-      lines.push(`    /** ${comment(option.title)}.${range} */`, `    ${option.id}: ${option.type};`);
+      const type = option.type === 'choice' ? option.choices.map((choice) => JSON.stringify(choice.id)).join(' | ') : option.type;
+      lines.push(`    /** ${comment(option.title)}.${range} */`, `    ${option.id}: ${type};`);
     }
     lines.push('  };');
   }
@@ -91,11 +113,11 @@ export function generateCatalogModule(catalog: CatalogJson): string {
   const specs = catalog.features.map((feature) => ({
     id: feature.id,
     enabledByDefault: feature.enabledByDefault,
-    options: feature.options.map((option) =>
-      option.type === 'boolean'
-        ? { id: option.id, type: option.type, default: option.default }
-        : { id: option.id, type: option.type, default: option.default, min: option.min, max: option.max, ...(option.step === undefined ? {} : { step: option.step }) },
-    ),
+    options: feature.options.map((option) => {
+      if (option.type === 'boolean') return { id: option.id, type: option.type, default: option.default };
+      if (option.type === 'choice') return { id: option.id, type: option.type, default: option.default, choices: option.choices.map((choice) => choice.id) };
+      return { id: option.id, type: option.type, default: option.default, min: option.min, max: option.max, ...(option.step === undefined ? {} : { step: option.step }) };
+    }),
   }));
   lines.push('/** What the mod checks config.js against. */', `export const CATALOG: readonly FeatureSpec[] = ${JSON.stringify(specs, null, 2)};`, '');
   return lines.join('\n');

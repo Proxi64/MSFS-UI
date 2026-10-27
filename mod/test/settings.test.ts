@@ -109,6 +109,31 @@ describe('resolveSettings', () => {
   });
 });
 
+describe('choice options', () => {
+  const choices: FeatureSpec[] = [
+    { id: 'aircraftGallery', enabledByDefault: true, options: [{ id: 'layout', type: 'choice', default: 'classic', choices: ['classic', 'sideBySide'] }] },
+  ];
+  const settings = (layout: unknown) => ({ schemaVersion: 1, features: { aircraftGallery: { enabled: true, layout } } });
+
+  it('defaults to the catalogue default', () => {
+    assert.deepEqual(defaultSettings(choices), { aircraftGallery: { enabled: true, layout: 'classic' } });
+  });
+
+  it('keeps a choice that is one of its ids', () => {
+    const result = resolveSettings(settings('sideBySide'), choices);
+    assert.equal(result.values.aircraftGallery!.layout, 'sideBySide');
+    assert.deepEqual(result.problems, []);
+  });
+
+  it('defaults an unknown choice or another type, and reports it', () => {
+    for (const value of ['stacked', 3]) {
+      const result = resolveSettings(settings(value), choices);
+      assert.equal(result.values.aircraftGallery!.layout, 'classic');
+      assert.deepEqual(result.problems, ['"aircraftGallery.layout" is not one of its choices: default used']);
+    }
+  });
+});
+
 describe('constrain (same results as MsfsUi.Core SettingsNormalizer.Constrain)', () => {
   const speed: NumberOptionSpec = { id: 'speed', type: 'number', default: 2, min: 1, max: 4, step: 0.5 };
   const cases: [NumberOptionSpec, number, number][] = [

@@ -53,6 +53,27 @@ describe('checkCatalog', () => {
       'features.json: option "timeWheel.c" has its default off its step grid',
     ]);
   });
+
+  it('reports choices: default outside them, fewer than two, an id listed twice', () => {
+    const bad = catalog();
+    const choice = (id: string, value: string, ids: string[]) => ({
+      id,
+      type: 'choice' as const,
+      title: 't',
+      description: 'd',
+      default: value,
+      choices: ids.map((choiceId) => ({ id: choiceId, title: choiceId })),
+    });
+    bad.features[1]!.options.push(choice('layout', 'classic', ['classic', 'sideBySide']));
+    bad.features[1]!.options.push(choice('x', 'z', ['a', 'b']));
+    bad.features[1]!.options.push(choice('y', 'a', ['a']));
+    bad.features[1]!.options.push(choice('w', 'a', ['a', 'b', 'a']));
+    assert.deepEqual(checkCatalog(bad), [
+      'features.json: option "tailNumber.x" has its default outside its choices',
+      'features.json: option "tailNumber.y" has fewer than two choices',
+      'features.json: option "tailNumber.w" lists choice "a" twice',
+    ]);
+  });
 });
 
 describe('generateCatalogModule', () => {
@@ -69,6 +90,25 @@ describe('generateCatalogModule', () => {
     assert.match(module, /"id": "invert",\n\s+"type": "boolean",\n\s+"default": false\n/);
     // Titles and descriptions stay in features.json: the mod only needs ids, types and ranges.
     assert.doesNotMatch(module, /"title"/);
+  });
+
+  it('types a choice as the union of its ids and lists the ids only', () => {
+    const withChoice = catalog();
+    withChoice.features[1]!.options.push({
+      id: 'layout',
+      type: 'choice',
+      title: 'Layout',
+      description: 'd',
+      default: 'classic',
+      choices: [
+        { id: 'classic', title: 'Classic' },
+        { id: 'sideBySide', title: 'Side by side', description: 'Two columns.' },
+      ],
+    });
+    const module = generateCatalogModule(withChoice);
+    assert.match(module, /\/\*\* Layout\. \*\/\n {4}layout: "classic" \| "sideBySide";/);
+    assert.match(module, /"id": "layout",\n\s+"type": "choice",\n\s+"default": "classic",\n\s+"choices": \[\n\s+"classic",\n\s+"sideBySide"\n\s+\]/);
+    assert.doesNotMatch(module, /Side by side/);
   });
 });
 

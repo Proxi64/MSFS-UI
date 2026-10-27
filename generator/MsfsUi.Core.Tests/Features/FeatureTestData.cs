@@ -30,4 +30,27 @@ internal static class FeatureTestData
           ]
         }
         """;
+
+    /// <summary>A catalogue with a choice option.</summary>
+    public const string CatalogWithChoice = """
+        {
+          "schemaVersion": 1,
+          "modVersion": "1.0.0",
+          "features": [
+            {
+              "id": "aircraftGallery",
+              "title": "Aircraft gallery",
+              "description": "A gallery of the aircraft.",
+              "screen": "Aircraft selection",
+              "enabledByDefault": true,
+              "options": [
+                {
+                  "id": "layout", "type": "choice", "title": "Layout", "description": "How things are laid out.", "default": "classic",
+                  "choices": [ { "id": "classic", "title": "Classic" }, { "id": "sideBySide", "title": "Side by side", "description": "Two columns." } ]
+                }
+              ]
+            }
+          ]
+        }
+        """;
 }

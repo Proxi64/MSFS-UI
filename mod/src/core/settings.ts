@@ -5,7 +5,8 @@
 /** Settings format version written by the app (MsfsUi.Core ConfigScript.SchemaVersion). */
 export const CONFIG_SCHEMA_VERSION = 1;
 
-export type OptionValue = boolean | number;
+/** A boolean, a number, or the id of one of a choice option's choices. */
+export type OptionValue = boolean | number | string;
 
 export interface BooleanOptionSpec {
   readonly id: string;
@@ -22,7 +23,15 @@ export interface NumberOptionSpec {
   readonly step?: number;
 }
 
-export type OptionSpec = BooleanOptionSpec | NumberOptionSpec;
+export interface ChoiceOptionSpec {
+  readonly id: string;
+  readonly type: 'choice';
+  readonly default: string;
+  /** The ids of the choices, in display order. */
+  readonly choices: readonly string[];
+}
+
+export type OptionSpec = BooleanOptionSpec | NumberOptionSpec | ChoiceOptionSpec;
 
 /** What the mod needs to know of a catalogue feature (generated from features.json). */
 export interface FeatureSpec {
@@ -56,7 +65,8 @@ export function defaultSettings(catalog: readonly FeatureSpec[]): SettingsValues
 /**
  * Checks `raw` (the default export of config.js) against the catalogue. A structurally wrong input (not an object,
  * another schema version, no feature table) gives the defaults; otherwise each wrong or missing value takes its
- * default and each number is brought into its range and onto its step grid, so the mod never starts half-configured.
+ * default, each number is brought into its range and onto its step grid, and a choice must be one of its ids, so the
+ * mod never starts half-configured.
  */
 export function resolveSettings(raw: unknown, catalog: readonly FeatureSpec[]): ResolvedSettings {
   const fallback = (problem: string): ResolvedSettings => ({ values: defaultSettings(catalog), problems: [problem], allDefaults: true });
@@ -104,6 +114,11 @@ function resolveOption(featureId: string, option: OptionSpec, value: unknown, pr
   if (option.type === 'boolean') {
     if (typeof value === 'boolean') return value;
     problems.push(`${name} is not a boolean: default used`);
+    return option.default;
+  }
+  if (option.type === 'choice') {
+    if (typeof value === 'string' && option.choices.indexOf(value) >= 0) return value;
+    problems.push(`${name} is not one of its choices: default used`);
     return option.default;
   }
   if (typeof value !== 'number' || !isFinite(value)) {

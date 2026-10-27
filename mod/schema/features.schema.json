@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://msfs-ui.local/schema/features.schema.json",
   "title": "MSFS-UI feature catalogue",
-  "description": "Every feature of the menu mod with its options and defaults (see Contracts in docs/development.md). Read by the mod build (mod/build/build.ts) and by the app (MsfsUi.Core FeatureCatalog). Consistency rules that a schema cannot express (unique ids, defaults on the step grid) are checked by both readers.",
+  "description": "Every feature of the menu mod with its options and defaults (see Contracts in docs/development.md). Read by the mod build (mod/build/build.ts) and by the app (MsfsUi.Core FeatureCatalog). Consistency rules that a schema cannot express (unique ids, defaults on the step grid, a choice's default among its choices) are checked by both readers.",
   "type": "object",
   "required": ["schemaVersion", "modVersion", "features"],
   "additionalProperties": false,
@@ -52,7 +52,7 @@
         "id": {
           "allOf": [{ "$ref": "#/$defs/identifier" }, { "not": { "const": "enabled" } }]
         },
-        "type": { "enum": ["boolean", "number"] },
+        "type": { "enum": ["boolean", "number", "choice"] },
         "title": { "$ref": "#/$defs/text" },
         "description": { "$ref": "#/$defs/text" }
       },
@@ -79,6 +79,32 @@
             "max": { "type": "number" },
             "step": { "type": "number", "exclusiveMinimum": 0 },
             "unit": { "$ref": "#/$defs/text" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["choices"],
+          "properties": {
+            "type": { "const": "choice" },
+            "id": true,
+            "title": true,
+            "description": true,
+            "default": { "description": "The id of one of the choices.", "$ref": "#/$defs/identifier" },
+            "choices": {
+              "description": "The choices, in display order: the app shows their titles and descriptions, the mod receives the chosen id.",
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "required": ["id", "title"],
+                "additionalProperties": false,
+                "properties": {
+                  "id": { "$ref": "#/$defs/identifier" },
+                  "title": { "$ref": "#/$defs/text" },
+                  "description": { "$ref": "#/$defs/text" }
+                }
+              }
+            }
           },
           "additionalProperties": false
         }

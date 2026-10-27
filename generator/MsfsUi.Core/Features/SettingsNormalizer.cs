@@ -14,7 +14,7 @@ public sealed record NormalizationResult(FeatureSelection Selection, IReadOnlyLi
 /// <summary>
 /// Turns the user's stored settings into a complete selection valid for the catalogue (see Contracts in docs/development.md): unknown
 /// features and options are dropped, missing ones take their defaults, numbers are snapped to their step and
-/// clamped to their range, values of the wrong type are replaced by the default.
+/// clamped to their range, a choice must be one of its ids, values of the wrong type are replaced by the default.
 /// </summary>
 public static class SettingsNormalizer
 {
@@ -92,6 +92,17 @@ public static class SettingsNormalizer
             }
 
             adjustments.Add($"Option '{name}' is not a boolean: default used.");
+            return option.DefaultValue;
+        }
+
+        if (option.Type == OptionType.Choice)
+        {
+            if (raw.ValueKind == JsonValueKind.String && option.HasChoice(raw.GetString()))
+            {
+                return OptionValue.FromChoice(raw.GetString()!);
+            }
+
+            adjustments.Add($"Option '{name}' is not one of its choices: default used.");
             return option.DefaultValue;
         }
 
