@@ -70,6 +70,7 @@ The full list is in [docs/sim-reference.md](docs/sim-reference.md#coherent-gt). 
 | Aircraft list | One entry per modular aircraft | Reason per aircraft (name + publisher) |
 | Start-up | The sim activates Free Flight behind the scenes, then resets the flight conditions | Apply a remembered choice when the panel is really visible |
 | Performance | Writing a CSS variable lays the whole subtree out again, even with its current value (about 90 ms under the gallery's tiles) | `setVariable()`: write a variable only when it changes, above all in the 250 ms layout passes |
+| Storage | The sim writes `datastorage` to the disk (its Steam Cloud profile) only when it saves its profile (an option validated): not after a write, not when it quits | `sim/profile-save.ts`: after every write, re-validate one option with its current value |
 | Resize | An artificial `resize` event crashes a virtual list of the sim | Never send one |
 | WinUI | A closed `InfoBar` still counts in a `StackPanel`'s `Spacing`; a `ContentDialog` shows as a `Popup` window to UI Automation | Bind its `Visibility` with `IsOpen` |
 
@@ -100,7 +101,7 @@ The original plan, `%USERPROFILE%\.claude\plans\jaunty-foraging-allen.md` (steps
 | 1.0.2 | Detailed Storage check (another user's favourites not kept: their sim's storage is to be found), release built on 2026-10-26; the mod unchanged |
 | 1.6 | User report of 2026-10-27 (iFly 737 MAX, FS Reborn Phenom 300E): the setup panel's variants and liveries in the sim's `real-scroll`, heights shared by `setup-layout.ts`; checked in the sim |
 | 1.7 | Aircraft selection layouts (design and plan in `docs/superpowers/`): the *choice* option type on both readers (radio buttons in the app); the configurator logic shared (`sim/configurator.ts`); the gallery's *Layout* option, *Side by side*: aircraft 3 and liveries 2 per row of the same width (`livery-column.ts`, `liveries.ts`), List rows on both sides, the left column at 400 units while the gallery shows the liveries (`sim/selection-layout.ts`). Performance measured in the sim: `setVariable()`, no `tileHover` while the setup panel shows, a recycling pool of tiles (156 ms per change of layout before, 20 to 40 ms after) |
-| 1.1.0 | Version 1.1.0 (2026-10-27): 1.6 and 1.7 (aircraft selection layouts, smoother aircraft selection), final review by two fresh reviewers and its fixes; release built on 2026-10-27 (217 MB / 81 MB), checked without personal data, not published yet |
+| 1.1.0 | Version 1.1.0 (2026-10-27): 1.6, 1.7 (aircraft selection layouts, smoother aircraft selection) and 1.8 (the mod's data kept after a restart: `sim/profile-save.ts`), final review by two fresh reviewers and its fixes; release built on 2026-10-27 (217 MB / 81 MB), checked without personal data, not published yet |
 | **6** | Next: new features, from 6a (A1, favourite and recent airports); order, design and open questions in [docs/next-steps.md](docs/next-steps.md) |
 
 The package installed in Community is a development build of 2026-10-27 (`msfs-ui-dev install --settings`, side by side layout); before it, the published 1.0.1, validated in the sim on 2026-10-19 (163/163 compatibility checks, every feature working).

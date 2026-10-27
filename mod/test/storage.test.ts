@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
-import { deleteData, loadData, saveData } from '../src/core/storage.ts';
+import { deleteData, loadData, onStorageWrite, saveData } from '../src/core/storage.ts';
 
 /** The sim's `datastorage`, on a fake `window`. */
 function fakePage(onTop = false): Map<string, string> {
@@ -53,6 +53,20 @@ describe('storage', () => {
     assert.equal(data.has('MSFS_UI_X'), false);
   });
 
+  it('tells the listener after every write and delete (the profile save), and nothing once it is removed', () => {
+    fakePage();
+    let writes = 0;
+    onStorageWrite(() => writes++);
+    try {
+      saveData('X', 1);
+      deleteData('X');
+      assert.equal(writes, 2);
+    } finally {
+      onStorageWrite(null);
+    }
+    saveData('X', 2);
+    assert.equal(writes, 2);
+  });
   it('logs instead of failing without a datastorage', () => {
     (globalThis as { window?: unknown }).window = { top: null };
     saveData('X', 1);

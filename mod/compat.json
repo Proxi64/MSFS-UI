@@ -24,6 +24,9 @@
     { "label": "Horizontal tile", "guid": "{35A4F244-E2BB-4DF1-984E-BCBE663FC209}", "name": "Marketplace_Tile_Horizontal", "attributes": ["Image", "Title", "Creator"], "states": ["Selected", "Disabled", "Hover"], "children": ["Title", "Details", "Rating_Overview", "Separator", "Banner", "WishlistBlock", "TitleBlock", "ImageBlock", "Image"] },
     { "label": "Dropdown", "guid": "{3321B59E-EA1D-4C72-8D69-3F1BB530437C}", "name": "Dropdown", "attributes": ["Title", "List_Size"], "states": ["State_Unwrapped", "Disabled"] }
   ],
+  "options": [
+    { "label": "Show the white dot cursor in freelook (re-validated to save the profile)", "section": "MENU_OPTIONS_FLIGHT_INTERFACE", "id": "OptionsGeneralItemGUID_{666BFED5-26A0-4C7D-BF27-D717AFCAF33D}" }
+  ],
   "anchors": [
     "FreeFlight_AircraftButton",
     "Search",
@@ -56,6 +59,7 @@
     {
       "group": "Data model",
       "names": [
+        "UpdateSectionOptionsGeneral",
         "timeData",
         "weatherIndex",
         "isUsingLiveTimeBuffer",
@@ -95,6 +99,7 @@
     {
       "group": "Events",
       "names": [
+        "VALIDATE",
         "tileClick",
         "tileHover",
         "updateAircraftList",
@@ -168,6 +173,11 @@
       "group": "Data model (read)",
       "label": "Game.Aircraft.AircraftList",
       "run": "(ctx) => ctx.aircraft.AircraftList.requestRange(0, 1000).then((n) => ({ ok: typeof n === 'number', detail: n ? n + ' aircraft in the tab' : 'empty (normal outside aircraft selection)' }))"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Options.General: the option re-validated to save the profile",
+      "run": "(ctx) => { const general = ctx.store.Game.Options.General; const section = 'MENU_OPTIONS_FLIGHT_INTERFACE'; const wanted = 'OptionsGeneralItemGUID_{666BFED5-26A0-4C7D-BF27-D717AFCAF33D}'; const node = general.Item[section]; return general.UpdateSectionOptionsGeneral.request(section).then(() => node.requestRange(0, 1000)).then((n) => { const reads = []; for (let i = 0; i < n; i++) reads.push(node.getElement(i)); return Promise.all(reads); }).then((items) => { const item = items.filter((x) => x && x.strID === wanted)[0]; if (!item) return { ok: false, detail: 'option not found: the mod data is not saved to the disk' }; let walk = ctx.store; item.dataRoute.split('/').forEach((part) => { walk = walk[part]; }); return walk().then((d) => ({ ok: !!d && typeof d.iDefault === 'number' && d.strId === wanted, detail: d ? (d.sTitle || '') + ' = ' + d.iDefault : 'unreadable' })); }); }"
     },
     {
       "group": "Data model (read)",

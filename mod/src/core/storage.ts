@@ -1,10 +1,19 @@
-// The mod's memory, in the sim's persistent storage (`datastorage`, where the menu keeps its `LAYOUT_*` keys).
+// The mod's memory, in the sim's persistent storage (`datastorage`, where the menu keeps its `LAYOUT_*` keys). The sim keeps it
+// in memory and writes it to the disk only when it saves its profile: every write asks for that save (onStorageWrite).
 // `localStorage` is emptied at every start of the sim: never used. Keys are those of 0.3.0, so the user's data
 // (favourites, tail numbers…) carries over; their content is documented in mod/README.md (Data stored in the sim).
 
 import { logError } from './log.ts';
 
 export const STORAGE_PREFIX = 'MSFS_UI_';
+
+/** Run after every write (the profile save, sim/profile-save.ts: the sim writes its storage to the disk only then). */
+let afterWrite: (() => void) | null = null;
+
+/** Sets what runs after every write of the mod's data; null for nothing. */
+export function onStorageWrite(listener: (() => void) | null): void {
+  afterWrite = listener;
+}
 
 interface DataStorage {
   getData(key: string): string | null | undefined;
@@ -43,9 +52,12 @@ export function saveData(key: string, value: unknown): void {
     return;
   }
   store.setData(STORAGE_PREFIX + key, JSON.stringify(value));
+  if (afterWrite) afterWrite();
 }
 
 export function deleteData(key: string): void {
   const store = storage();
-  if (store) store.deleteData(STORAGE_PREFIX + key);
+  if (!store) return;
+  store.deleteData(STORAGE_PREFIX + key);
+  if (afterWrite) afterWrite();
 }

@@ -17,3 +17,30 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, message: string)
     );
   });
 }
+
+/**
+ * `action` run once, `ms` after the last of a burst of calls; `flush` runs a pending run at once (nothing when none is
+ * pending), `cancel` drops it.
+ */
+export function debounced(action: () => void, ms: number): { call(): void; flush(): void; cancel(): void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cancel = () => {
+    if (timer !== undefined) clearTimeout(timer);
+    timer = undefined;
+  };
+  return {
+    call: () => {
+      cancel();
+      timer = setTimeout(() => {
+        timer = undefined;
+        action();
+      }, ms);
+    },
+    flush: () => {
+      if (timer === undefined) return;
+      cancel();
+      action();
+    },
+    cancel,
+  };
+}

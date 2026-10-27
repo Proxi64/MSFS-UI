@@ -113,6 +113,7 @@ src/
     text-field.ts      the sim's Search_Input as a text field (keyboard handled by the sim)
     favorites.ts       favourite aircraft and liveries, last uses (MSFS_UI_FAVORITE_*, MSFS_UI_AIRCRAFT_USES)
     configurator.ts    the configurator: read it, guarded choice of a variant or livery, favourite liveries
+    profile-save.ts    the sim's profile saved after the mod's writes (its storage reaches the disk only then)
     selection-layout.ts  flag set by the gallery while it shows the liveries, read by the setup panel
     aircraft-loading.ts  loading an aircraft with its livery, configurator sync, use tracking
     liveries.ts        livery keys and folders, tail numbers per livery (MSFS_UI_LIVERY_TAILS)
@@ -161,7 +162,7 @@ Text fields use the sim's `Search_Input`: its manipulator handles the keyboard a
 
 ## Data stored in the sim
 
-The mod keeps its data in the sim's **persistent storage** (`datastorage`, where the menu keeps its own layout): it survives restarts. The browser's `localStorage` is emptied at every start: the mod never uses it. Every key starts with `MSFS_UI_` and holds JSON. The keys are the same as in 0.3.0, so earlier data carries over.
+The mod keeps its data in the sim's **persistent storage** (`datastorage`, where the menu keeps its own layout): it survives restarts, provided the sim saves its profile. The sim keeps this storage in memory and writes it to the disk only when it saves its profile (when one of its options is validated), not after a write nor when it quits: every write of the mod (`saveData`, `deleteData`) asks for a profile save, 2 s after the last of a burst (`sim/profile-save.ts`: the flow event `VALIDATE` for *Show the white dot cursor in freelook*, with its current value, so nothing changes; the option is declared in `compat.json` "options"). The browser's `localStorage` is emptied at every start: the mod never uses it. Every key starts with `MSFS_UI_` and holds JSON. The keys are the same as in 0.3.0, so earlier data carries over.
 
 | Key | Content | Written by |
 |---|---|---|

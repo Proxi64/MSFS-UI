@@ -99,7 +99,7 @@ export default {
 - The mod build compiles the defaults into `main.js` and fails if a feature module and its entry disagree (missing feature, option not read, wrong type).
 - The app embeds the same file and builds the Features page from it; it checks the stored settings against it (unknown ids dropped, values clamped to their range, a choice that is not one of its ids and missing values set to the default). A choice shows as radio buttons (`AutomationId` `Choice_<feature>_<option>_<choice>`), the selected one's description under the option's; `config.js` carries its id, typed in the mod as the union of the ids.
 
-**`mod/compat.json` lists what the mod relies on in the sim**: readable exports by module, screens, anchors (`name="…"`), components, data-model and event symbols, files, CSS variables and translation keys, plus live checks. Its schema is `mod/schema/compat.schema.json`. The app's compatibility check runs from it, and the mod build refuses a sim reference that is not listed: a change that adds a dependency on the sim updates `compat.json` in the same commit.
+**`mod/compat.json` lists what the mod relies on in the sim**: readable exports by module, screens, anchors (`name="…"`), components, the sim's options it validates (`options`: section and id, whose GUID the build accepts), data-model and event symbols, files, CSS variables and translation keys, plus live checks. Its schema is `mod/schema/compat.schema.json`. The app's compatibility check runs from it, and the mod build refuses a sim reference that is not listed: a change that adds a dependency on the sim updates `compat.json` in the same commit.
 
 Options set aside:
 - settings compiled into `main.js` (as in 0.3.0): the app would need Node and esbuild to change a setting;

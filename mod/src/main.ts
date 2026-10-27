@@ -6,6 +6,7 @@ import { log, logError } from './core/log.ts';
 import { root, runtime, startRuntime } from './core/runtime.ts';
 import { injectTheme } from './core/theme.ts';
 import { FEATURES } from './features.ts';
+import { startProfileSaves } from './sim/profile-save.ts';
 import { FEATURE_IDS, type FeatureId, type Settings } from './generated/catalog.ts';
 
 // The app's compatibility check counts console errors from this line on (CompatibilityChecker.ModLoadedMarker):
@@ -18,6 +19,8 @@ async function start(): Promise<void> {
   const loaded = await loadSettings();
   // A newer version may have been loaded while the settings were read: it has unloaded this one.
   if (root.disposed) return;
+  // Before the features: their writes are saved to the disk too (sim/profile-save.ts).
+  startProfileSaves(root);
   runtime.settings = loaded.settings;
   runtime.settingsSource = loaded.source;
   if (loaded.problems.length > 0) {

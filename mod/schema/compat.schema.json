@@ -113,6 +113,33 @@
         }
       }
     },
+    "options": {
+      "description": "Options of the sim the mod uses (General options: their section and their id, which carries a GUID). The profile save (mod/src/sim/profile-save.ts) re-validates one with its current value, so that the sim writes its storage to the disk.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "section",
+          "id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "section": {
+            "type": "string",
+            "pattern": "^MENU_OPTIONS_[A-Z_]+$"
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^OptionsGeneralItemGUID_\\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\\}$"
+          }
+        }
+      }
+    },
     "anchors": {
       "description": "Element names (name=\"…\") the mod looks up in the sim's components.",
       "$ref": "#/$defs/names"

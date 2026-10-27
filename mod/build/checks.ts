@@ -9,6 +9,8 @@ export interface CompatJson {
   exports: { module: string; names: string[] }[];
   screens: { label: string; guid: string; className: string }[];
   components: { label: string; guid: string; name: string; children?: string[] }[];
+  /** Options of the sim the mod uses (their ids carry a GUID): see sim/profile-save.ts. */
+  options?: { label: string; section: string; id: string }[];
   anchors: string[];
   files: string[];
   colorVariables: string[];
@@ -77,11 +79,12 @@ export function checkSimReferences(compat: CompatJson, files: SourceFiles): stri
   const require = (path: string, kind: string, value: string, listed: readonly string[]) => {
     if (!listed.includes(value)) errors.push(`${path}: ${kind} ${value} is used but not listed in compat.json`);
   };
-  const guids = compat.screens.map((screen) => screen.guid).concat(compat.components.map((component) => component.guid));
+  const optionGuids = (compat.options || []).map((option) => (/\{[0-9A-F-]{36}\}/.exec(option.id) || [''])[0]);
+  const guids = compat.screens.map((screen) => screen.guid).concat(compat.components.map((component) => component.guid), optionGuids);
   const names = compat.anchors.concat(...compat.components.map((component) => component.children || []));
   for (const [path, text] of files) {
     if (path.startsWith('src/generated/')) continue;
-    for (const match of text.matchAll(/\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\}/g)) require(path, 'screen or component', match[0], guids);
+    for (const match of text.matchAll(/\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\}/g)) require(path, 'screen, component or option', match[0], guids);
     for (const match of text.matchAll(/\bname="([A-Za-z0-9_]+)"/g)) require(path, 'anchor', match[1]!, names);
     for (const match of text.matchAll(/\bTT:[A-Z0-9_.]+/g)) require(path, 'translation key', match[0], compat.translations);
     for (const match of text.matchAll(/coui:\/\/html_UI\/VFS\/([^"')\s]+)/g)) require(path, 'sim file', match[1]!, compat.files);

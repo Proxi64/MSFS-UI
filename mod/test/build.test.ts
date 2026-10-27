@@ -158,6 +158,12 @@ describe('checkSimReferences', () => {
     assert.deepEqual(checkSimReferences(compat(), new Map([['src/a.ts', code]])), []);
   });
 
+  it('accepts the GUID of a sim option listed in compat.json "options", and only that one', () => {
+    const listed = { ...compat(), options: [{ label: 'White dot cursor', section: 'MENU_OPTIONS_FLIGHT_INTERFACE', id: 'OptionsGeneralItemGUID_{666BFED5-26A0-4C7D-BF27-D717AFCAF33D}' }] };
+    const code = "const OPTION = 'OptionsGeneralItemGUID_{666BFED5-26A0-4C7D-BF27-D717AFCAF33D}';";
+    assert.deepEqual(checkSimReferences(listed, new Map([['src/a.ts', code]])), []);
+    assert.equal(checkSimReferences(compat(), new Map([['src/a.ts', code]])).length, 1, 'not listed: refused');
+  });
   it('reports what compat.json does not list', () => {
     const code = [
       "import { RegisterViewListener as listen } from '/Global/shared/utils.js';",
@@ -166,7 +172,7 @@ describe('checkSimReferences', () => {
       '.x { color: var(--colorSpecial); background: url("coui://html_UI/VFS/components/x.svg"); }',
     ].join('\n');
     assert.deepEqual(checkSimReferences(compat(), new Map([['src/a.ts', code]])), [
-      'src/a.ts: screen or component {7822664D-7F34-4A46-904A-F82929865103} is used but not listed in compat.json',
+      'src/a.ts: screen, component or option {7822664D-7F34-4A46-904A-F82929865103} is used but not listed in compat.json',
       'src/a.ts: anchor RightBlock is used but not listed in compat.json',
       'src/a.ts: translation key TT:MENU.CANCEL is used but not listed in compat.json',
       'src/a.ts: sim file components/x.svg is used but not listed in compat.json',

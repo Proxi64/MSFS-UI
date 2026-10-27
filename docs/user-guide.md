@@ -201,6 +201,7 @@ A number is remembered for the current livery as soon as you change the tail num
 | The Favorites block disappears on Free Flight | *Search location* shows its results | Normal: it comes back when the results close |
 | METAR shows *No METAR* | No answer from the sim within 4 s, or no station | Choose the departure again |
 | *Ceiling 400 ft* instead of a cloud cover | Out of Live weather, the sim's METAR keeps the ceiling but not the cover | Normal |
+| Favourites, tail numbers or the last weather choice lost after a restart | The sim writes its storage to the disk only when it saves its profile; the mod asks for that save after each change (2 s after the last), by validating the sim's option *Show the white dot cursor in freelook* with its current value. A version before 1.1.0 did not | Update to 1.1.0. If it still happens, open **Compatibility**: the live check *the option re-validated to save the profile* says whether the sim still offers that option |
 | The same tail number on every aircraft | Numbers typed before the per-livery memory, or liveries without a number | Type the number wanted for each livery |
 
 The **Log** page (tab *Mod in the sim*) shows the mod's messages and errors; include them when reporting a problem.
