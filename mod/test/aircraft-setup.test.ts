@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { orderLiveries } from '../src/features/aircraft-setup/livery-order.ts';
+import { overflows, revealPosition, rowCount, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
 import {
   favoriteLiveriesOf,
   findFavoriteLivery,
@@ -41,6 +42,58 @@ describe('orderLiveries', () => {
     assert.equal(other.reordered, true);
     const grown = orderLiveries([livery('v1:0'), livery('v1:9'), livery('v1:2'), livery('v1:8')], isFavorite, first.order);
     assert.deepEqual(grown.items.map((item) => item.id), ['v1:2', 'v1:0', 'v1:9', 'v1:8']);
+  });
+});
+
+describe('setup panel layout', () => {
+  // Steps of the sim at 1080 lines: a variant tile and its gap (36 + 6), a row of thumbnails and its gap (75 + 6).
+  const variant = 42;
+  const liveryStep = 81;
+
+  it('puts up to three variants per row, fewer when the widest name needs it', () => {
+    assert.equal(variantsPerRow(8, 480, 100, 6), 3);
+    assert.equal(variantsPerRow(8, 480, 200, 6), 2);
+    assert.equal(variantsPerRow(8, 480, 300, 6), 1);
+    assert.equal(variantsPerRow(2, 480, 100, 6), 2, 'no more per row than variants');
+    assert.equal(variantsPerRow(0, 480, 100, 6), 1);
+    assert.equal(rowCount(7, 3), 3);
+    assert.equal(rowCount(0, 3), 0);
+  });
+
+  it('gives the variants what they need when everything fits', () => {
+    assert.equal(variantsHeight(600, { count: 2, step: variant }, { count: 3, step: liveryStep }), 84);
+    assert.equal(variantsHeight(600, { count: 0, step: variant }, { count: 3, step: liveryStep }), 0);
+  });
+
+  it('keeps two rows of liveries in view under many variants (Phenom 300E: 8 variants, one per row)', () => {
+    const height = variantsHeight(450, { count: 8, step: variant }, { count: 6, step: liveryStep });
+    assert.equal(height, 450 - 2 * liveryStep);
+    assert.equal(overflows({ count: 8, step: variant }, height), true, 'the variants scroll');
+  });
+
+  it('keeps one row of liveries when the variant has a single livery (iFly 737 MAX: one variant per livery)', () => {
+    const height = variantsHeight(500, { count: 30, step: variant }, { count: 1, step: liveryStep });
+    assert.equal(height, 500 - liveryStep);
+  });
+
+  it('keeps three rows of variants when the room is short, and never more than the room', () => {
+    assert.equal(variantsHeight(250, { count: 10, step: variant }, { count: 5, step: liveryStep }), 3 * variant);
+    assert.equal(variantsHeight(100, { count: 10, step: variant }, { count: 5, step: liveryStep }), 100);
+    assert.equal(variantsHeight(-20, { count: 10, step: variant }, { count: 5, step: liveryStep }), 0);
+  });
+
+  it('tells when a list scrolls, with half a pixel of rounding', () => {
+    assert.equal(overflows({ count: 3, step: variant }, 126), false);
+    assert.equal(overflows({ count: 3, step: variant }, 125.6), false);
+    assert.equal(overflows({ count: 3, step: variant }, 125), true);
+  });
+
+  it('scrolls to show the selected variant, centred, within the list', () => {
+    const rows = { count: 20, step: variant };
+    assert.equal(revealPosition(0, rows, 210), 0);
+    assert.equal(revealPosition(10, rows, 210), 10 * variant - 84);
+    assert.equal(revealPosition(19, rows, 210), 20 * variant - 210, 'the last row ends at the bottom');
+    assert.equal(revealPosition(5, { count: 3, step: variant }, 210), 0, 'a list that fits does not scroll');
   });
 });
 

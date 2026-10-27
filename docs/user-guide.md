@@ -146,10 +146,12 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 | Section | Content |
 |---|---|
-| **Variant** | One tile per variant; a click changes the variant (the sim then puts back its first livery) |
+| **Variant** | One tile per variant, up to three per row (fewer when the names are long); a click changes the variant (the sim then puts back its first livery) |
 | **Livery** | The livery thumbnails, three per row, favourites first; the active one is framed. Its name shows next to the title, the hovered one's on hover. A click changes the livery. A heart on each thumbnail marks it as a favourite (for the variant shown) |
 | **Tail number** | The tail number of the current livery (letters, digits, dash; 9 characters at most) |
 | Buttons | **Fuel and Payload** and **Identification** open those tabs of the sim's configurator directly |
+
+The variants and the liveries share the panel's height. Each list scrolls with the mouse wheel and shows the sim's scroll bar when it needs more room. Under many variants (some aircraft make one variant per livery), the liveries keep at least two rows in view, and the variants at least three; the variants list opens on the selected one.
 
 Everything happens without opening the configurator and its 3D preview. Typing in the tail number field turns the sim's keyboard shortcuts off until you click elsewhere; the number is sent when you leave the field or press Enter.
 

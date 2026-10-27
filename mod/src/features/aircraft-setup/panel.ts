@@ -15,6 +15,7 @@ import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { orderLiveries, type LiveryOrder } from './livery-order.ts';
+import { overflows, revealPosition, rowCount, variantsHeight, variantsPerRow, type Rows } from './setup-layout.ts';
 
 /** A variant of the configurator (`Configurator.Items`). */
 interface ConfiguratorItem {
@@ -46,6 +47,37 @@ interface LiveryButtonManipulator {
   setData(image: string, callback: () => void): void;
 }
 
+/** The sim's scrolling list (see the gallery): it scrolls on the wheel and draws its scroll bar. */
+interface RealScroll extends HTMLElement {
+  readonly maxScroll: number;
+  scrollToPosition(position: number): void;
+  updateSizes?(): void;
+}
+
+/** A list of the panel in the sim's scrolling list; its children go into the list's content. */
+function scrollList(className: string): RealScroll {
+  const list = document.createElement('real-scroll') as RealScroll;
+  list.setAttribute('direction', 'y');
+  list.className = className;
+  return list;
+}
+
+/**
+ * Width of the list's scroll bar, beside its content: 0 while the content fits, its own width (10 pixels at 1440
+ * lines) once the list scrolls, from the next frame.
+ */
+function barWidth(list: RealScroll): number {
+  const bar = list.querySelector('.scroll__bar-container');
+  return bar ? bar.getBoundingClientRect().width : 0;
+}
+
+/** Empties a scrolling list child by child: the sim's list keeps its own structure (never `innerHTML`). */
+function removeAll(hosts: readonly HTMLElement[]): void {
+  for (const host of hosts) {
+    if (host.parentNode) host.parentNode.removeChild(host);
+  }
+}
+
 /** Length of the field when the sim does not give it. */
 const DEFAULT_TAIL_LENGTH = 9;
 const RELOAD_DELAY_MS = 80;
@@ -54,8 +86,12 @@ const LIVERY_COLUMNS = 3;
 const LIVERY_RATIO = 0.47;
 /** Selection corner of the compact tiles (core/theme.css), kept clear of the title. */
 const CORNER_UNITS = 30;
-/** Wheel step on the thumbnails, in layout units. */
-const WHEEL_STEP = 60;
+/** Layout units, as in aircraft-setup.css: height of a variant tile, gap between tiles, panel padding. */
+const VARIANT_HEIGHT = 36;
+const GAP = 6;
+const PADDING = 6;
+/** Room left on the right of a list that scrolls, for the sim's scroll bar, in layout units. */
+const SCROLL_BAR_ROOM = 24;
 const FLOW = {
   fuel: 'GOTO_WORLDMAP_PLANECONFIGURATION_FUEL_XML',
   identification: 'GOTO_WORLDMAP_PLANECONFIGURATION_IDENTIFICATION_XML',
@@ -80,24 +116,34 @@ export class SetupPanel {
   private readonly page: Manipulator;
   private readonly scope: Scope;
   private readonly root = el('div', 'msfs-ui-setup');
-  private readonly variantsRow = el('div', 'msfs-ui-setup__variants');
+  private readonly variantsList = scrollList('msfs-ui-setup__variants');
   private readonly liveryName = el('span', 'msfs-ui-value msfs-ui-setup__value');
-  private readonly liveriesGrid = el('div', 'msfs-ui-setup__liveries');
+  private readonly liveriesList = scrollList('msfs-ui-setup__liveries');
+  /** The parts between and around the two lists (headers, tail number, buttons): the lists share the rest. */
+  private fixedParts: HTMLElement[] = [];
+  /** Heights last given to the lists, in pixels: their scrolling element is told when they change. */
+  private listHeights = '';
 
   /** Variants: components by id, built for one set of ids. */
   private variants: ConfiguratorItem[] = [];
   private variantKey = '';
   private variantScope: Scope | null = null;
+  private variantHosts: HTMLElement[] = [];
   private readonly variantTiles = new Map<string, SimComponent>();
   /** Tiles per row and tile width of the current layout of the variants. */
   private variantsLayout = '';
-  /** Width of the panel at the last fit of the variants. */
+  /** Width a variant tile needs to show the widest name whole, in pixels (0 until the tiles are measured). */
+  private variantNeeded = 0;
+  /** Width of the panel at the last measure of the variants. */
   private fittedWidth = 0;
+  /** The variants were rebuilt: the list scrolls to the selected one once laid out. */
+  private revealVariant = false;
 
   /** Liveries: components by id, built for one ordered set of ids. */
   private liveries: ConfiguratorLivery[] = [];
   private liveryKeyList = '';
   private liveryScope: Scope | null = null;
+  private liveryHosts: HTMLElement[] = [];
   private readonly liveryTiles = new Map<string, LiveryTile>();
   private liveryOrder: LiveryOrder | null = null;
   private selectedLiveryTitle = '';
@@ -158,14 +204,6 @@ export class SetupPanel {
     // A gallery heart unchecked also removes the aircraft's favourite liveries.
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, reload);
     scope.add(() => clearTimeout(this.reloadTimer));
-
-    // Wheel on the thumbnails: scrolled by the mod (Coherent's native scrolling is not reliable here).
-    scope.listen(document, 'wheel', (event) => {
-      if (!(event.target instanceof Element) || !this.liveriesGrid.contains(event.target)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      this.liveriesGrid.scrollTop += (event.deltaY > 0 ? 1 : -1) * WHEEL_STEP * uiUnit();
-    });
   }
 
   // ----- Construction -----
@@ -174,12 +212,12 @@ export class SetupPanel {
   private build(): HTMLElement {
     const variantHeader = el('div', 'msfs-ui-header', this.root);
     el('span', 'msfs-ui-title', variantHeader).textContent = translate('TT:MANUFACTURE.BREADCRUMB.VARIATION');
-    this.root.appendChild(this.variantsRow);
+    this.root.appendChild(this.variantsList);
 
     const liveryHeader = el('div', 'msfs-ui-header', this.root);
     el('span', 'msfs-ui-title', liveryHeader).textContent = translate('TT:GENERIC.LIVERY');
     liveryHeader.appendChild(this.liveryName);
-    this.root.appendChild(this.liveriesGrid);
+    this.root.appendChild(this.liveriesList);
 
     const tailRow = el('div', 'msfs-ui-header msfs-ui-setup__tail', this.root);
     el('span', 'msfs-ui-title', tailRow).textContent = translate(TAIL_NUMBER);
@@ -196,6 +234,7 @@ export class SetupPanel {
         (error: unknown) => logError('a button of the setup panel could not be created', error),
       );
     }
+    this.fixedParts = [variantHeader, liveryHeader, tailRow, actions];
     return tailHost;
   }
 
@@ -217,14 +256,76 @@ export class SetupPanel {
     style.top = `${rect.top - origin.top}px`;
     style.width = `${rect.width}px`;
     style.height = `${rect.height}px`;
-    // Thumbnail height from its width: the panel's padding (6) and the gaps between thumbnails (6).
-    const width = (rect.width - 12 * unit - (LIVERY_COLUMNS - 1) * 6 * unit) / LIVERY_COLUMNS;
-    // Whole pixels: the third thumbnail of a row takes the rest (aircraft-setup.css), so the row ends at the edge.
-    style.setProperty('--livery-w', `${Math.floor(width)}px`);
-    style.setProperty('--livery-h', `${Math.round(width * LIVERY_RATIO)}px`);
     if (Math.round(rect.width) !== this.fittedWidth) {
       this.fittedWidth = Math.round(rect.width);
-      this.fitVariants();
+      this.measureVariants();
+    }
+    this.layoutLists(rect.width, rect.height, unit);
+  }
+
+  /**
+   * Shares the room left by the fixed parts between the variants and the liveries (setup-layout.ts): a list that
+   * needs more scrolls: its bar then takes its own width beside the content, and the content leaves room before it.
+   * Whether a list scrolls is decided on the full width, so that the narrower layout it then takes cannot make it fit
+   * again (the panel would swing between the two at every pass).
+   */
+  private layoutLists(width: number, height: number, unit: number): void {
+    const full = width - 2 * PADDING * unit;
+    const narrow = (list: RealScroll) => full - barWidth(list) - SCROLL_BAR_ROOM * unit;
+    const gap = GAP * unit;
+    // The panel's padding, and the gap under the two headers, the two lists and the tail number.
+    let room = height - 2 * PADDING * unit - 5 * gap;
+    for (const part of this.fixedParts) room -= part.getBoundingClientRect().height;
+
+    const liveryRows = (thumbnail: { height: number }): Rows => ({ count: rowCount(this.liveries.length, LIVERY_COLUMNS), step: thumbnail.height + gap });
+    const variantRows = (perRow: number): Rows => ({ count: rowCount(this.variants.length, perRow), step: (VARIANT_HEIGHT + GAP) * unit });
+    const wideThumbnail = this.thumbnailSize(full, unit);
+    let perRow = this.variantsPerRow(full, gap);
+    let variants = variantRows(perRow);
+    let variantsHigh = variantsHeight(room, variants, liveryRows(wideThumbnail));
+    const variantsScroll = overflows(variants, variantsHigh);
+    const variantsWidth = variantsScroll ? narrow(this.variantsList) : full;
+    if (variantsScroll) {
+      perRow = this.variantsPerRow(variantsWidth, gap);
+      variants = variantRows(perRow);
+      variantsHigh = variantsHeight(room, variants, liveryRows(wideThumbnail));
+    }
+    const liveriesScroll = overflows(liveryRows(wideThumbnail), room - variantsHigh);
+    const thumbnail = liveriesScroll ? this.thumbnailSize(narrow(this.liveriesList), unit) : wideThumbnail;
+
+    this.arrangeVariants(perRow, variantsWidth);
+    toggleClass(this.variantsList, 'is-scrolling', variantsScroll);
+    toggleClass(this.liveriesList, 'is-scrolling', liveriesScroll);
+    this.variantsList.style.height = `${variantsHigh}px`;
+    // Whole pixels: the third thumbnail of a row takes the rest (aircraft-setup.css), so the row ends at the edge.
+    this.root.style.setProperty('--livery-w', `${thumbnail.width}px`);
+    this.root.style.setProperty('--livery-h', `${thumbnail.height}px`);
+    const heights = `${variantsHigh}/${Math.round(room - variantsHigh)}/${thumbnail.height}`;
+    if (heights !== this.listHeights) {
+      this.listHeights = heights;
+      this.updateSizes();
+    }
+
+    if (this.revealVariant && this.variants.length > 0 && this.variantTiles.size === this.variants.length) {
+      this.revealVariant = false;
+      const selected = this.variants.findIndex((item) => item.isSelected);
+      if (variantsScroll && selected >= 0) {
+        this.updateSizes();
+        this.variantsList.scrollToPosition(revealPosition(Math.floor(selected / perRow), variants, variantsHigh));
+      }
+    }
+  }
+
+  /** A livery thumbnail in a list `width` wide: three per row, 6 units apart, in whole pixels. */
+  private thumbnailSize(width: number, unit: number): { width: number; height: number } {
+    const thumbnail = (width - (LIVERY_COLUMNS - 1) * GAP * unit) / LIVERY_COLUMNS;
+    return { width: Math.floor(thumbnail), height: Math.round(thumbnail * LIVERY_RATIO) };
+  }
+
+  /** The sim's lists measure their content again (after a change of height or of content). */
+  private updateSizes(): void {
+    for (const list of [this.variantsList, this.liveriesList]) {
+      if (list.updateSizes) list.updateSizes();
     }
   }
 
@@ -284,10 +385,15 @@ export class SetupPanel {
       if (this.variantScope) this.variantScope.dispose();
       const scope = (this.variantScope = this.scope.child());
       this.variantTiles.clear();
-      this.variantsRow.innerHTML = '';
+      removeAll(this.variantHosts);
+      this.variantHosts = [];
       this.variantsLayout = '';
+      this.variantNeeded = 0;
+      this.revealVariant = true;
       items.forEach((item) => {
-        const host = el('div', 'msfs-ui-setup__variant msfs-ui-compact-tile', this.variantsRow);
+        const host = el('div', 'msfs-ui-setup__variant msfs-ui-compact-tile');
+        this.variantsList.appendChild(host);
+        this.variantHosts.push(host);
         createComponent(scope, COMPONENTS.tileButton, host, { Title: translate(item.title) }).then(
           (tile) => {
             // A component of a list rebuilt since (another aircraft) is dropped with its scope.
@@ -295,48 +401,49 @@ export class SetupPanel {
             this.variantTiles.set(item.id, tile);
             tile.onClick(scope, () => this.chooseVariant(item.id));
             this.updateVariants();
-            this.fitVariants();
+            if (this.measureVariants()) this.layout();
           },
           (error: unknown) => logError('a variant tile could not be created', error),
         );
       });
-      this.arrangeVariants(Math.min(3, Math.max(1, items.length)));
+      this.layout();
     }
     this.updateVariants();
   }
 
   /**
-   * Lays the variant tiles out `perRow` per row, in whole pixels (the engine rounds computed widths down): the last
-   * tile of a full row takes the rest and ends at the panel edge; a row that is not full keeps the same widths, so
-   * its tiles stay aligned on the columns above.
+   * Lays the variant tiles out `perRow` per row in a list `row` pixels wide, in whole pixels (the engine rounds
+   * computed widths down): the last tile of a full row takes the rest and ends at the list's edge; a row that is not
+   * full keeps the same widths, so its tiles stay aligned on the columns above.
    */
-  private arrangeVariants(perRow: number): void {
-    const row = this.variantsRow.getBoundingClientRect().width;
-    const gap = 6 * uiUnit();
+  private arrangeVariants(perRow: number, row: number): void {
+    const gap = GAP * uiUnit();
     const width = row > 0 ? Math.floor((row - gap * (perRow - 1)) / perRow) : 0;
-    const key = `${perRow}/${width}`;
+    const key = `${perRow}/${width}/${this.variantHosts.length}`;
     if (key === this.variantsLayout) return;
     this.variantsLayout = key;
-    const hosts = this.variantsRow.children;
-    for (let at = 0; at < hosts.length; at++) {
-      const host = hosts[at] as HTMLElement;
+    this.variantHosts.forEach((host, at) => {
       const last = at % perRow === perRow - 1;
-      if (width <= 0) host.style.width = `calc((100% - var(--u) * ${6 * (perRow - 1)}) / ${perRow})`;
-      else host.style.width = last ? `calc(100% - ${width * (perRow - 1)}px - var(--u) * ${6 * (perRow - 1)})` : `${width}px`;
+      if (width <= 0) host.style.width = `calc((100% - var(--u) * ${GAP * (perRow - 1)}) / ${perRow})`;
+      else host.style.width = last ? `calc(100% - ${width * (perRow - 1)}px - var(--u) * ${GAP * (perRow - 1)})` : `${width}px`;
       host.style.marginRight = last ? '0' : '';
-    }
+    });
+  }
+
+  /** Variant tiles per row in a list `width` wide: up to three until the tiles are measured. */
+  private variantsPerRow(width: number, gap: number): number {
+    const count = this.variants.length;
+    return this.variantNeeded > 0 ? variantsPerRow(count, width, this.variantNeeded, gap) : Math.min(3, Math.max(1, count));
   }
 
   /**
-   * As many tiles per row (3, 2 or 1) as let every name show whole, room for the selection corner included: the
-   * engine shows no ellipsis, a long name would be cut. Measured once every tile exists, and when the panel's width
-   * changes (layout).
+   * The width a tile needs to show the widest name whole, room for the selection corner included: the engine shows
+   * no ellipsis, a long name would be cut. Measured once every tile exists, and when the panel's width changes
+   * (layout). True when measured.
    */
-  private fitVariants(): void {
-    if (this.variants.length === 0 || this.variantTiles.size < this.variants.length) return;
+  private measureVariants(): boolean {
+    if (this.variants.length === 0 || this.variantTiles.size < this.variants.length) return false;
     const unit = uiUnit();
-    const row = this.variantsRow.getBoundingClientRect().width;
-    if (row <= 0) return;
     let widest = 0;
     let padding = 0;
     this.variantTiles.forEach((tile) => {
@@ -352,10 +459,8 @@ export class SetupPanel {
       widest = Math.max(widest, probe.getBoundingClientRect().width);
       title.removeChild(probe);
     });
-    const needed = widest + padding + CORNER_UNITS * unit;
-    let perRow = Math.min(3, this.variants.length);
-    while (perRow > 1 && (row - 6 * unit * (perRow - 1)) / perRow < needed) perRow--;
-    this.arrangeVariants(perRow);
+    this.variantNeeded = widest + padding + CORNER_UNITS * unit;
+    return true;
   }
 
   private updateVariants(): void {
@@ -396,7 +501,8 @@ export class SetupPanel {
     if (key !== this.liveryKeyList) {
       this.liveryKeyList = key;
       this.buildLiveries(ordered.items);
-      if (ordered.reordered) this.liveriesGrid.scrollTop = 0;
+      this.layout();
+      if (ordered.reordered) this.liveriesList.scrollToPosition(0);
     }
     this.updateLiveries(favorites);
   }
@@ -405,9 +511,12 @@ export class SetupPanel {
     if (this.liveryScope) this.liveryScope.dispose();
     const scope = (this.liveryScope = this.scope.child());
     this.liveryTiles.clear();
-    this.liveriesGrid.innerHTML = '';
+    removeAll(this.liveryHosts);
+    this.liveryHosts = [];
     for (const livery of items) {
-      const host = el('div', 'msfs-ui-setup__livery', this.liveriesGrid);
+      const host = el('div', 'msfs-ui-setup__livery');
+      this.liveriesList.appendChild(host);
+      this.liveryHosts.push(host);
       const buttonHost = el('div', 'msfs-ui-setup__thumbnail', host);
       const heartHost = livery.directoryPath ? el('div', 'msfs-ui-setup__heart', host) : null;
       scope.listen(host, 'mouseenter', () => (this.liveryName.textContent = translate(livery.title)));

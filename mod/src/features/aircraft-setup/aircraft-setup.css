@@ -21,8 +21,28 @@
 .msfs-ui-setup .msfs-ui-header { margin-bottom: calc(var(--u) * 6); }
 .msfs-ui-setup__value { margin-left: calc(var(--u) * 12); flex-grow: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: right; }
 
+/*
+ * The variants and the liveries, each in the sim's scrolling list: the variants' height is set by panel.ts, the
+ * liveries take the rest (setup-layout.ts). The list's content (the sim's `scroll__content`, a plain block) wraps the
+ * tiles in rows; align-items: a one-line flex-wrap container stretches its items in Coherent. A list that scrolls
+ * leaves room on the right for the scroll bar.
+ */
+.msfs-ui-setup__variants { position: relative; flex-shrink: 0; margin-bottom: calc(var(--u) * 6); }
+.msfs-ui-setup__liveries { position: relative; flex-grow: 1; min-height: 0; margin-bottom: calc(var(--u) * 6); }
+.msfs-ui-setup__variants .scroll__content,
+.msfs-ui-setup__liveries .scroll__content {
+  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  align-content: flex-start !important;
+  padding: 0 !important;
+}
+.msfs-ui-setup__variants.is-scrolling .scroll__content,
+.msfs-ui-setup__liveries.is-scrolling .scroll__content { padding-right: calc(var(--u) * 24) !important; }
+
 /* Variants: up to three tiles per row sharing the width (widths and the last margin of each row: panel.ts). */
-.msfs-ui-setup__variants { display: flex; flex-wrap: wrap; align-items: flex-start; flex-shrink: 0; margin-bottom: calc(var(--u) * 6); }
 .msfs-ui-setup__variant {
   position: relative;
   height: calc(var(--u) * 36);
@@ -30,16 +50,6 @@
 }
 
 /* Liveries: three thumbnails per row, 6 units apart; width and height in whole pixels (--livery-w, --livery-h: panel.ts). */
-.msfs-ui-setup__liveries {
-  flex-grow: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  margin-bottom: calc(var(--u) * 6);
-}
 .msfs-ui-setup__livery {
   position: relative;
   width: var(--livery-w);
