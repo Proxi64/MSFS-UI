@@ -95,9 +95,9 @@ export default {
 - The source of the settings is the app's `settings.json`; `config.js` is always derived from it, never edited.
 - `msfs-ui.json` records the hashes of `main.js` and `config.js`, so that Home tells "settings changed" apart from "app updated" and "sim updated" (MasterPage hash).
 
-**`mod/features.json` is the feature catalogue**: for each feature its `id`, `title`, `description`, `screen`, `enabledByDefault`, and typed options (`boolean`, or `number` with `min` / `max` / `step` / `unit`, each with a `default`). Its schema is `mod/schema/features.schema.json`.
+**`mod/features.json` is the feature catalogue**: for each feature its `id`, `title`, `description`, `screen`, `enabledByDefault`, and typed options (`boolean`; `number` with `min` / `max` / `step` / `unit`; `choice` with at least two `choices`, each an `id`, a `title` and an optional `description`; each option with a `default`, for a choice one of its ids). Its schema is `mod/schema/features.schema.json`.
 - The mod build compiles the defaults into `main.js` and fails if a feature module and its entry disagree (missing feature, option not read, wrong type).
-- The app embeds the same file and builds the Features page from it; it checks the stored settings against it (unknown ids dropped, values clamped to their range, missing values set to the default).
+- The app embeds the same file and builds the Features page from it; it checks the stored settings against it (unknown ids dropped, values clamped to their range, a choice that is not one of its ids and missing values set to the default). A choice shows as radio buttons (`AutomationId` `Choice_<feature>_<option>_<choice>`), the selected one's description under the option's; `config.js` carries its id, typed in the mod as the union of the ids.
 
 **`mod/compat.json` lists what the mod relies on in the sim**: readable exports by module, screens, anchors (`name="…"`), components, data-model and event symbols, files, CSS variables and translation keys, plus live checks. Its schema is `mod/schema/compat.schema.json`. The app's compatibility check runs from it, and the mod build refuses a sim reference that is not listed: a change that adds a dependency on the sim updates `compat.json` in the same commit.
 
@@ -106,7 +106,7 @@ Options set aside:
 - a `config.json` read with `fetch`: equivalent, but `fetch` of a package file is not proven in Coherent GT, whereas a module import is (the loader uses one);
 - settings in the sim's `datastorage`: the mod could not be configured while the sim is closed.
 
-The cost: the mod's start-up waits for `config.js`, and both files are a contract versioned by `schemaVersion`. A new option type (a choice list, for example) needs both readers updated.
+The cost: the mod's start-up waits for `config.js`, and both files are a contract versioned by `schemaVersion`. A new option type needs both readers updated, as `choice` did (2026-10-27): the schema, the build's checks and generated types, the mod's validation, `MsfsUi.Core` (catalogue, normaliser, `config.js`) and the Features page.
 
 ## Working method
 

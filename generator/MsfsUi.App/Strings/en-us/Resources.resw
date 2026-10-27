@@ -373,7 +373,7 @@
     <value>Readme</value>
   </data>
   <data name="ReadmeIntro.Text" xml:space="preserve">
-    <value>MSFS-UI-GENERATOR installs and sets up msfs-ui, a mod of the Microsoft Flight Simulator 2024 main menu: faster menus, a weather and time bar on Free Flight, favourite aircraft and liveries, an aircraft gallery and list, a setup panel and a tail number per livery.</value>
+    <value>MSFS-UI-GENERATOR installs and sets up msfs-ui, a mod of the Microsoft Flight Simulator 2024 main menu: faster menus, a weather and time bar on Free Flight, favourite aircraft and liveries, an aircraft gallery and list (with a side by side layout of large livery tiles), a setup panel and a tail number per livery.</value>
   </data>
   <data name="ReadmeNoSimFile.Title" xml:space="preserve">
     <value>No file of the simulator is modified</value>

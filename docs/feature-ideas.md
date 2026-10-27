@@ -37,6 +37,7 @@ No candidate action was triggered: what changes the sim's state (choosing a depa
 | [C1](#c1-map-filters-remembered) | Map filters and style remembered | Free Flight | Verified | S | Medium | Low |
 | [C2](#c2-go-to-an-airport-on-the-map) | Go to an airport on the map | Free Flight | Likely | S | Low | Low |
 | D1 | Gallery sort | Aircraft selection | **Done** | | | |
+| D5 | Aircraft selection layouts (side by side: the liveries as large tiles) | Aircraft selection | **Done** (next-steps 1.7) | | | |
 | [D2](#d2-personal-gallery-filters) | Personal filters (recent, publisher, tags) | Aircraft selection | Verified (mod data) | M | Medium | Low |
 | [D3](#d3-controls-preset-per-aircraft) | Controls preset per aircraft | Aircraft selection | To explore | M | High | Medium |
 | [D4](#d4-fuel-and-payload-remembered) | Fuel and payload remembered | Aircraft selection | To explore | L | Medium | High |

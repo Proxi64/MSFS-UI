@@ -133,16 +133,29 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 | **Gallery** / **List** / **Default** | Tiles in columns; one compact row per aircraft; the sim's own grid |
 
 - Favourites always come first, whatever the sort.
-- **Gallery**: the sim's aircraft tiles, with the name, the variant and the studio on three lines. **List**: one row per aircraft, the thumbnail then *name - studio - variant* on one line, the heart at the end of the row.
+- **Gallery**: the sim's aircraft tiles, with the name, the variant and the studio on three lines. **List**: one row per aircraft, the thumbnail then *name - studio - variant* on one line, the heart at the end of the row; the text stops before the heart.
 - Both views scroll with the wheel or the sim's scroll bar; a text too long for its tile scrolls on hover.
-- **Click** selects the aircraft, exactly like a tile of the sim; **hover** shows it in the header of the left column.
+- **Click** selects the aircraft, exactly like a tile of the sim; **hover** shows it in the header of the left column, unless the setup panel is shown: the header then stays on the selected aircraft, whose variants and tail number the panel shows.
 - **Heart**: for a modular aircraft the sim shows one tile per aircraft, so the heart is about the aircraft (all its variants). Unchecking it also removes its favourite liveries.
 - On opening, the gallery scrolls to the selected aircraft. The view, the Favorites filter and the sort are remembered.
 - **Default** brings the sim's grid back, with its own search; the view buttons stay on its line.
 
+**Layout** (option of the feature in MSFS-UI-GENERATOR):
+
+| Layout | What the aircraft selection shows |
+|---|---|
+| **Classic** (default) | The gallery fills the right side; the liveries are small thumbnails in the setup panel |
+| **Side by side** | The aircraft on the left part of the gallery, three per row; the liveries of the current aircraft on the right part, two per row, as large as the aircraft tiles. The left column only keeps the variants and the tail number, and is narrower (400 layout units) |
+
+In the side by side layout:
+- each livery tile shows the livery's thumbnail whole, its name and its tail number (the one you chose for it, else the `atc_id` of its `livery.cfg`, else a registration found in its name; nothing when none is found);
+- **List** shows both sides as rows, on two lines: the aircraft's name then *studio · variant*; the livery's name then its tail number;
+- a click on a livery changes it, as in the setup panel; the heart marks it as a favourite; hovering shows its name above the column, which opens on the selected livery;
+- **Default** brings the sim's grid back, and the setup panel its thumbnails.
+
 ### Aircraft setup panel
 
-**Where:** aircraft selection, left column, in place of the aircraft's statistics. The column is widened (option *Widen the left column*, 50 layout units by default; 0 keeps the sim's width).
+**Where:** aircraft selection, left column, in place of the aircraft's statistics. The column is widened (option *Widen the left column*, 50 layout units by default; 0 keeps the sim's width). In the gallery's side by side layout, the panel has no livery thumbnails (they are in the gallery) and the column is 400 units wide instead.
 
 | Section | Content |
 |---|---|

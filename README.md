@@ -3,7 +3,7 @@
 A mod of the **Microsoft Flight Simulator 2024** main menu, and the Windows app that installs it.
 
 - **MSFS-UI-GENERATOR**, the app: choose the features and their options, generate the `msfs-ui` package and install it in the sim's Community folder, check that the sim still offers what the mod needs.
-- **msfs-ui**, the package: faster menus; a weather and time bar on Free Flight with presets, METAR, sun times and traffic; the wheel on the time; favourite aircraft and liveries loaded in one click; an aircraft gallery and list with search, favourites and sorts; a setup panel for variants, liveries and tail number; a tail number per livery. Everything it shows is made of the sim's own components.
+- **msfs-ui**, the package: faster menus; a weather and time bar on Free Flight with presets, METAR, sun times and traffic; the wheel on the time; favourite aircraft and liveries loaded in one click; an aircraft gallery and list with search, favourites and sorts, and a side by side layout with the current aircraft's liveries as large tiles; a setup panel for variants, liveries and tail number; a tail number per livery. Everything it shows is made of the sim's own components.
 
 > [!WARNING]
 > A personal project, not affiliated with, endorsed by or supported by Microsoft or Asobo Studio. The mod relies on undocumented parts of the sim's menu that an update may change: use it at your own risk. **Remove** on the app's Home page brings the original menu back; no file of the sim is ever modified.
@@ -16,7 +16,7 @@ Free Flight: favourite aircraft on the left, the weather and time bar on the rig
 
 ![Free Flight with the favourites and the weather and time bar](docs/images/free-flight.png)
 
-Aircraft selection: the gallery, the list, and the favourites first; the setup panel on the left (variant, livery, tail number).
+Aircraft selection: the gallery, the list, and the favourites first; the setup panel on the left (variant, livery, tail number). The *Side by side* layout (an option in MSFS-UI-GENERATOR) shows the current aircraft's liveries as large tiles next to the aircraft.
 
 ![Aircraft gallery](docs/images/gallery.png)
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased (since 1.0.2)
+
+- **Aircraft selection layouts**: a new *Layout* option of the *Aircraft gallery and list* feature, set in MSFS-UI-GENERATOR. *Classic* (the default) is the layout so far. *Side by side* cuts the gallery in two: the aircraft on the left, three per row, and the liveries of the current aircraft on the right, two per row, as large as the aircraft tiles, with their name and tail number. The left column then keeps only the variants and the tail number, and is narrower. The *List* view shows both sides as rows.
+- **Setup panel**: the variants and the liveries share the panel's height and scroll in the sim's own list. Aircraft with many variants (iFly 737 MAX, FS Reborn Phenom 300E) no longer push the liveries, the tail number and the buttons out of the panel.
+- **Smoother aircraft selection**: the gallery and the livery column recycle a few of the sim's tiles as you scroll, instead of keeping all of them; the layout passes no longer re-lay the page out four times a second; the gallery no longer makes the sim load an aircraft's statistics for every tile passing under the mouse while the setup panel shows (the header of the left column now stays on the selected aircraft).
+- **List rows**: a text too long for its row stops before the heart.
+- **The app**: options can now be a choice among several values, shown as radio buttons.
+
 ## 1.0.2 (2026-10-26)
 
 - **Compatibility**: the Storage check says what the sim offers. It shows where the sim's storage is, checks each method the mod calls, names what the storage has when a method is missing, and lists the mod's data stored. `searchData` is no longer required: the mod does not call it. If your favourites or tail numbers are not kept after a restart, open the Storage group of the Compatibility page and report what it shows, with your sim version (Steam or Microsoft Store, and its number).

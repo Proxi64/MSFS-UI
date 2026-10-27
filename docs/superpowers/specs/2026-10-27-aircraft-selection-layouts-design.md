@@ -1,6 +1,6 @@
 # Aircraft selection layouts: design
 
-2026-10-27. Status: proposed, to be approved by the owner before any code.
+2026-10-27. Status: approved and implemented on 2026-10-27 (plan in `docs/superpowers/plans/`). Changed after the owner tried it in the sim: three aircraft and two liveries per row of the same width, the left column at 400 units in this layout, List rows on both sides (two lines), radio buttons instead of a drop-down list; then performance work (CSS variables written only on change, no hover sent to the sim while the setup panel shows, a recycling pool of the sim's tiles). The text below is the design as approved.
 
 ## Why
 
