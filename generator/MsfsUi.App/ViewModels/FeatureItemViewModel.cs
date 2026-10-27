@@ -56,7 +56,7 @@ public sealed partial class FeatureItemViewModel : ObservableObject
     partial void OnIsEnabledChanged(bool value) => _changed();
 }
 
-/// <summary>An option of a feature: a switch, or a number with its range, step and unit.</summary>
+/// <summary>An option of a feature: a switch, a number with its range, step and unit, or radio buttons.</summary>
 public sealed partial class OptionItemViewModel : ObservableObject
 {
     private readonly Action _changed;
@@ -66,6 +66,7 @@ public sealed partial class OptionItemViewModel : ObservableObject
         Definition = definition;
         _changed = changed;
         AutomationId = $"Option_{featureId}_{definition.Id}";
+        Choices = [.. (definition.Choices ?? []).Select(choice => new ChoiceItemViewModel(choice.Id, choice.Title, $"Choice_{featureId}_{definition.Id}_{choice.Id}"))];
     }
 
     public OptionDefinition Definition { get; }
@@ -80,6 +81,17 @@ public sealed partial class OptionItemViewModel : ObservableObject
     public bool IsBoolean => Definition.Type == OptionType.Boolean;
 
     public bool IsNumber => Definition.Type == OptionType.Number;
+
+    public bool IsChoice => Definition.Type == OptionType.Choice;
+
+    /// <summary>The choices of a choice option, in catalogue order (empty for the other types).</summary>
+    public IReadOnlyList<ChoiceItemViewModel> Choices { get; }
+
+    /// <summary>The explanation of the selected choice, if it has one.</summary>
+    public string ChoiceDescription =>
+        IsChoice && SelectedChoiceIndex >= 0 && SelectedChoiceIndex < Choices.Count
+            ? Definition.Choices![SelectedChoiceIndex].Description ?? string.Empty
+            : string.Empty;
 
     public string Unit => Definition.Unit ?? string.Empty;
 
@@ -96,11 +108,19 @@ public sealed partial class OptionItemViewModel : ObservableObject
     [ObservableProperty]
     public partial double NumberValue { get; set; }
 
+    /// <summary>Index of the selected choice in <see cref="Choices"/>.</summary>
+    [ObservableProperty]
+    public partial int SelectedChoiceIndex { get; set; }
+
     public void Load(OptionValue value)
     {
         if (IsBoolean)
         {
             BoolValue = value.Boolean;
+        }
+        else if (IsChoice)
+        {
+            SelectedChoiceIndex = IndexOfChoice(value.Text) is var index and >= 0 ? index : IndexOfChoice(Definition.DefaultValue.Text);
         }
         else
         {
@@ -108,12 +128,21 @@ public sealed partial class OptionItemViewModel : ObservableObject
         }
     }
 
-    /// <summary>The value shown; a number is brought into range and onto its step, an empty box takes the default.</summary>
+    /// <summary>
+    /// The value shown; a number is brought into range and onto its step, an empty box takes the default, and so does
+    /// a choice when none is selected.
+    /// </summary>
     public OptionChoice ToChoice()
     {
         if (IsBoolean)
         {
             return new OptionChoice(Definition.Id, OptionValue.FromBoolean(BoolValue));
+        }
+
+        if (IsChoice)
+        {
+            var selected = SelectedChoiceIndex >= 0 && SelectedChoiceIndex < Choices.Count ? OptionValue.FromChoice(Choices[SelectedChoiceIndex].Id) : Definition.DefaultValue;
+            return new OptionChoice(Definition.Id, selected);
         }
 
         var number = double.IsNaN(NumberValue) ? Definition.DefaultValue.Number : NumberValue;
@@ -123,4 +152,29 @@ public sealed partial class OptionItemViewModel : ObservableObject
     partial void OnBoolValueChanged(bool value) => _changed();
 
     partial void OnNumberValueChanged(double value) => _changed();
+
+    partial void OnSelectedChoiceIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(ChoiceDescription));
+        _changed();
+    }
+
+    private int IndexOfChoice(string id)
+    {
+        for (var index = 0; index < Choices.Count; index++)
+        {
+            if (string.Equals(Choices[index].Id, id, StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
 }
+
+/// <summary>A choice of a choice option, as a radio button.</summary>
+/// <param name="Id">The choice's id in the catalogue.</param>
+/// <param name="Title">Its title.</param>
+/// <param name="AutomationId">Stable id of its radio button for UI Automation (feature, option and choice ids).</param>
+public sealed record ChoiceItemViewModel(string Id, string Title, string AutomationId);

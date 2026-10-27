@@ -84,8 +84,11 @@
  * cut the top and bottom of each thumbnail. The title block keeps its 6-unit gap after it.
  */
 .msfs-ui-gal__row [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
+/* The text stops before the row's heart and is cut there (no ellipsis in the engine; hovering scrolls it). */
 .msfs-ui-gal__row [name="TitleBlock"] {
   left: calc(var(--u) * 167) !important;
+  right: calc(var(--u) * 42) !important;
+  overflow: hidden !important;
   top: 0 !important;
   height: 100% !important;
   flex-direction: row !important;
@@ -121,3 +124,37 @@
 .msfs-ui-gal__row img[name="Image"] {
   background-image: linear-gradient(to bottom, rgb(165, 173, 198), rgb(150, 164, 193) 50%, rgb(100, 118, 152)) !important;
 }
+
+/*
+ * Side by side layout: the livery column on the right half (liveries.ts, placed by gallery.ts), a header as in the
+ * setup panel, then the sim's scrolling list. Its tiles are the gallery's aircraft tile with the column's own sizes
+ * (--tile-w, --tile-h, --tile-image-h: the thumbnails' ratio, two lines of text), two per row, 12 units apart.
+ */
+.msfs-ui-gal__liveries { position: absolute; display: flex; flex-direction: column; pointer-events: auto; }
+.msfs-ui-gal__livery-header { flex-shrink: 0; margin-bottom: calc(var(--u) * 6); }
+.msfs-ui-gal__livery-name { margin-left: calc(var(--u) * 12); flex-grow: 1; overflow: hidden; text-align: right; }
+.msfs-ui-gal__livery-list { position: relative; flex-grow: 1; min-height: 0; }
+.msfs-ui-gal__livery-list .scroll__content {
+  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  align-content: flex-start !important;
+  padding-right: calc(var(--u) * 24) !important;
+}
+.msfs-ui-gal__livery.msfs-ui-gal__tile { margin: 0 0 calc(var(--u) * 12) 0; }
+.msfs-ui-gal__livery.msfs-ui-gal__tile:nth-child(2n + 1) { margin-right: calc(var(--u) * 12); }
+
+/*
+ * Side by side, the List view of both columns (narrower than the whole gallery): the tile's own two lines, as on Free
+ * Flight. Aircraft: the name, then "studio · variant"; liveries: the name, then the tail number.
+ */
+.msfs-ui-gal__body.is-side-by-side .msfs-ui-gal__row [name="TitleBlock"],
+.msfs-ui-gal__livery-row [name="TitleBlock"] {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+}
+.msfs-ui-gal__body.is-side-by-side .msfs-ui-gal__row [name="Details"],
+.msfs-ui-gal__livery-row [name="Details"] { margin-left: 0 !important; }

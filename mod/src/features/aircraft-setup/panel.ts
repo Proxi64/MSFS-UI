@@ -3,7 +3,7 @@
 // Identification. Made of the sim's own components. Everything goes through the sim's configurator
 // (`Game.Aircraft.Configurator`), which the sim already sets on the aircraft chosen in the list; no 3D preview loads.
 
-import { el, toggleClass, uiUnit } from '../../core/dom.ts';
+import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
@@ -21,6 +21,7 @@ import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries } fro
 import { TAIL_NUMBER } from '../../sim/liveries.ts';
 import { cleanTail } from '../../sim/registration.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
+import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layout.ts';
 import { store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { orderLiveries, type LiveryOrder } from './livery-order.ts';
@@ -169,6 +170,7 @@ export class SetupPanel {
     const tailHost = this.build();
     scope.append(this.page.elt, this.root);
     scope.add(() => this.restoreStatistics());
+    scope.add(() => setSetupPanelShown(false));
     this.layout();
     scope.interval(() => this.layout(), 250);
 
@@ -208,7 +210,7 @@ export class SetupPanel {
     el('span', 'msfs-ui-title', variantHeader).textContent = translate('TT:MANUFACTURE.BREADCRUMB.VARIATION');
     this.root.appendChild(this.variantsList);
 
-    const liveryHeader = el('div', 'msfs-ui-header', this.root);
+    const liveryHeader = el('div', 'msfs-ui-header msfs-ui-setup__livery-header', this.root);
     el('span', 'msfs-ui-title', liveryHeader).textContent = translate('TT:GENERIC.LIVERY');
     liveryHeader.appendChild(this.liveryName);
     this.root.appendChild(this.liveriesList);
@@ -238,6 +240,7 @@ export class SetupPanel {
     const statistics = details && details.querySelector<HTMLElement>('[name="Scroll"]');
     if (!isShown(details) || !statistics) {
       this.root.style.display = 'none';
+      setSetupPanelShown(false);
       return;
     }
     if (statistics.style.visibility !== 'hidden') statistics.style.visibility = 'hidden';
@@ -246,6 +249,7 @@ export class SetupPanel {
     const unit = uiUnit();
     const style = this.root.style;
     style.display = '';
+    setSetupPanelShown(true);
     style.left = `${rect.left - origin.left}px`;
     style.top = `${rect.top - origin.top}px`;
     style.width = `${rect.width}px`;
@@ -268,10 +272,14 @@ export class SetupPanel {
     const narrow = (list: RealScroll) => full - barWidth(list) - SCROLL_BAR_ROOM * unit;
     const gap = GAP * unit;
     // The panel's padding, and the gap under the two headers, the two lists and the tail number.
-    let room = height - 2 * PADDING * unit - 5 * gap;
+    // Side by side layout: the gallery shows the liveries (sim/selection-layout.ts), the panel only the variants.
+    const withLiveries = !liveriesInGallery();
+    toggleClass(this.root, 'is-without-liveries', !withLiveries);
+    // The panel's padding, and the gap under the headers, the lists and the tail number (the hidden ones have none).
+    let room = height - 2 * PADDING * unit - (withLiveries ? 5 : 3) * gap;
     for (const part of this.fixedParts) room -= part.getBoundingClientRect().height;
 
-    const liveryRows = (thumbnail: { height: number }): Rows => ({ count: rowCount(this.liveries.length, LIVERY_COLUMNS), step: thumbnail.height + gap });
+    const liveryRows = (thumbnail: { height: number }): Rows => ({ count: withLiveries ? rowCount(this.liveries.length, LIVERY_COLUMNS) : 0, step: thumbnail.height + gap });
     const variantRows = (perRow: number): Rows => ({ count: rowCount(this.variants.length, perRow), step: (VARIANT_HEIGHT + GAP) * unit });
     const wideThumbnail = this.thumbnailSize(full, unit);
     let perRow = this.variantsPerRow(full, gap);
@@ -292,8 +300,8 @@ export class SetupPanel {
     toggleClass(this.liveriesList, 'is-scrolling', liveriesScroll);
     this.variantsList.style.height = `${variantsHigh}px`;
     // Whole pixels: the third thumbnail of a row takes the rest (aircraft-setup.css), so the row ends at the edge.
-    this.root.style.setProperty('--livery-w', `${thumbnail.width}px`);
-    this.root.style.setProperty('--livery-h', `${thumbnail.height}px`);
+    setVariable(this.root.style, '--livery-w', `${thumbnail.width}px`);
+    setVariable(this.root.style, '--livery-h', `${thumbnail.height}px`);
     const heights = `${variantsHigh}/${Math.round(room - variantsHigh)}/${thumbnail.height}`;
     if (heights !== this.listHeights) {
       this.listHeights = heights;

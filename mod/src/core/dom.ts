@@ -21,6 +21,16 @@ export function button(className: string, parent: Element, onClick: () => void):
   return element;
 }
 
+/**
+ * Sets a CSS variable only when its value changes. Coherent lays the whole subtree out again at every write of a
+ * variable, even of its current value (about 90 ms under the gallery's tiles at 3440 × 1440, measured on 1.9.18),
+ * whereas a plain property written with its current value costs nothing: the layout passes, every 250 ms, go through
+ * here.
+ */
+export function setVariable(style: CSSStyleDeclaration, name: string, value: string): void {
+  if (style.getPropertyValue(name) !== value) style.setProperty(name, value);
+}
+
 /** Sets a class when `on` is true and removes it otherwise. */
 export function toggleClass(element: Element, className: string, on: boolean): void {
   if (on) element.classList.add(className);

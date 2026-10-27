@@ -27,7 +27,8 @@
  * tiles in rows; align-items: a one-line flex-wrap container stretches its items in Coherent. A list that scrolls
  * leaves room on the right for the scroll bar.
  */
-.msfs-ui-setup__variants { position: relative; flex-shrink: 0; margin-bottom: calc(var(--u) * 6); }
+/* Exactly the height panel.ts gives: the sim's list grows by default (flex-grow 1). */
+.msfs-ui-setup__variants { position: relative; flex: 0 0 auto !important; margin-bottom: calc(var(--u) * 6); }
 .msfs-ui-setup__liveries { position: relative; flex-grow: 1; min-height: 0; margin-bottom: calc(var(--u) * 6); }
 .msfs-ui-setup__variants .scroll__content,
 .msfs-ui-setup__liveries .scroll__content {
@@ -80,3 +81,7 @@
 .msfs-ui-setup__actions { display: flex; flex-shrink: 0; }
 .msfs-ui-setup__action { position: relative; flex-grow: 1; flex-basis: 0; height: calc(var(--u) * 30); }
 .msfs-ui-setup__action + .msfs-ui-setup__action { margin-left: calc(var(--u) * 6); }
+
+/* Side by side layout: the liveries are in the gallery (panel.ts), the variants take their room. The sim's list has a display of its own. */
+.msfs-ui-setup.is-without-liveries .msfs-ui-setup__livery-header,
+.msfs-ui-setup.is-without-liveries .msfs-ui-setup__liveries { display: none !important; }

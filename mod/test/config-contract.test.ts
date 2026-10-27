@@ -26,5 +26,6 @@ describe('config.js written by the app', () => {
     assert.equal(result.values.weatherBar!.enabled, false);
     assert.deepEqual(result.values.timeWheel, { enabled: true, step: 120, fastStep: 1800 });
     assert.equal(result.values.aircraftSetup!.widenColumn, 0);
+    assert.equal(result.values.aircraftGallery!.layout, 'sideBySide');
   });
 });

@@ -122,6 +122,10 @@ internal sealed class AppSession : IDisposable
     public static void Expand(AutomationElement element) =>
         ((ExpandCollapsePattern)element.GetCurrentPattern(ExpandCollapsePattern.Pattern)).Expand();
 
+    /// <summary>Whether a radio button (a choice) is selected.</summary>
+    public static bool IsSelected(AutomationElement element) =>
+        ((SelectionItemPattern)element.GetCurrentPattern(SelectionItemPattern.Pattern)).Current.IsSelected;
+
     /// <summary>Every text inside an element, joined (an info bar: its title and message).</summary>
     public static string Texts(AutomationElement element) =>
         string.Join(" | ", element.FindAll(TreeScope.Descendants, Condition.TrueCondition)

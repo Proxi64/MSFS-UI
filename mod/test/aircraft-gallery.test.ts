@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { compareNatural, favoriteFrom, favoritesFirst, isFavoriteAircraft, normalize, sortTiles, visibleTiles, type AircraftItem } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
+import { liveryTail, liveryTileSize, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
   aircraftId: 1,
@@ -121,5 +122,29 @@ describe('favoritesFirst', () => {
     const tiles = items.map((item) => ({ item }));
     const sorted = favoritesFirst(tiles, [favoriteFrom(items[3]!)], [livery('b', 'Red')]);
     assert.deepEqual(sorted.map((tile) => tile.item.variationId), ['b', 'd', 'a', 'c']);
+  });
+});
+
+describe('livery column', () => {
+  it('splits the gallery so that three aircraft and two liveries per row get the same width', () => {
+    // 3440 x 1440: unit 4/3; gap 12 units = 16 px, scroll bar room 24 units = 32 px, tile margin 6 units = 8 px.
+    const { left, right } = splitColumns(1747, 16, 32, 8);
+    assert.equal(left + 16 + right, 1747);
+    const aircraft = (left - 32) / 3 - 2 * 8;
+    const livery = liveryTileSize(right, 32, 16, 72).width;
+    assert.ok(Math.abs(aircraft - livery) <= 1, `aircraft ${aircraft}, livery ${livery}`);
+    assert.equal(Number.isInteger(left), true);
+  });
+
+  it('sizes two livery tiles per row in the thumbnails ratio', () => {
+    // 3440 x 1440: unit 4/3; room 24 units = 32 px, gap 12 units = 16 px, banner 54 units = 72 px.
+    assert.deepEqual(liveryTileSize(799, 32, 16, 72), { width: 375, imageHeight: 179, height: 251 });
+  });
+
+  it('shows the tail number the mod would apply', () => {
+    assert.equal(liveryTail('F-TEST', 'VH-OZG', 'Qantas VH-ABC', 9), 'F-TEST');
+    assert.equal(liveryTail(undefined, 'VH-OZG', 'Qantas VH-ABC', 9), 'VH-OZG');
+    assert.equal(liveryTail(undefined, null, 'Qantas VH-ABC', 9), 'VH-ABC');
+    assert.equal(liveryTail(undefined, null, 'FSReborn Livery', 9), '');
   });
 });

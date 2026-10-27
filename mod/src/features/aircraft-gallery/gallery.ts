@@ -5,20 +5,27 @@
 // A click sends the page the `tileClick` event of the sim's tiles, a hover `tileHover`: the selection and the header
 // of the left column go through the sim's own logic.
 
-import { el, uiUnit } from '../../core/dom.ts';
+import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
+import { cellAction } from '../../core/virtual-list.ts';
 import { loadData, saveData } from '../../core/storage.ts';
+import type { Settings } from '../../generated/catalog.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
+import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type ComponentGuid, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, favoriteLiveriesOf, loadFavoriteLiveries, loadFavorites, saveFavoriteLiveries, saveFavorites, type FavoriteAircraft, type FavoriteLivery } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
+import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layout.ts';
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
+import { LiveryColumn, type ColumnRect } from './liveries.ts';
+import { AIRCRAFT_COLUMNS, splitColumns } from './livery-column.ts';
 import { favoriteFrom, favoritesFirst, favoritesOf, isFavoriteAircraft, sortTiles, visibleTiles, type AircraftItem, type LocalSort, type Tile } from './tiles.ts';
 
 type View = 'gallery' | 'list' | 'stock';
+type Layout = Settings['aircraftGallery']['layout'];
 
 interface GalleryMemory {
   view: View;
@@ -86,11 +93,12 @@ interface RealScroll extends HTMLElement {
 /** Events of the sim's aircraft tiles, sent with their data by the mod; the tiles' own ones carry none. */
 const TILE_EVENTS = ['tileClick', 'tileClickDisabled', 'tileHover'];
 
-/** A tile on screen: its host, and its components once created (only near the visible part of the list). */
+/** A tile on screen: its host, and its components while near the visible part of the list (core/virtual-list.ts). */
 interface Cell {
   tile: Tile;
   host: HTMLElement;
-  created: boolean;
+  /** Its slot of the pool while near the view (sim/component-pool.ts). */
+  slot: PoolSlot<Cell> | null;
   card: SimComponent | null;
   heart: SimComponent | null;
 }
@@ -104,8 +112,9 @@ const TILE_RATIO = 250 / 360;
 const IMAGE_SHARE = 1.4 / 2.6;
 /** Height of the tile's text banner for its three lines of text (21 units each) and 6 units above and below. */
 const BANNER_HEIGHT = 75;
-/** Components are created for the tiles within this distance of the visible part, in layout units. */
+/** Components are created for the tiles within this distance of the visible part, and kept within the second, in layout units. */
 const CREATE_MARGIN = 300;
+const KEEP_MARGIN = 600;
 /** Room left on the right of the tiles for the sim's scroll bar, in layout units. */
 const SCROLL_BAR_ROOM = 24;
 const RELOAD_DELAY_MS = 100;
@@ -123,6 +132,10 @@ const aircraft = store.Game.Aircraft;
 export class Gallery {
   private readonly page: Manipulator;
   private readonly scope: Scope;
+  /** The layout chosen in the app (option `layout`). */
+  private readonly layoutChoice: Layout;
+  /** Side by side layout: the liveries of the current aircraft on the right half (liveries.ts). */
+  private liveryColumn: LiveryColumn | null = null;
   private readonly root = el('div', 'msfs-ui-gal');
   private readonly bar = el('div', 'msfs-ui-gal__bar');
   private readonly count = el('span', 'msfs-ui-gal__count');
@@ -159,6 +172,10 @@ export class Gallery {
   private reloadTimer: ReturnType<typeof setTimeout> | undefined;
   private reloadNumber = 0;
 
+  /** The pool of slots of the current view, and its scope. */
+  private pool: ComponentPool<Cell> | null = null;
+  private poolView: View | null = null;
+  private poolScope: Scope | null = null;
   /** The tiles on screen, their scope (disposed when the list changes) and what they were built for. */
   private cells: Cell[] = [];
   private cellScope: Scope | null = null;
@@ -166,9 +183,10 @@ export class Gallery {
   /** The message shown instead of tiles, if any. */
   private cellEmpty = '';
 
-  constructor(page: Manipulator, scope: Scope) {
+  constructor(page: Manipulator, scope: Scope, layout: Layout) {
     this.page = page;
     this.scope = scope;
+    this.layoutChoice = layout;
   }
 
   mount(): void {
@@ -177,6 +195,11 @@ export class Gallery {
     // The gaps between the tiles must not let the mouse through to the scene (core/theme.ts).
     this.body.setAttribute('data-input-group', 'inputLocker');
     scope.append(this.page.elt, this.root);
+    if (this.layoutChoice === 'sideBySide') {
+      this.liveryColumn = new LiveryColumn(scope, this.root);
+      // The setup panel shows its thumbnails again when the column goes.
+      scope.add(() => setLiveriesInGallery(false));
+    }
     scope.add(() => this.showStockGrid(true));
     // Every change to the sim is undone: the sim's list gets its own order back.
     scope.add(() => {
@@ -375,12 +398,14 @@ export class Gallery {
 
   /**
    * On the sim's right block (`RightBlock`). In the Default view only the bar stays, on the line of the sim's
-   * search (`Header`), on the right; its empty parts let the clicks through (pointer-events).
+   * search (`Header`), on the right; its empty parts let the clicks through (pointer-events). Side by side: the list on
+   * the left half, the livery column on the right half, 12 units apart.
    */
   private layout(): void {
     const right = this.page.elt.querySelector<HTMLElement>(RIGHT_BLOCK);
     if (!isShown(this.page.elt.querySelector(CONTENT)) || !right) {
       this.root.style.display = 'none';
+      this.placeLiveries(null);
       return;
     }
     const stock = this.memory.view === 'stock';
@@ -395,17 +420,37 @@ export class Gallery {
     style.width = `${rect.width}px`;
     style.top = `${rect.top - origin.top}px`;
     style.height = stock && header ? `${header.getBoundingClientRect().height}px` : `${rect.height}px`;
+    // Side by side: three aircraft and two liveries per row, all of the same width (livery-column.ts).
+    const gap = Math.round(12 * unit);
+    const halves = this.liveryColumn && !stock ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, 6 * unit) : null;
+    toggleClass(this.body, 'is-side-by-side', !!halves);
+    this.body.style.width = halves ? `${halves.left}px` : '';
     // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the width the sim's list leaves to its
     // content (its scroll bar takes some) less the room kept before the bar.
     const content = this.list.querySelector('.scroll__content');
-    const room = Math.floor((content instanceof HTMLElement && content.clientWidth > 0 ? content.clientWidth : rect.width) - SCROLL_BAR_ROOM * unit);
-    const columns = Math.max(2, Math.floor(room / (TILE_WIDTH * unit)));
+    const listWidth = content instanceof HTMLElement && content.clientWidth > 0 ? content.clientWidth : rect.width;
+    // The list narrows on the next frame: until then, the half is the limit.
+    const room = Math.floor((halves ? Math.min(listWidth, halves.left) : listWidth) - SCROLL_BAR_ROOM * unit);
+    const columns = halves ? AIRCRAFT_COLUMNS : Math.max(2, Math.floor(room / (TILE_WIDTH * unit)));
     const width = Math.floor(room / columns - 12 * unit);
-    style.setProperty('--tile-w', `${width}px`);
+    setVariable(style, '--tile-w', `${width}px`);
     // The image keeps the sim's tile proportions; the text banner below only takes its three lines.
     const image = Math.round(width * TILE_RATIO * IMAGE_SHARE);
-    style.setProperty('--tile-image-h', `${image}px`);
-    style.setProperty('--tile-h', `${image + Math.round(BANNER_HEIGHT * unit)}px`);
+    setVariable(style, '--tile-image-h', `${image}px`);
+    setVariable(style, '--tile-h', `${image + Math.round(BANNER_HEIGHT * unit)}px`);
+    if (halves) {
+      const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
+      this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
+    } else {
+      this.placeLiveries(null);
+    }
+  }
+
+  /** The livery column placed or hidden, and the setup panel told (it drops its thumbnails while the column shows). */
+  private placeLiveries(rect: ColumnRect | null): void {
+    if (!this.liveryColumn) return;
+    this.liveryColumn.place(rect);
+    setLiveriesInGallery(rect !== null);
   }
 
   private showStockGrid(show: boolean): void {
@@ -519,7 +564,7 @@ export class Gallery {
       const host = el('div', `${view === 'gallery' ? 'msfs-ui-gal__tile' : 'msfs-ui-gal__row'} marquee__trigger`);
       this.list.appendChild(host);
       this.listItems.push(host);
-      const cell: Cell = { tile, host, created: false, card: null, heart: null };
+      const cell: Cell = { tile, host, slot: null, card: null, heart: null };
       scope.listen(host, 'mouseenter', () => this.hover(cell.tile.item));
       scope.listen(host, 'mouseleave', () => this.hover(null));
       this.cells.push(cell);
@@ -528,6 +573,8 @@ export class Gallery {
   }
 
   private clearCells(): void {
+    // The slots leave the hosts before these go: they wait in the pool's parking for the next list.
+    if (this.pool) this.pool.releaseAll();
     if (this.cellScope) this.cellScope.dispose();
     this.cellScope = null;
     this.cells = [];
@@ -538,52 +585,92 @@ export class Gallery {
     if (this.memory.view === 'stock') this.cellKey = '';
   }
 
-  /** Creates the components of the tiles near the visible part of the list (about 150 aircraft would be slow). */
+  /**
+   * Keeps components only for the tiles near the visible part of the list, as the sim's own grid does: every tile alive
+   * makes each change of layout slower (core/virtual-list.ts). The positions are all read before any change, so the
+   * engine lays the page out once.
+   */
   private materialize(): void {
-    const scope = this.cellScope;
-    if (!scope || this.cells.length === 0) return;
+    if (!this.cellScope || this.cells.length === 0) return;
     const body = this.list.getBoundingClientRect();
     if (body.height <= 0) return;
-    const margin = CREATE_MARGIN * uiUnit();
-    for (const cell of this.cells) {
-      if (cell.created) continue;
-      const rect = cell.host.getBoundingClientRect();
-      if (rect.bottom < body.top - margin || rect.top > body.bottom + margin) continue;
-      cell.created = true;
-      this.createCell(cell, scope);
+    const unit = uiUnit();
+    const margins = { create: CREATE_MARGIN * unit, keep: KEEP_MARGIN * unit };
+    const actions = this.cells.map((cell) => cellAction(cell.host.getBoundingClientRect(), cell.slot !== null, body, margins));
+    this.cells.forEach((cell, at) => {
+      if (actions[at] === 'create') this.assignCell(cell);
+      else if (actions[at] === 'destroy') this.releaseCell(cell);
+    });
+  }
+
+  /** The cell gets a slot of the pool (a parked one first) and shows its tile. */
+  private assignCell(cell: Cell): void {
+    const slot = this.slotPool().acquire(cell.host, cell);
+    cell.slot = slot;
+    cell.card = slot.card;
+    cell.heart = slot.heart;
+    if (slot.card) {
+      this.fillCell(cell, this.memory.view === 'gallery');
+      this.updateCell(cell);
     }
   }
 
-  private createCell(cell: Cell, scope: Scope): void {
-    const gallery = this.memory.view === 'gallery';
-    const cardHost = el('div', 'msfs-ui-gal__card', cell.host);
+  /** The cell's slot goes back to the pool's parking (the host keeps its place in the list). */
+  private releaseCell(cell: Cell): void {
+    if (cell.slot && this.pool) this.pool.release(cell.slot);
+    cell.slot = null;
+    cell.card = null;
+    cell.heart = null;
+  }
+
+  /** The pool of the current view (aircraft tiles or list rows); another view makes a new one. */
+  private slotPool(): ComponentPool<Cell> {
+    const view = this.memory.view;
+    if (!this.pool || this.poolView !== view) {
+      if (this.poolScope) this.poolScope.dispose();
+      const scope = (this.poolScope = this.scope.child());
+      this.poolView = view;
+      this.pool = new ComponentPool<Cell>(scope, this.root, (slot, slotScope) => this.createSlot(slot, slotScope, view === 'gallery'));
+    }
+    return this.pool;
+  }
+
+  /** A slot's components, made once; they show whatever cell holds the slot. */
+  private createSlot(slot: PoolSlot<Cell>, scope: Scope, gallery: boolean): void {
     // The sim's tiles send tileClick / tileHover themselves, without data (the mod writes their texts itself): those
     // are stopped here, the mod sends its own with the aircraft (select, hover).
     for (const name of TILE_EVENTS) {
-      scope.listen(cardHost, name, (event) => {
+      scope.listen(slot.cardHost, name, (event) => {
         if ((event as CustomEvent).detail === undefined || (event as CustomEvent).detail === null) event.stopPropagation();
       });
     }
-    const heartHost = el('div', 'msfs-ui-gal__heart', cell.host);
     Promise.all([
-      createComponent(scope, gallery ? COMPONENTS.fleetTile : COMPONENTS.horizontalTile, cardHost),
-      createComponent(scope, COMPONENTS.wishlistButton, heartHost),
+      createComponent(scope, gallery ? COMPONENTS.fleetTile : COMPONENTS.horizontalTile, slot.cardHost),
+      createComponent(scope, COMPONENTS.wishlistButton, slot.heartHost),
     ]).then(
       ([card, heart]) => {
         if (scope.disposed) return;
-        cell.card = card;
-        cell.heart = heart;
+        slot.card = card;
+        slot.heart = heart;
+        if (this.pool) this.pool.markReady(slot);
         if (!gallery) {
           const horizontal = card.manipulator<HorizontalTileManipulator>();
           if (horizontal) horizontal.item = { isOwned: true, isOwnedBySubscription: false, isFavorite: false };
         }
         card.onClick(scope, () => {
+          const cell = slot.item;
+          if (!cell || cell.slot !== slot) return;
           const { item, livery } = cell.tile;
           if (livery) this.selectLivery(item, livery);
           else this.select(item);
         });
-        this.fillCell(cell, gallery);
-        this.updateCell(cell);
+        const cell = slot.item;
+        if (cell && cell.slot === slot) {
+          cell.card = card;
+          cell.heart = heart;
+          this.fillCell(cell, gallery);
+          this.updateCell(cell);
+        }
       },
       (error: unknown) => logError('a gallery tile could not be created', error),
     );
@@ -612,10 +699,12 @@ export class Gallery {
       if (subtitle && creator) cell.host.classList.add('has-third-line');
       else cell.host.classList.remove('has-third-line');
     } else {
-      // One line: the name in bold, then "- studio - variant (- livery)" in the tile's light second text.
       card.set('Image', image);
       card.set('Title', name);
-      card.set('Creator', [creator].concat(details).filter((part) => !!part).map((part) => `- ${part.trim()}`).join(' '));
+      const parts = [creator].concat(details).filter((part) => !!part).map((part) => part.trim());
+      // One line: the name in bold, then "- studio - variant (- livery)" in the tile's light second text. Side by side
+      // (a narrower list): two lines, the name, then "studio · variant (· livery)" (aircraft-gallery.css).
+      card.set('Creator', this.liveryColumn ? parts.join(' · ') : parts.map((part) => `- ${part}`).join(' '));
     }
   }
 
@@ -670,8 +759,13 @@ export class Gallery {
     saveFavoriteLiveries(this.favoriteLiveries.filter((candidate) => candidate !== livery));
   }
 
-  /** As a hover on a tile of the sim: the header of the left column shows this aircraft. */
+  /**
+   * As a hover on a tile of the sim: the header of the left column shows this aircraft. Not while the setup panel
+   * covers that column: it shows the selected aircraft (the configurator's), whose name the header keeps; and the sim
+   * would load, at every tile passing under the mouse while scrolling, statistics that the panel hides.
+   */
   private hover(item: AircraftItem | null): void {
+    if (setupPanelShown()) return;
     const content = this.page.elt.querySelector(CONTENT);
     if (content) content.dispatchEvent(new CustomEvent('tileHover', { detail: item, bubbles: true }));
   }

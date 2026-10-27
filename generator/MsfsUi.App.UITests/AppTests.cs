@@ -127,6 +127,22 @@ public sealed class AppTests
     }
 
     [TestMethod]
+    public void FeaturesSaveTheChosenLayout()
+    {
+        using var app = AppSession.Start();
+        app.Navigate("NavFeatures");
+        AppSession.Expand(app.FindByName("Aircraft gallery and list", "Expander"));
+        Assert.IsTrue(AppSession.IsSelected(app.Find("Choice_aircraftGallery_layout_classic")), "Classic by default");
+
+        app.Navigate("Choice_aircraftGallery_layout_sideBySide");
+        app.Invoke("FeaturesApply");
+        app.WaitForText("FeaturesMessage", "Settings saved");
+
+        StringAssert.Contains(File.ReadAllText(Path.Combine(app.DataRoot, "settings.json")), "\"layout\": \"sideBySide\"");
+        Assert.IsTrue(AppSession.IsSelected(app.Find("Choice_aircraftGallery_layout_sideBySide")));
+    }
+
+    [TestMethod]
     public void FeaturesApplyWithoutPackageOnlySaves()
     {
         using var app = AppSession.Start();

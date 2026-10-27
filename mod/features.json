@@ -110,7 +110,7 @@
           "id": "widenColumn",
           "type": "number",
           "title": "Widen the left column",
-          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width.",
+          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width. In the gallery's side by side layout the column is 400 units wide instead.",
           "default": 50,
           "min": 0,
           "max": 200,
@@ -125,7 +125,19 @@
       "description": "Replaces the aircraft list with a gallery or a compact list, with favourites per aircraft and per livery, a filter and the sim's sort orders.",
       "screen": "Aircraft selection",
       "enabledByDefault": true,
-      "options": []
+      "options": [
+        {
+          "id": "layout",
+          "type": "choice",
+          "title": "Layout",
+          "description": "How the aircraft selection shows the aircraft and their liveries.",
+          "default": "classic",
+          "choices": [
+            { "id": "classic", "title": "Classic", "description": "The gallery fills the right side; the liveries are small thumbnails in the setup panel." },
+            { "id": "sideBySide", "title": "Side by side", "description": "The aircraft on the left half of the gallery, the liveries of the current aircraft on the right half, as large tiles with their name and tail number." }
+          ]
+        }
+      ]
     },
     {
       "id": "freeflightFavorites",

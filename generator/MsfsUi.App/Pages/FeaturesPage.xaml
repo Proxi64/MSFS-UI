@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:MsfsUi.App.ViewModels">
     <Page.Resources>
-        <!--  An option: its title and explanation on the left, its switch or number on the right.  -->
+        <!--  An option: its title and explanation on the left, its switch, number or choices on the right.  -->
         <DataTemplate x:Key="OptionTemplate" x:DataType="vm:OptionItemViewModel">
             <Grid Padding="0,10" ColumnSpacing="24">
                 <Grid.ColumnDefinitions>
@@ -19,7 +19,28 @@
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Text="{x:Bind Description, Mode=OneTime}"
                         TextWrapping="Wrap" />
+                    <!--  A choice: the explanation of the selected one.  -->
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind ChoiceDescription, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind IsChoice, Mode=OneTime}" />
                 </StackPanel>
+                <RadioButtons
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="{x:Bind AutomationId, Mode=OneTime}"
+                    AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
+                    ItemsSource="{x:Bind Choices, Mode=OneTime}"
+                    SelectedIndex="{x:Bind SelectedChoiceIndex, Mode=TwoWay}"
+                    Visibility="{x:Bind IsChoice, Mode=OneTime}">
+                    <RadioButtons.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ChoiceItemViewModel">
+                            <RadioButton AutomationProperties.AutomationId="{x:Bind AutomationId, Mode=OneTime}" Content="{x:Bind Title, Mode=OneTime}" />
+                        </DataTemplate>
+                    </RadioButtons.ItemTemplate>
+                </RadioButtons>
                 <ToggleSwitch
                     Grid.Column="1"
                     MinWidth="0"

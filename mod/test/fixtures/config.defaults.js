@@ -26,7 +26,8 @@ export default {
       "widenColumn": 50
     },
     "aircraftGallery": {
-      "enabled": true
+      "enabled": true,
+      "layout": "classic"
     },
     "freeflightFavorites": {
       "enabled": true
