@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (since 1.0.2)
+## 1.1.0 (2026-10-27)
 
 - **Aircraft selection layouts**: a new *Layout* option of the *Aircraft gallery and list* feature, set in MSFS-UI-GENERATOR. *Classic* (the default) is the layout so far. *Side by side* cuts the gallery in two: the aircraft on the left, three per row, and the liveries of the current aircraft on the right, two per row, as large as the aircraft tiles, with their name and tail number. The left column then keeps only the variants and the tail number, and is narrower. The *List* view shows both sides as rows.
 - **Setup panel**: the variants and the liveries share the panel's height and scroll in the sim's own list. Aircraft with many variants (iFly 737 MAX, FS Reborn Phenom 300E) no longer push the liveries, the tail number and the buttons out of the panel.
