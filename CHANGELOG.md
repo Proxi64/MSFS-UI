@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 (2026-10-27)
+## 1.2.0 (2026-10-27)
 
 - **Your favourites, tail numbers and last choices are now kept after a restart.** The sim writes its storage to the disk only when it saves its profile, which it does when one of its options is validated, not when the mod writes nor when you quit. The mod now asks for that save after each change, by validating the sim's option *Show the white dot cursor in freelook* with its current value (nothing changes). Before, any change made in a session without a change of the sim's options was lost.
 - **Aircraft selection layouts**: a new *Layout* option of the *Aircraft gallery and list* feature, set in MSFS-UI-GENERATOR. *Classic* (the default) is the layout so far. *Side by side* cuts the gallery in two: the aircraft on the left, three per row, and the liveries of the current aircraft on the right, two per row, as large as the aircraft tiles, with their name and tail number. The left column then drops its livery thumbnails (the variants, the tail number and the Fuel and Identification buttons stay) and is narrower. The *List* view shows both sides as rows.
