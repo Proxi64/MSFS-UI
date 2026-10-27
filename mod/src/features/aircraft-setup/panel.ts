@@ -6,30 +6,25 @@
 import { el, toggleClass, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
-import { syncConfiguratorToCurrent, type ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
+import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
-import { FAVORITE_LIVERIES_CHANGED, findFavoriteLivery, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
-import { liveryKey, TAIL_NUMBER, variationOf } from '../../sim/liveries.ts';
+import {
+  chooseLivery,
+  chooseVariant,
+  readConfigurator,
+  setFavoriteLivery,
+  syncConfigurator,
+  type ConfiguratorItem,
+  type ConfiguratorState,
+} from '../../sim/configurator.ts';
+import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries } from '../../sim/favorites.ts';
+import { TAIL_NUMBER } from '../../sim/liveries.ts';
 import { cleanTail } from '../../sim/registration.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
-import { readArray, store, translate, watch } from '../../sim/store.ts';
+import { store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { orderLiveries, type LiveryOrder } from './livery-order.ts';
 import { overflows, revealPosition, rowCount, variantsHeight, variantsPerRow, type Rows } from './setup-layout.ts';
-
-/** A variant of the configurator (`Configurator.Items`). */
-interface ConfiguratorItem {
-  id: string;
-  title: string;
-  isSelected: boolean;
-  isDisabled: boolean;
-}
-
-interface ConfiguratorDetails {
-  variationId: string;
-  displayName: string;
-  creator: string;
-}
 
 interface IdentificationField {
   dataName: string;
@@ -148,9 +143,8 @@ export class SetupPanel {
   private liveryOrder: LiveryOrder | null = null;
   private selectedLiveryTitle = '';
 
-  /** Aircraft of the configurator and the title of its variant (when it has several), for favourite liveries. */
-  private details: ConfiguratorDetails | null = null;
-  private variationTitle = '';
+  /** The configurator as last read: the choices are made on it. */
+  private state: ConfiguratorState = { variants: [], liveries: [], details: null, variationTitle: '' };
 
   private tail: TextField | null = null;
   private tailInfo: IdentificationField | null = null;
@@ -196,7 +190,7 @@ export class SetupPanel {
 
     // The sim releases its configurator when leaving the screen and sets it only on a click on a tile or on
     // "Configure"; a livery chosen on a released configurator makes the current aircraft invalid.
-    this.syncConfigurator().catch((error: unknown) => logError('the configurator could not be set', error));
+    syncConfigurator().catch((error: unknown) => logError('the configurator could not be set', error));
     const reload = () => this.scheduleReload();
     watch(scope, configurator.Details, reload);
     watch(scope, aircraft.CurrentAircraft, reload);
@@ -336,23 +330,6 @@ export class SetupPanel {
 
   // ----- Data -----
 
-  /** Sets the configurator on the current aircraft (variant and livery) unless it already is. True when ready. */
-  private async syncConfigurator(): Promise<boolean> {
-    const ready = await syncConfiguratorToCurrent();
-    if (!ready) logError('the configurator cannot be set on the current aircraft');
-    return ready;
-  }
-
-  /** Before acting: the configurator is ready and the item belongs to its aircraft; otherwise the panel reloads. */
-  private async canApply(itemVariationId: string): Promise<boolean> {
-    const ready = await this.syncConfigurator();
-    const details = (await configurator.Details()) as { variationId: string } | null;
-    if (ready && details && details.variationId === itemVariationId) return true;
-    logError(`choice ignored (configurator on ${details ? details.variationId : '?'}, item of ${itemVariationId})`);
-    this.scheduleReload();
-    return false;
-  }
-
   private scheduleReload(): void {
     clearTimeout(this.reloadTimer);
     this.reloadTimer = setTimeout(() => this.reload().catch((error: unknown) => logError('the setup panel could not be updated', error)), RELOAD_DELAY_MS);
@@ -360,18 +337,11 @@ export class SetupPanel {
 
   private async reload(): Promise<void> {
     const number = ++this.reloadNumber;
-    const [variants, liveries, details] = await Promise.all([
-      readArray<ConfiguratorItem>(configurator.Items),
-      readArray<ConfiguratorLivery>(configurator.Liveries),
-      configurator.Details() as Promise<ConfiguratorDetails | null>,
-    ]);
+    const state = await readConfigurator();
     if (this.scope.disposed || number !== this.reloadNumber) return;
-    const items = variants.filter((item) => !!item);
-    const selected = items.filter((item) => item.isSelected)[0];
-    this.details = details;
-    this.variationTitle = items.length > 1 && selected ? selected.title : '';
-    this.renderVariants(items);
-    this.renderLiveries(liveries.filter((livery) => !!livery));
+    this.state = state;
+    this.renderVariants(state.variants);
+    this.renderLiveries(state.liveries);
     await aircraft.UpdateCurrentAircraftIdentification.request();
   }
 
@@ -472,25 +442,20 @@ export class SetupPanel {
     }
   }
 
+  /** A choice the configurator ignored (not on the current aircraft): the panel reads it again. */
   private chooseVariant(id: string): void {
     const item = this.variants.filter((candidate) => candidate.id === id)[0];
     if (!item || item.isSelected) return;
-    // The variants listed belong to the configurator's aircraft: check that it is the current aircraft.
-    const selected = this.variants.filter((candidate) => candidate.isSelected)[0];
-    this.canApply(selected ? selected.id : '')
-      .then((ok) => (ok ? configurator.SelectItem.request(id) : undefined))
+    chooseVariant(this.state, id)
+      .then((done) => (done ? undefined : this.scheduleReload()))
       .catch((error: unknown) => logError('the variant could not be chosen', error));
   }
 
   // ----- Liveries -----
 
-  private isFavorite(livery: ConfiguratorLivery, favorites = loadFavoriteLiveries()): boolean {
-    return !!livery.directoryPath && findFavoriteLivery(favorites, variationOf(livery.id), livery.directoryPath) >= 0;
-  }
-
   private renderLiveries(items: ConfiguratorLivery[]): void {
     const favorites = loadFavoriteLiveries();
-    const ordered = orderLiveries(items, (livery) => this.isFavorite(livery, favorites), this.liveryOrder);
+    const ordered = orderLiveries(items, (livery) => isFavoriteLivery(livery, favorites), this.liveryOrder);
     this.liveryOrder = ordered.order;
     this.liveries = ordered.items;
     const selected = items.filter((livery) => livery.isSelected)[0];
@@ -553,44 +518,20 @@ export class SetupPanel {
   private updateLivery(livery: ConfiguratorLivery, tile: LiveryTile, favorites: ReturnType<typeof loadFavoriteLiveries>): void {
     tile.button.select(livery.isSelected);
     toggleClass(tile.host, 'is-disabled', !!livery.isDisabled);
-    const favorite = this.isFavorite(livery, favorites);
+    const favorite = isFavoriteLivery(livery, favorites);
     toggleClass(tile.host, 'is-favorite', favorite);
     const heart = tile.heart && tile.heart.manipulator<WishlistManipulator>();
-    if (heart) heart.setData(favorite, (checked) => this.setFavoriteLivery(livery.id, checked));
+    // The change event redraws this panel (hearts) and the gallery; the order of the thumbnails stays.
+    if (heart) heart.setData(favorite, (checked) => setFavoriteLivery(this.state, livery.id, checked));
   }
 
+  /** A choice the configurator ignored (not on the current aircraft): the panel reads it again. */
   private chooseLivery(id: string): void {
     const livery = this.liveries.filter((candidate) => candidate.id === id)[0];
     if (!livery || livery.isSelected || livery.isDisabled) return;
-    this.canApply(variationOf(id))
-      .then((ok) => (ok ? configurator.SaveVariationId.request(id) : undefined))
+    chooseLivery(this.state, id)
+      .then((done) => (done ? undefined : this.scheduleReload()))
       .catch((error: unknown) => logError('the livery could not be chosen', error));
-  }
-
-  private setFavoriteLivery(id: string, favorite: boolean): void {
-    const livery = this.liveries.filter((candidate) => candidate.id === id)[0];
-    if (!livery || !livery.directoryPath) return;
-    const variationId = variationOf(id);
-    const favorites = loadFavoriteLiveries();
-    const at = findFavoriteLivery(favorites, variationId, livery.directoryPath);
-    if (!favorite && at >= 0) favorites.splice(at, 1);
-    else if (favorite && at < 0) {
-      const details = this.details && this.details.variationId === variationId ? this.details : null;
-      favorites.push({
-        variationId,
-        dir: liveryKey(livery.directoryPath),
-        title: livery.title,
-        image: livery.imageUrl,
-        displayName: details ? details.displayName : undefined,
-        creator: details ? details.creator : undefined,
-        variation: details ? this.variationTitle : undefined,
-        usedAt: livery.isSelected ? Date.now() : 0,
-      });
-    } else {
-      return;
-    }
-    // The event redraws this panel (hearts) and the gallery; the order of the thumbnails stays.
-    saveFavoriteLiveries(favorites);
   }
 
   // ----- Tail number -----

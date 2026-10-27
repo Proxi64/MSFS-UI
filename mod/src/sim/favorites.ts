@@ -3,7 +3,7 @@
 // Aircraft are identified by `variationId` (stable); `aircraftId` may change when an aircraft is installed.
 
 import { loadData, saveData } from '../core/storage.ts';
-import { liveryKey } from './liveries.ts';
+import { liveryKey, variationOf } from './liveries.ts';
 
 export interface FavoriteAircraft {
   variationId: string;
@@ -82,6 +82,58 @@ export function findFavoriteLivery(favorites: readonly FavoriteLivery[], variati
     if (favorites[i]!.variationId === variationId && favorites[i]!.dir === key) return i;
   }
   return -1;
+}
+
+/** A livery of the configurator, as far as its favourite goes. */
+export interface ConfiguratorLiveryRef {
+  /** `<variationId>:<n>`. */
+  id: string;
+  title: string;
+  imageUrl: string;
+  directoryPath: string;
+  isSelected: boolean;
+}
+
+/** The aircraft the configurator is on: its details and the title of its variant (when it has several). */
+export interface ConfiguratorAircraft {
+  details: { variationId: string; displayName: string; creator: string } | null;
+  variationTitle: string;
+}
+
+/** Whether a livery of the configurator is a favourite of its variant (a livery without a folder never is). */
+export function isFavoriteLivery(livery: ConfiguratorLiveryRef, favorites: readonly FavoriteLivery[]): boolean {
+  return !!livery.directoryPath && findFavoriteLivery(favorites, variationOf(livery.id), livery.directoryPath) >= 0;
+}
+
+/**
+ * The favourite liveries with `livery` added (`on`) or removed; null when nothing changes. A new favourite keeps the
+ * aircraft's name, publisher and variant when the configurator is on its variant, and is used `now` when selected.
+ */
+export function withFavoriteLivery(
+  favorites: readonly FavoriteLivery[],
+  livery: ConfiguratorLiveryRef,
+  on: boolean,
+  aircraft: ConfiguratorAircraft,
+  now: number,
+): FavoriteLivery[] | null {
+  if (!livery.directoryPath) return null;
+  const variationId = variationOf(livery.id);
+  const at = findFavoriteLivery(favorites, variationId, livery.directoryPath);
+  if (!on) return at >= 0 ? favorites.filter((_favorite, index) => index !== at) : null;
+  if (at >= 0) return null;
+  const details = aircraft.details && aircraft.details.variationId === variationId ? aircraft.details : null;
+  return favorites.concat([
+    {
+      variationId,
+      dir: liveryKey(livery.directoryPath),
+      title: livery.title,
+      image: livery.imageUrl,
+      displayName: details ? details.displayName : undefined,
+      creator: details ? details.creator : undefined,
+      variation: details ? aircraft.variationTitle : undefined,
+      usedAt: livery.isSelected ? now : 0,
+    },
+  ]);
 }
 
 export function loadUses(): AircraftUses {
