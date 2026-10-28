@@ -1,6 +1,6 @@
 # MSFS-UI: instructions for Claude Code
 
-A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.18, `fs-base-ui` 0.1.10) and the Windows app that installs it. The documentation is listed in [README.md](README.md#documentation); this file sums up what to keep in mind while working on the project.
+A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.21, `fs-base-ui` 0.1.10; most findings made on 1.9.18) and the Windows app that installs it. The documentation is listed in [README.md](README.md#documentation); this file sums up what to keep in mind while working on the project.
 
 ## Names and layout
 

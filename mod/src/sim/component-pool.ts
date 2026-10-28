@@ -2,7 +2,7 @@
 // its template and image, then laying the page out again: a list that creates and destroys its tiles while scrolling
 // stutters as if loading all the time. A pool creates a few slots (a card and its heart) and moves them between the
 // cells near the view; a slot far from it waits in a hidden parking (out of the layout). Moving a slot keeps the
-// component loaded and active (measured on 1.9.18: 4.8 ms with the layout).
+// component loaded and active (measured on 1.9.21: 4.8 ms with the layout).
 
 import { el } from '../core/dom.ts';
 import type { Scope } from '../core/scope.ts';

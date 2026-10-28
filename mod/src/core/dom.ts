@@ -23,7 +23,7 @@ export function button(className: string, parent: Element, onClick: () => void):
 
 /**
  * Sets a CSS variable only when its value changes. Coherent lays the whole subtree out again at every write of a
- * variable, even of its current value (about 90 ms under the gallery's tiles at 3440 × 1440, measured on 1.9.18),
+ * variable, even of its current value (about 90 ms under the gallery's tiles at 3440 × 1440, measured on 1.9.21),
  * whereas a plain property written with its current value costs nothing: the layout passes, every 250 ms, go through
  * here.
  */

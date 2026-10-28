@@ -1,6 +1,6 @@
 // The sim keeps its `datastorage` in memory and writes it to the disk (its Steam Cloud profile, `profile_00`) only when
 // it saves its profile, which it does when one of its own options is validated: never after a write of the mod, nor
-// when it quits, even through its menu (measured on 1.9.18, 2026-10-27). The mod's data (favourites, tail numbers,
+// when it quits, even through its menu (measured on 1.9.21, 2026-10-27). The mod's data (favourites, tail numbers,
 // the weather bar's last choice…) was lost at every restart. So after the mod writes, it asks for a profile save the
 // way the options page does: the flow event VALIDATE for one on/off option, with the option's current value, so that
 // nothing changes. The option is declared in compat.json ("options"), checked live by the app's Compatibility page.
