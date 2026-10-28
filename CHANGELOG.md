@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Weather bar**: the map buttons under it (*Legend*, *Map Layers*, *World Map display*) work again. Their panels open in the bar's place, so the bar hid them; it now steps aside while one is open, as the sim's own content does.
+
 ## 1.2.0 (2026-10-27)
 
 - **Your favourites, tail numbers and last choices are now kept after a restart.** The sim writes its storage to the disk only when it saves its profile, which it does when one of its options is validated, not when the mod writes nor when you quit. The mod now asks for that save after each change, by validating the sim's option *Show the white dot cursor in freelook* with its current value (nothing changes). Before, any change made in a session without a change of the sim's options was lost.

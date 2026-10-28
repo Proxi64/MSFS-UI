@@ -72,6 +72,8 @@ const SIM_CARDS: { selector: string; tab: string }[] = [
 const WIDGET = '[name="Flight_Conditions_History_Widget"]';
 /** The map buttons (info, layers, filters) under the column, and the EFB button under them. */
 const MAP_BUTTONS = '[name="Worldmap_Filters"]';
+/** The panels those buttons open (legend, map layers, map display): the sim draws them where the bar is. */
+const MAP_PANELS = ['[name="Worldmap_Filters_Legend"]', '[name="Worldmap_Filters_Layers"]', '[name="Worldmap_Filters_Display"]'];
 const EFB_BUTTON = '[name="TextButton_Large_EFB"]';
 
 const flight = store.Game.CurrentFlight;
@@ -324,11 +326,12 @@ export class WeatherBar {
    * Under the Flight Conditions widget, across its width; hidden when the widget is (another panel is open). When an
    * airport or a traffic aircraft is selected, the sim shows its card (SIM_CARDS) in the same place, and the column
    * cannot hold both: tabs appear under the widget (Weather, and Airport or Traffic), the card is moved down by as
-   * much, and only the element of the chosen tab is visible.
+   * much, and only the element of the chosen tab is visible. A panel of the map buttons (MAP_PANELS) takes the place
+   * as in the sim: the bar and its tabs are hidden while it is open, the card back in its own place.
    */
   private layout(): void {
     const anchor = this.page.elt.querySelector(WIDGET);
-    if (!isShown(anchor)) {
+    if (!isShown(anchor) || MAP_PANELS.some((selector) => isOnScreen(this.page.elt.querySelector<HTMLElement>(selector)))) {
       this.panel.style.display = 'none';
       this.tabs.style.display = 'none';
       this.releaseCard();

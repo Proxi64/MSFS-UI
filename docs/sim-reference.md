@@ -39,7 +39,7 @@ Elements found by their `name` attribute:
 | | `Flight_Conditions_History_Widget` | Time widget and 24-hour timeline |
 | | `FreeFlight_Runways` | Card of the selected airport (runways, spots) under the widget, 440 units wide. It carries the `disabled` class (`pointer-events: none`) while shown, even without the mod: its runways cannot be clicked. Zero size without an airport |
 | | `FreeFlight_Traffic` | Card of a traffic aircraft selected on the map, at the **same place** as `FreeFlight_Runways`; the sim switches between them with the `State_Traffic` and `State_Runways` visual states |
-| | `Worldmap_Filters` | Map filters |
+| | `Worldmap_Filters` | The map buttons under the right column (info, layers, filters: `IconButton_Light_Legend`, `_Layers`, `_Filters`) and the panels they open, `Worldmap_Filters_Legend`, `Worldmap_Filters_Layers` and `Worldmap_Filters_Display`: each shows in the right column under the widget (586 × 733 at 3440 × 1440, `display: none` while closed); a second click on its button closes it. Opening *Map Layers* logs two errors of the sim (`m_mapStyleData.choices[e].name`), with or without the mod (1.9.21) |
 | Map (page `atlas`) | `Worldmap_Buttons` | Small window the sim draws on the map on a click (Set as departure, Set as arrival…); it is in the `atlas` page, not in `mainUi` |
 | Aircraft selection | `PlaneSelection_Content` | Content; listens to `tileHover`; its manipulator has `updateAircraftList()` |
 | | `LeftBlock` / `RightBlock` | Left column / grid area |

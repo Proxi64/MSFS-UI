@@ -80,6 +80,8 @@ Everything the mod shows is made of the sim's own components (tiles, buttons, ta
 
 When an airport (or an aircraft of the traffic) is selected on the map, the sim shows its card in the same column. Two tabs then appear under the widget, **Weather** and **Airport** (or **Traffic**): only the chosen one shows. Without such a card, the tabs disappear.
 
+The map buttons under the column (*Legend*, *Map Layers*, *World Map display*) open their panel in the same place: the bar steps aside while it is open, and comes back when it is closed with its button.
+
 | Section | Content |
 |---|---|
 | **Weather** | One icon per weather preset of the sim (Live, clear skies… thunderstorm, the last custom weather). A click applies it, as in the sim's panel; the preset's name shows on hover |

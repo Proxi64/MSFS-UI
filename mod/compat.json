@@ -40,6 +40,9 @@
     "Scroll",
     "Header",
     "Worldmap_Filters",
+    "Worldmap_Filters_Legend",
+    "Worldmap_Filters_Layers",
+    "Worldmap_Filters_Display",
     "TextButton_Large_EFB"
   ],
   "componentPatterns": [
