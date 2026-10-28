@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.1 (2026-10-28)
 
 - **Weather bar**: the map buttons under it (*Legend*, *Map Layers*, *World Map display*) work again. Their panels open in the bar's place, so the bar hid them; it now steps aside while one is open, as the sim's own content does.
 
