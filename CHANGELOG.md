@@ -7,6 +7,7 @@
 - **Your 1.x data comes over**: at the first start of 2.0, the favourites, tail numbers and last choices kept by 1.x are copied into the module's files.
 - **Restart the sim once** after installing 2.0: the sim loads a module only when it starts (MSFS-UI-GENERATOR says so).
 - **Compatibility**: the Storage group says whether the module keeps the data, or why the mod uses the sim's storage instead.
+- **List view in the colours of the gallery**: the aircraft and livery rows have the light blue of the gallery's tiles instead of a dark grey; the selected row stays bright blue and the hovered one white.
 
 ## 1.3.1 (2026-10-29)
 

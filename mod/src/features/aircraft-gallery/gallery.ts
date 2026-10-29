@@ -722,6 +722,7 @@ export class Gallery {
     if (cell.card) {
       const selected = livery ? livery.variationId === this.current.variationId && livery.dir === this.current.livery : item.isSelected;
       cell.card.select(selected);
+      toggleClass(cell.host, 'is-selected', selected);
       cell.card.disable(!item.isUsable);
     }
     if (cell.slot) cell.slot.heartHost.style.display = livery ? '' : 'none';

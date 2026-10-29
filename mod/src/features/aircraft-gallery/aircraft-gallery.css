@@ -102,6 +102,15 @@
 
 .msfs-ui-gal__card { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 /*
+ * A plain list row (aircraft or livery) in the colours of a plain gallery tile's text banner (measured on 1.9.21): the
+ * sim's rgb(59, 132, 235) at 30 % over rgba(30, 66, 118, 0.2), instead of the horizontal tile's opaque rgb(36, 41, 52).
+ * Its Background is also the one the sim's Selected and Hover states repaint: they keep the sim's colours (is-selected
+ * is set by gallery.ts and liveries.ts with the tile's selection).
+ */
+.msfs-ui-gal__row:not(.is-selected):not(:hover) .msfs-ui-gal__card [name="Background"] {
+  background-image: linear-gradient(165deg, rgba(59, 132, 235, 0.3) 0%, rgba(59, 132, 235, 0.3) 100%), linear-gradient(165deg, rgba(30, 66, 118, 0.2) 0%, rgba(30, 66, 118, 0.2) 100%) !important;
+}
+/*
  * The tile's third line of text (its Distance, here the studio): its own State_Distance shows it, but the tile's
  * Disabled state hides it again for good, so it is shown here.
  */

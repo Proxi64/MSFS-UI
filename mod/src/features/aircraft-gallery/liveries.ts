@@ -315,6 +315,7 @@ export class LiveryColumn {
       card.set(this.rows ? 'Image' : 'AircraftImage', livery.imageUrl);
       card.set(this.rows ? 'Title' : 'AircraftName', translate(livery.title));
       card.select(livery.isSelected);
+      toggleClass(cell.host, 'is-selected', livery.isSelected);
       card.disable(!!livery.isDisabled);
       card.set(this.rows ? 'Creator' : 'Subtitle', this.tail(livery, tails));
     }
