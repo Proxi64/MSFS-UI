@@ -146,8 +146,8 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 | Layout | What the aircraft selection shows |
 |---|---|
-| **Classic** (default) | The gallery fills the right side; the liveries are small thumbnails in the setup panel |
-| **Side by side** | The aircraft on the left part of the gallery, three per row; the liveries of the current aircraft on the right part, two per row, as large as the aircraft tiles. The left column keeps the variants, the tail number and the Fuel and Identification buttons, without the livery thumbnails, and is narrower (400 layout units) |
+| **Classic** | The gallery fills the right side; the liveries are small thumbnails in the setup panel |
+| **Side by side** (default) | The aircraft on the left part of the gallery, three per row; the liveries of the current aircraft on the right part, two per row, as large as the aircraft tiles. The left column keeps the variants, the tail number and the Fuel and Identification buttons, without the livery thumbnails, and is narrower (400 layout units) |
 
 In the side by side layout:
 - each livery tile shows the livery's thumbnail whole, its name and its tail number (the one you chose for it, else the `atc_id` of its `livery.cfg`, else a registration found in its name; nothing when none is found);

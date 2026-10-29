@@ -27,7 +27,7 @@ export default {
     },
     "aircraftGallery": {
       "enabled": true,
-      "layout": "classic"
+      "layout": "sideBySide"
     },
     "freeflightFavorites": {
       "enabled": true

@@ -132,14 +132,14 @@ public sealed class AppTests
         using var app = AppSession.Start();
         app.Navigate("NavFeatures");
         AppSession.Expand(app.FindByName("Aircraft gallery and list", "Expander"));
-        Assert.IsTrue(AppSession.IsSelected(app.Find("Choice_aircraftGallery_layout_classic")), "Classic by default");
+        Assert.IsTrue(AppSession.IsSelected(app.Find("Choice_aircraftGallery_layout_sideBySide")), "Side by side by default");
 
-        app.Navigate("Choice_aircraftGallery_layout_sideBySide");
+        app.Navigate("Choice_aircraftGallery_layout_classic");
         app.Invoke("FeaturesApply");
         app.WaitForText("FeaturesMessage", "Settings saved");
 
-        StringAssert.Contains(File.ReadAllText(Path.Combine(app.DataRoot, "settings.json")), "\"layout\": \"sideBySide\"");
-        Assert.IsTrue(AppSession.IsSelected(app.Find("Choice_aircraftGallery_layout_sideBySide")));
+        StringAssert.Contains(File.ReadAllText(Path.Combine(app.DataRoot, "settings.json")), "\"layout\": \"classic\"");
+        Assert.IsTrue(AppSession.IsSelected(app.Find("Choice_aircraftGallery_layout_classic")));
     }
 
     [TestMethod]
