@@ -100,7 +100,8 @@ src/
     async.ts           withTimeout: every wait on the sim is bounded
     settings.ts        validation of the settings (pure, same rules as MsfsUi.Core SettingsNormalizer)
     log.ts             [msfs-ui] log, one string per call
-    storage.ts         datastorage, keys MSFS_UI_*
+    storage.ts         the mod's data, keys MSFS_UI_*: an in-memory copy over the vault, or datastorage as the fallback
+    vault-protocol.ts  the CommBus messages of the vault module (pure; same format as wasm/README.md)
     dom.ts             el, button, loadSvg, uiUnit (one unit of the sim's mock-ups, in px)
     theme.ts, .css     panels built like the sim's cards (blur, accessibility layer, veil; inputLocker),
                        section headers, compact TileButton hosts
@@ -113,7 +114,8 @@ src/
     text-field.ts      the sim's Search_Input as a text field (keyboard handled by the sim)
     favorites.ts       favourite liveries, last uses (MSFS_UI_FAVORITE_LIVERIES, MSFS_UI_AIRCRAFT_USES)
     configurator.ts    the configurator: read it, guarded choice of a variant or livery, favourite liveries
-    profile-save.ts    the sim's profile saved after the mod's writes (its storage reaches the disk only then)
+    vault.ts           the vault module over the CommBus: load, snapshot after each burst of writes, confirmation
+    profile-save.ts    the sim's profile saved after the mod's writes (datastorage fallback: it reaches the disk only then)
     selection-layout.ts  flag set by the gallery while it shows the liveries, read by the setup panel
     aircraft-loading.ts  loading an aircraft with its livery, configurator sync, use tracking
     liveries.ts        livery keys and folders, tail numbers per livery (MSFS_UI_LIVERY_TAILS)
@@ -162,7 +164,9 @@ Text fields use the sim's `Search_Input`: its manipulator handles the keyboard a
 
 ## Data stored in the sim
 
-The mod keeps its data in the sim's **persistent storage** (`datastorage`, where the menu keeps its own layout): it survives restarts, provided the sim saves its profile. The sim keeps this storage in memory and writes it to the disk only when it saves its profile (when one of its options is validated), not after a write nor when it quits: every write of the mod (`saveData`, `deleteData`) asks for a profile save, 2 s after the last of a burst (`sim/profile-save.ts`: the flow event `VALIDATE` for *Show the white dot cursor in freelook*, with its current value, so nothing changes; the option is declared in `compat.json` "options"). The browser's `localStorage` is emptied at every start: the mod never uses it. Every key starts with `MSFS_UI_` and holds JSON. The keys are the same as in 0.3.0, so earlier data carries over. On a Microsoft Store / Xbox sim, `datastorage` may be missing from the menu: nothing is kept there yet (see [docs/next-steps.md](../docs/next-steps.md), 1.5, and the Store edition in [docs/sim-reference.md](../docs/sim-reference.md#storage-and-translation)).
+Since 2.0 the mod keeps its data in the **vault**: the `msfs-ui.wasm` module of the package writes it to files of its own `work` folder (`%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui\work\vault-a|b.head|data` on Steam), 300 ms after the last write of a burst, confirmed by the module once it is on the disk: it survives a restart, a Quit and a force-stop of the sim, with no profile save. `core/storage.ts` keeps its API (`loadData`, `saveData`, `deleteData`) over an in-memory copy loaded from the module at start-up; `sim/vault.ts` talks to the module over the CommBus (messages in `core/vault-protocol.ts`, format in [wasm/README.md](../wasm/README.md)). The snapshot is limited to 524,288 bytes; a value that exceeds it blocks the saves of the session (logged). If the module does not answer within 3000 ms (a package installed without it, or installed since the sim started: the sim reads a module only at its start), the mod keeps the sim's `datastorage` as described below, and says why (`window.__msfsUiRuntime.storage`: `kind` is `vault` or `datastorage`, `detail` says why; Compatibility page, Storage group). The data of 1.x in `datastorage` is not copied into the vault: after installing 2.0, favourites and tail numbers start empty.
+
+**The fallback, `datastorage`** (the sim's persistent storage, where the menu keeps its own layout): it survives restarts, provided the sim saves its profile. The sim keeps in memory and writes it to the disk only when it saves its profile (when one of its options is validated), not after a write nor when it quits: every write of the mod (`saveData`, `deleteData`) asks for a profile save, 2 s after the last of a burst (`sim/profile-save.ts`: the flow event `VALIDATE` for *Show the white dot cursor in freelook*, with its current value, so nothing changes; the option is declared in `compat.json` "options"). The browser's `localStorage` is emptied at every start: the mod never uses it. Every key starts with `MSFS_UI_` and holds JSON. The keys are the same as in 0.3.0, so earlier data carries over. On a Microsoft Store / Xbox sim, `datastorage` may be missing from the menu: nothing is kept there yet (see [docs/next-steps.md](../docs/next-steps.md), 1.5, and the Store edition in [docs/sim-reference.md](../docs/sim-reference.md#storage-and-translation)).
 
 | Key | Content | Written by |
 |---|---|---|
@@ -177,7 +181,8 @@ The mod keeps its data in the sim's **persistent storage** (`datastorage`, where
 
 Aircraft are identified by `variationId` (stable); `aircraftId` may change when an aircraft is installed, so the mod looks it up when loading.
 
-- **Reading or deleting a key** by hand (sim running): `msfs-ui-dev eval "datastorage.getData('MSFS_UI_FAVORITE_LIVERIES')"`. Unload the mod first (`window.__msfsUiRuntime.unload()`) before deleting a key: while it runs, it may write the key again at once. A deletion alone may not be saved (seen on 2026-10-16: a deleted key came back after a restart; the sim may write its storage only on a `setData`): after a deletion, any write of another key saves it.
+- **With the vault**, the keys are in the module's files, not in `datastorage`: read the mod's copy with `msfs-ui-dev eval "window.__msfsUiRuntime.storage"` (`kind`, `detail`); the commands below concern the fallback.
+- **Reading or deleting a key** by hand (sim running, fallback): `msfs-ui-dev eval "datastorage.getData('MSFS_UI_FAVORITE_LIVERIES')"`. Unload the mod first (`window.__msfsUiRuntime.unload()`) before deleting a key: while it runs, it may write the key again at once. A deletion alone may not be saved (seen on 2026-10-16: a deleted key came back after a restart; the sim may write its storage only on a `setData`): after a deletion, any write of another key saves it.
 - **Default tail number**: if `MSFS_UI_BASE_TAIL` is deleted, the mod records it again from the sim's field, often the last number applied; set it with `datastorage.setData('MSFS_UI_BASE_TAIL', JSON.stringify('ASXGS'))` to keep a precise default.
 
 ## Start-up and hot reload

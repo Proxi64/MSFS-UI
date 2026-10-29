@@ -22,6 +22,8 @@ Developed on MSFS 2024 1.9.18 and tested on 1.9.21 (Steam), base UI package `fs-
 3. **Generate & install** puts the `msfs-ui` package in Community.
 4. Start (or restart) the sim: it reads a new package only at start-up.
 
+Version 2.0 also puts a small module, `msfs-ui.wasm`, in the package: it keeps your favourites, tail numbers and last choices in files of its own folder (`%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui\work`), written at once. The sim loads a module only when it starts, so the first install of 2.0, and every installation that adds the module, needs a **restart of the sim** (the app says so). The data kept by version 1.x is not carried over: after installing 2.0 your favourites and tail numbers start empty.
+
 The app keeps its own data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`: your feature settings (`settings.json`), the folders chosen by hand and the theme (`app.json`), and the log files. Earlier versions used `%LOCALAPPDATA%\MSFS-UI`; that folder is moved there the first time.
 
 To remove the mod: **Remove** on the Home page, then restart the sim. The mod never changes a file of the sim: only the `Community\msfs-ui` folder is involved.
@@ -203,7 +205,8 @@ A number is remembered for the current livery as soon as you change the tail num
 | The Favorites block disappears on Free Flight | *Search location* shows its results | Normal: it comes back when the results close |
 | METAR shows *No METAR* | No answer from the sim within 4 s, or no station | Choose the departure again |
 | *Ceiling 400 ft* instead of a cloud cover | Out of Live weather, the sim's METAR keeps the ceiling but not the cover | Normal |
-| Favourites, tail numbers or the last weather choice lost after a restart | The sim writes its storage to the disk only when it saves its profile; the mod asks for that save after each change (2 s after the last), by validating the sim's option *Show the white dot cursor in freelook* with its current value. A version before 1.2.0 did not | Update to 1.2.0. If it still happens, open **Compatibility**: the live check *the option re-validated to save the profile* says whether the sim still offers that option |
+| Favourites, tail numbers or the last weather choice lost after a restart (2.0) | The module did not answer, so the mod fell back on the sim's own storage, which reaches the disk less reliably (the module is read only when the sim starts; or the package was installed without it) | Restart the sim after installing. **Compatibility**, group *Storage*, says which storage is in use and why the module did not answer (for example *the vault module did not answer within 3000 ms*) |
+| Favourites, tail numbers or the last weather choice lost after a restart (1.x) | The sim writes its storage to the disk only when it saves its profile; the mod asks for that save after each change (2 s after the last), by validating the sim's option *Show the white dot cursor in freelook* with its current value. A version before 1.2.0 did not | Update to 1.2.0. If it still happens, open **Compatibility**: the live check *the option re-validated to save the profile* says whether the sim still offers that option |
 | The same tail number on every aircraft | Numbers typed before the per-livery memory, or liveries without a number | Type the number wanted for each livery |
 
 The **Log** page (tab *Mod in the sim*) shows the mod's messages and errors; include them when reporting a problem.

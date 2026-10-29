@@ -6,6 +6,7 @@ A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.21, `fs-base-ui` 0.1.1
 
 - **MSFS-UI-GENERATOR**: the Windows app (`generator/`, exe `MSFS-UI-GENERATOR.exe`, data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`).
 - **msfs-ui**: the package installed in the sim's Community folder; the mod's sources are in `mod/`.
+- **wasm/**: the vault, a WASM module of the `msfs-ui` package that keeps the mod's data in files of its `work` folder (2.0; protocol and file format in `wasm/README.md`).
 - `docs/` (user guide, development, sim reference, next steps, feature ideas, `images/` for the README's screenshots), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `.claude/skills/msfs-wasm` (skill for the sim's WASM modules: use it for any work on the 2.0 module, its build, its CommBus messages or its files), `build-release.ps1` (the release; output in `release/`, ignored by Git).
 - `LICENSE`: MIT, © 2026 Proxi64 (also in `mod/package.json` and `tools/msfs-sdk-mcp`); the README opens with a disclaimer (not affiliated with Microsoft or Asobo, use at your own risk) and ends with the licence.
 - The C# projects keep their internal names (`MsfsUi.App`, `MsfsUi.Core`, `MsfsUi.Core.Tests`, `MsfsUi.App.UITests`, `MsfsUi.DevTool`).
@@ -19,10 +20,11 @@ A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.21, `fs-base-ui` 0.1.1
 
 ```powershell
 cd mod; npm run check; cd ..                     # contracts, tsc, esbuild → mod/dist/main.js, node:test
-dotnet build generator/MsfsUi.slnx               # warnings are errors (the app embeds mod/dist/main.js: build the mod first)
+dotnet build generator/MsfsUi.slnx               # warnings are errors (the app embeds mod/dist/main.js and wasm/dist/msfs-ui.wasm: build the mod and the module first)
 dotnet test generator/MsfsUi.slnx                # Core tests + UI tests (they open app windows, about 20 s)
 dotnet test generator/MsfsUi.slnx --filter "TestCategory!=UI"
 winapp run generator/MsfsUi.App/MsfsUi.App.csproj --detach --json
+pwsh -File wasm/build.ps1                        # the vault module: build, checks, node tests (needs MSFS2024_SDK)
 pwsh -File build-release.ps1                     # release\MSFS-UI-GENERATOR\ + zip (mod in release mode, every test, publish)
 
 $dev = "generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe"
@@ -51,7 +53,7 @@ $dev = "generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe"
 - **ES2017**, no operator before `await`, no raw U+2028 / U+2029 (`String.fromCharCode`); the build refuses them. The Write and Edit tools turn `\uXXXX` escapes into raw characters: build code points (`char.ConvertFromUtf32`, `String.fromCharCode`). In Bash, heredocs and `node -e` lose backslashes and backticks: write scripts to the scratchpad with the Write tool, then run them.
 - **Contracts** (docs/development.md): `mod/features.json` and `mod/compat.json` are shared with the app; the build refuses a feature module that does not read its options, and any sim reference (GUID, `name="…"`, `TT:` key, `/Global` import, `coui://` file, `--color…`) missing from `compat.json`.
 - **The sim's own components** for everything visible (user's rule): `mod/src/sim/components.ts` creates them with `window.ResourcesManager.createElementFromGuid`; declare each in `compat.json` "components" (attributes, states, values, children) and the manipulator APIs called in "symbols". Text fields: the sim's `Search_Input` (`src/sim/text-field.ts`). Lists that scroll: the sim's `<real-scroll direction="y">`; a long list of the sim's tiles recycles a pool of them (`sim/component-pool.ts`, `core/virtual-list.ts`): never keep every tile alive. A text too long for its place: the sim's `marquee__trigger` class on the tile's host. `theme.css` keeps only what the sim draws without a component (card layers, section headers).
-- **Persistent data** in `datastorage` (`MSFS_UI_` prefix), never `localStorage` (emptied at every start).
+- **Persistent data** (`MSFS_UI_` prefix): the mod's data goes through `core/storage.ts` to the vault (`sim/vault.ts`, the WASM module), `datastorage` only as the fallback when the module does not answer; never `localStorage` (emptied at every start).
 - **App**: nullable, warnings as errors, analyzers `latest-recommended`, code style enforced (`generator/.editorconfig`), the public API of `MsfsUi.Core` documented, every package version pinned (`generator/Directory.Packages.props`). MVVM: one view model per page, `x:Bind` of values with an explicit `Mode` (`OneTime` for those that never change; command and event bindings keep the default, as the WinUI review advises); texts in `Strings/en-us/Resources.resw`; no colour in XAML; every focusable element named, with a stable `AutomationId` (from the catalogue's ids in templates); `SimSession.RefreshAsync` never throws but when cancelled, and reads on a worker thread; installations and removals one at a time (`PackageInstaller` lock, `SimSession.PackageOperation` for the pages); no exception thrown from `async void` handlers. Details in [docs/development.md](docs/development.md).
 - **UI tests** run the built app on an isolated profile (`MSFS_UI_DATA_ROOT`, `MSFS_UI_INSPECTOR_HOST`): they never touch the real sim, Community folder or data.
 
@@ -70,7 +72,7 @@ The full list is in [docs/sim-reference.md](docs/sim-reference.md#coherent-gt). 
 | Aircraft list | One entry per modular aircraft | Reason per aircraft (name + publisher) |
 | Start-up | The sim activates Free Flight behind the scenes, then resets the flight conditions | Apply a remembered choice when the panel is really visible |
 | Performance | Writing a CSS variable lays the whole subtree out again, even with its current value (about 90 ms under the gallery's tiles) | `setVariable()`: write a variable only when it changes, above all in the 250 ms layout passes |
-| Storage | The sim writes `datastorage` to the disk (its Steam Cloud profile) only when it saves its profile (an option validated): not after a write, not when it quits. On the Microsoft Store edition `datastorage` may be missing from `mainUI.html` (a user's sim; another mod's author: it shows after `ADD_VIEW_LISTENER` of `JS_LISTENER_DATASTORAGE`) | `sim/profile-save.ts`: after every write, re-validate one option with its current value; for the Store edition, next-steps.md 1.5 |
+| Storage | The sim writes `datastorage` to the disk (its Steam Cloud profile) only when it saves its profile (an option validated): not after a write, not when it quits. On the Microsoft Store edition `datastorage` may be missing from `mainUI.html` (a user's sim; another mod's author: it shows after `ADD_VIEW_LISTENER` of `JS_LISTENER_DATASTORAGE`) | The vault (2.0) replaces it: the module writes its own files at once. `sim/profile-save.ts` stays for the `datastorage` fallback: after every write, re-validate one option with its current value; for the Store edition, next-steps.md 1.5 |
 | Resize | An artificial `resize` event crashes a virtual list of the sim | Never send one |
 | WinUI | A closed `InfoBar` still counts in a `StackPanel`'s `Spacing`; a `ContentDialog` shows as a `Popup` window to UI Automation | Bind its `Visibility` with `IsOpen` |
 
@@ -107,6 +109,7 @@ The original plan, `%USERPROFILE%\.claude\plans\jaunty-foraging-allen.md` (steps
 | 1.11 | *Side by side* is the default layout of the aircraft selection (the owner's decision); settings already saved keep their value. For 1.3.0 |
 | 1.3.0 | Version 1.3.0 (2026-10-29, a provisional number: the project is to be reoriented): 1.10, 1.11 and 1.12 (livery rows as wide as their header); release built (217 MB / 81 MB), checked without personal data, published on flightsim.to |
 | 1.3.1 | Version 1.3.1 (2026-10-29): 1.13 (a heart on every livery: one without a folder is identified by its thumbnail's); the owner raises the version at each upload to flightsim.to; release built, not published yet |
+| 2.0-1 | 2.0 step 1, the WASM vault (branch `v2`): the module `msfs-ui.wasm` keeps the mod's data in A / B files of its `work` folder (on the disk at once, kept after a force-stop); `core/storage.ts` over `sim/vault.ts`, `datastorage` as the fallback; the package ships the module with an MSFS 2024 manifest; a Storage group on the Compatibility page. Measured in the sim (Steam, 1.9.21), details in docs/next-steps.md. The data of 1.x is not copied (the owner's decision) |
 | **6** | Next: new features, from 6a (A1, favourite and recent airports); order, design and open questions in [docs/next-steps.md](docs/next-steps.md) |
 
-The package installed in Community is a development build of 2026-10-29 (1.3.1, `msfs-ui-dev install`, the app's settings: side by side layout; no WASM module since the 2.0 spike); before it, the published 1.0.1, validated in the sim on 2026-10-19 (163/163 compatibility checks, every feature working).
+The package installed in Community is a 2.0 development build of 2026-10-29 with the vault (`msfs-ui-dev install`, the app's settings: side by side layout); before it, the published 1.0.1, validated in the sim on 2026-10-19 (163/163 compatibility checks, every feature working).

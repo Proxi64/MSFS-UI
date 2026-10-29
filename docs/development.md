@@ -7,6 +7,7 @@ How the project is built, tested and changed. Users only need the [user guide](u
 ```
 generator/   MSFS-UI-GENERATOR, the Windows app (.NET 10, WinUI 3), with its library and tests
 mod/         the menu mod (TypeScript → one ES2017 module), installed in the sim as the msfs-ui package
+wasm/        the vault: a WASM module (C++, MSFS 2024 SDK) of the package, keeping the mod's data in files
 docs/        this documentation; docs/images/ holds the screenshots of the README
 tools/       msfs-sdk-mcp, an MCP server giving Claude Code the MSFS 2024 SDK and SimConnect; make-icon.ps1, the app's icon
 .claude/skills/msfs-wasm/   the Claude Code skill for the sim's WASM modules (SDK toolchain, MSFS_IO, CommBus), for 2.0
@@ -29,19 +30,21 @@ The mod's own layout, build and conventions are in [mod/README.md](../mod/README
 
 - Windows 11, MSFS 2024 (to try the mod);
 - .NET 10 SDK, and WinApp CLI 0.7+ with Developer Mode (to run the app from the command line);
-- Node.js 22.18+ (only to build the mod; the app ships the built module).
+- Node.js 22.18+ (only to build the mod; the app ships the built module);
+- the MSFS 2024 SDK (`MSFS2024_SDK`) and Node 24 or later, only to build the vault module (`wasm/`); the app ships the built module.
 
 ## Build and test
 
 ```powershell
 cd mod; npm ci; npm run check; cd ..                    # contracts, tsc, esbuild → mod/dist/main.js, node:test
+pwsh -File wasm/build.ps1                               # the vault module → wasm/dist/msfs-ui.wasm, checks, node tests (needs MSFS2024_SDK)
 dotnet build generator/MsfsUi.slnx                      # warnings are errors
 dotnet test generator/MsfsUi.slnx                       # Core tests + UI tests (they open app windows, about 20 s)
 dotnet test generator/MsfsUi.slnx --filter "TestCategory!=UI"   # without the UI tests
 winapp run generator/MsfsUi.App/MsfsUi.App.csproj --detach --json
 ```
 
-The app embeds `mod/dist/main.js`, `mod/features.json` and `mod/compat.json`: build the mod first, or the app's build stops with a clear message.
+The app embeds `mod/dist/main.js`, `wasm/dist/msfs-ui.wasm`, `mod/features.json` and `mod/compat.json`: build the mod and the module first, or the app's build stops with a clear message.
 
 After a change of `mod/features.json`, the settings modules shared by both test suites are generated again: `MSFS_UI_UPDATE_FIXTURES=1 dotnet test generator/MsfsUi.slnx`, then `npm run check` in `mod/`.
 
@@ -110,6 +113,16 @@ Options set aside:
 
 The cost: the mod's start-up waits for `config.js`, and both files are a contract versioned by `schemaVersion`. A new option type needs both readers updated, as `choice` did (2026-10-27): the schema, the build's checks and generated types, the mod's validation, `MsfsUi.Core` (catalogue, normaliser, `config.js`) and the Features page.
 
+## The vault (2.0)
+
+The mod's data (favourites, tail numbers, last choices) lives in the **vault**, the `msfs-ui.wasm` module of the package, because the sim's `datastorage` reaches the disk only when the sim saves its profile (and is missing on some Store sims). The module keeps one snapshot (the whole key / value copy, one JSON text) in two slots of its `work` folder, `vault-a` and `vault-b` (`.head` and `.data`), written alternately: an interrupted write leaves the previous snapshot. Protocol, file format and tests: [wasm/README.md](../wasm/README.md); the SDK and CommBus facts: the skill `.claude/skills/msfs-wasm`.
+
+- **Mod side**: `core/storage.ts` keeps its API over an in-memory copy; `sim/vault.ts` loads it from the module at start-up (the first LOAD is repeated until the module answers, 3000 ms at most) and sends a snapshot 300 ms after the last write; the module's answer confirms it (none within 5 s is logged). If the module does not answer, the mod keeps `datastorage`: `window.__msfsUiRuntime.storage.kind` is `vault` or `datastorage`, and the Compatibility page's Storage group says which one and why.
+- **Package side**: the manifest names the MSFS 2024 builder (with `minimum_game_version` 1.9.12 and the total size in the `D20` form), or the sim gives the module its folder under `WASM\MSFS2020` and does not run it. The module is read **only at the sim's start**: installing it, or a package without it (`msfs-ui-dev install --vault none`), needs a restart; the installer says so.
+- **Where it is** (Steam): the files in `%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui\work\`; the module's state (`Ready`) in `%APPDATA%\Microsoft Flight Simulator 2024\AsoboReport-RunningSession.txt`.
+- **Limits**: a single value that makes the snapshot exceed 524,288 bytes blocks the saves of the session (the module answers `too-big`; logged). A save the module answers `error` is not sent again: the next change sends a newer snapshot. The data of 1.x in `datastorage` is not copied into the vault (the owner's decision): favourites and tail numbers start empty after installing 2.0.
+- **Measured** in the sim: [next-steps.md](next-steps.md), 2.0 step 1.
+
 ## Working method
 
 1. **Explore the sim**: search `fs-base-ui\html_ui\Global\*.js` and `cookedcomps\*` (`name="…"` attributes, `…Manipulator` classes, `Game.…` paths); read the real state with `msfs-ui-dev eval`; try an action, then put the original state back.
@@ -125,7 +138,7 @@ The cost: the mod's start-up waits for `config.js`, and both files are a contrac
 - **ES2017**, no operator before `await`, no raw U+2028 / U+2029 (`String.fromCharCode`); the build checks all three.
 - **Contracts**: `mod/features.json` and `mod/compat.json` are shared with the app. A feature lives in `mod/src/features/<id>` and reads every option of its catalogue entry; every sim reference (GUID, `name="…"`, `TT:` key, `/Global` import, `coui://` file, CSS variable) is listed in `compat.json`. The build refuses anything else.
 - **The sim's own components** for everything visible (`src/sim/components.ts`, `ResourcesManager.createElementFromGuid`), never imitations; `theme.css` only keeps what the sim draws without a component (card layers, section headers).
-- **Persistent data** in `datastorage` with the `MSFS_UI_` prefix, never `localStorage` (emptied at every start).
+- **Persistent data** with the `MSFS_UI_` prefix: through `core/storage.ts` to the vault (`sim/vault.ts`, the WASM module), `datastorage` only as the fallback when the module does not answer; never `localStorage` (emptied at every start).
 - **Everything in English**: code, comments, messages, UI, documentation, commits.
 - **No personal data**, in the repository or in the release: the author is **Proxi64**; a path to a user's folder is written with a variable (`%USERPROFILE%`, `%LOCALAPPDATA%`, `os.homedir()`) or relative to the repository. Release binaries are built with mapped paths and without Source Link (`generator/Directory.Build.targets`, `generator/Directory.Build.props`), so that they hold no path of the build machine.
 - **App (C#)**: nullable, warnings as errors, analyzers `latest-recommended`, code style enforced (`generator/.editorconfig`), the public API of `MsfsUi.Core` documented, every package version pinned (`generator/Directory.Packages.props`).

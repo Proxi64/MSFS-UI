@@ -50,7 +50,7 @@ extern "C" MSFS_CALLBACK void module_deinit(void) { /* fsCommBusUnregisterAll();
 
 A standalone module lives from the sim's start to its Quit (reported by another mod's author; it was running at the main menu in the spike). Its place in the package: `modules/<name>.wasm`, listed in `layout.json` (verified). Several modules can live in one package (verified: each gets its own line in the report). Avoid `printf` until its output is known: the spike dropped it while it could not tell why its module failed.
 
-**The package's manifest decides its WASM folder** (verified on Steam): with `"builder": "Microsoft Flight Simulator 2024"` (as ChasePlane's, with `"export_type": "Community"` and `"minimum_compatibility_version"`), the sim uses `%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\<package folder>\`; without it, `…\WASM\MSFS2020\<package folder>\`. The compiled DLLs and the `work` folder are there. A module was only ever `Ready` in a package with the MSFS 2024 manifest (the failing builds were tried in both).
+**The package's manifest decides its WASM folder** (verified on Steam): with `"builder": "Microsoft Flight Simulator 2024"` (as ChasePlane's, with `"export_type": "Community"` and `"minimum_compatibility_version"`), the sim uses `%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\<package folder>\`; without it, `…\WASM\MSFS2020\<package folder>\`. The compiled DLLs and the `work` folder are there. A module was only ever `Ready` in a package with the MSFS 2024 manifest (the failing builds were tried in both). The project's package (verified on 2026-10-29, Steam, 1.9.21) ships `modules/msfs-ui.wasm` with that manifest, `minimum_game_version` 1.9.12 and the total size in the `D20` form: the module is `Ready` and the package's **MasterPage override still works** (the menu is the mod's). The module is read only at the sim's start.
 
 ## MSFS_IO.h
 
@@ -68,7 +68,7 @@ FsIOErr fsIOGetLastError(FsIOFile); unsigned long long fsIOGetFileSize(FsIOFile)
 - Errors: `FsIOErr_BadParams`, `_FileNotFound`, `_AccessNotAllowed` (e.g. a file of another package), `_FileNotOpened`, `_ReadNotAllowed`, `_PartialReadImpossible`, `_OperationImpossible` (an operation already running on the file), `_UnknownError`.
 - `FS_IO_ERROR_FILE` (0) is the failed handle. No rename, no delete, no directory listing.
 - **Paths** (verified): `"\\work\\name"` and `"/work/name"` reach the package's `work` folder; `"work/name"` does not (open fails, then the write gives `FsIOErr_FileNotOpened`).
-- **On the disk** (verified on Steam): `%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\<package folder>\work\` (MSFS 2024 manifest, above). The files survive a Quit and a restart and are read back. Store edition (reported, **unverified**): `%LOCALAPPDATA%\Packages\Microsoft.Limitless_8wekyb3d8bbwe\LocalState\WASM\MSFS2020\<package folder>\work\`.
+- **On the disk** (verified on Steam): `%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\<package folder>\work\` (MSFS 2024 manifest, above). The files survive a Quit and a restart and are read back. The real module (the vault, `wasm/`) keeps `work\vault-a.head|data` and `vault-b.head|data`, each save to the other slot (seq 23 / 24, later 38 / 39…); a save is on the disk when the module answers: the sim's process force-stopped 2 s after a change still gave the change at the next start. On a hot reload of the mod, the old version's last save reaches the module before the new version's load. Store edition (reported, **unverified**): `%LOCALAPPDATA%\Packages\Microsoft.Limitless_8wekyb3d8bbwe\LocalState\WASM\MSFS2020\<package folder>\work\`.
 - **Reading** (verified): `fsIOOpenRead(path, RDONLY, 0, count, cb, user)` works when `count` is at most the file's size; asking more than the size makes the open fail (`FS_IO_ERROR_FILE`). `fsIOOpen(path, RDONLY, cb)` then `fsIOGetFileSize`: its callback never came in the spike (**unverified** why). So the format must tell the reader the size (a fixed-size header file, or the size kept in another file) until a way to read a file of unknown size is measured.
 - **Writing** (verified): `fsIOOpen(path, WRONLY | CREAT | TRUNC, cb)`, then `fsIOWrite` in the open callback, then `fsIOClose` in the write callback.
 
@@ -95,7 +95,8 @@ From `JS/Services/CommBus.js` and the `ViewListener` class of `JS/common.js`:
 - **In the main menu (`mainUI.html`) there is no `Coherent` global** (verified): use `engine.on`, `engine.off`, `engine.trigger`, `engine.call`.
 - Measured (verified, main menu, Steam): menu → module → menu round trips of 10 B to 1 MB all arrive, 12 to 22 ms; the menu's frame cadence (about 100 ms per frame at the main menu) is the same idle and while messaging back to back.
 - **The bus is shared**: the menu listener also receives other add-ons' events (ChasePlane's `p42_chaseplane_comms_wasm_ping`, many per second); filter on the `MSFS_UI_` prefix, early.
-- Whether the menu answers before the module is up: **unverified**; the mod waits with a bound.
+- Whether the menu answers before the module is up: **unverified**; the mod repeats its first LOAD every 500 ms until the module answers, with a bound of 3000 ms, then falls back on `datastorage` (with a package without the module, measured: it falls back with that reason).
+- With the real module loaded, the menu's frame cadence is unchanged (measured over 4 s: mean 16.57 ms, p95 17.2 ms, max 18.1 ms).
 
 ## SimConnect side (the app)
 
