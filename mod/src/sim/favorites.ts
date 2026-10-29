@@ -1,17 +1,11 @@
-// The mod's memory of aircraft: favourites (gallery heart), favourite liveries (heart of the setup panel's
-// thumbnails) and the last use of each variant (livery, date). Same storage keys as 0.3.0 (mod/README.md, Data stored in the sim).
+// The mod's memory of aircraft: favourite liveries (heart of the liveries: setup panel, livery column, Favorites
+// tiles) and the last use of each variant (livery, date). Same storage keys as 0.3.0 (mod/README.md, Data stored in
+// the sim). The favourites are liveries only since 1.3.0: an aircraft is a favourite when one of its liveries is.
 // Aircraft are identified by `variationId` (stable); `aircraftId` may change when an aircraft is installed.
 
-import { loadData, saveData } from '../core/storage.ts';
+import { log } from '../core/log.ts';
+import { deleteData, loadData, saveData } from '../core/storage.ts';
 import { liveryKey, variationOf } from './liveries.ts';
-
-export interface FavoriteAircraft {
-  variationId: string;
-  displayName?: string;
-  creator?: string;
-  variation?: string;
-  thumbnailPath?: string;
-}
 
 /** A favourite livery, for one variant. */
 export interface FavoriteLivery {
@@ -40,7 +34,8 @@ export interface AircraftUse {
 
 export type AircraftUses = Record<string, AircraftUse>;
 
-const FAVORITES_KEY = 'FAVORITE_AIRCRAFT';
+/** The favourite aircraft (the gallery's heart) of the versions before 1.3.0: dropped (dropFavoriteAircraft). */
+const OLD_FAVORITE_AIRCRAFT_KEY = 'FAVORITE_AIRCRAFT';
 const FAVORITE_LIVERIES_KEY = 'FAVORITE_LIVERIES';
 const USES_KEY = 'AIRCRAFT_USES';
 /** Variants whose last use is kept. */
@@ -49,13 +44,17 @@ export const MAX_USES = 60;
 /** Event sent on `document` at each change of the favourite liveries (the setup panel and the gallery redraw). */
 export const FAVORITE_LIVERIES_CHANGED = 'msfs-ui-favorite-liveries';
 
-/** Early versions stored only the ids: they are still read. */
-export function loadFavorites(): FavoriteAircraft[] {
-  return loadData<(FavoriteAircraft | string)[]>(FAVORITES_KEY, []).map((favorite) => (typeof favorite === 'string' ? { variationId: favorite } : favorite));
-}
-
-export function saveFavorites(favorites: FavoriteAircraft[]): void {
-  saveData(FAVORITES_KEY, favorites);
+/**
+ * Removes the favourite aircraft of the versions before 1.3.0 (a heart on the aircraft, apart from its liveries; the
+ * owner's decision: not converted). Returns how many there were, 0 when there is nothing left to remove.
+ */
+export function dropFavoriteAircraft(): number {
+  const old = loadData<unknown[] | null>(OLD_FAVORITE_AIRCRAFT_KEY, null);
+  if (old === null) return 0;
+  deleteData(OLD_FAVORITE_AIRCRAFT_KEY);
+  const count = Array.isArray(old) ? old.length : 0;
+  log(`favourite aircraft of an earlier version removed (${count}): the favourites are liveries now`);
+  return count;
 }
 
 export function loadFavoriteLiveries(): FavoriteLivery[] {

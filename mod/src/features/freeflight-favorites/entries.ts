@@ -1,10 +1,8 @@
-// Which favourites the Free Flight block shows, without the sim (tested by test/freeflight-favorites.test.ts):
-// - one entry per favourite livery (heart of the setup panel's thumbnails), which loads the aircraft with it;
-// - one entry per favourite aircraft (heart of the gallery) that has no favourite livery, with the last livery used
-//   with its variant.
+// Which favourites the Free Flight block shows, without the sim (tested by test/freeflight-favorites.test.ts): one
+// entry per favourite livery (the heart of the liveries in the aircraft selection), which loads the aircraft with it.
 // The order goes from the most recently used to the oldest, and is kept while the screen stays on display.
 
-import { favoriteLiveriesOf, type AircraftUses, type FavoriteAircraft, type FavoriteLivery, type LiveryRef } from '../../sim/favorites.ts';
+import { type FavoriteLivery, type LiveryRef } from '../../sim/favorites.ts';
 import { liveryKey } from '../../sim/liveries.ts';
 
 export interface FavoriteEntry {
@@ -15,20 +13,15 @@ export interface FavoriteEntry {
   creator: string;
   /** Variant title (may be a `TT:` key), empty for an aircraft without variants. */
   variation: string;
-  /** The livery shown and loaded: the favourite one, or the last one used with this variant. */
-  livery?: LiveryRef;
+  /** The favourite livery, shown and loaded. */
+  livery: LiveryRef;
   image: string;
-  /** A favourite livery: the entry is selected only when this livery is the current one. */
-  fixedLivery: boolean;
   usedAt: number;
 }
 
-/**
- * Favourite liveries, then favourite aircraft that have none: an aircraft with favourite liveries (same variant, or
- * same name and publisher for its other variants) does not get its "last livery" entry as well.
- */
-export function collectEntries(favorites: readonly FavoriteAircraft[], liveries: readonly FavoriteLivery[], uses: AircraftUses): FavoriteEntry[] {
-  const entries: FavoriteEntry[] = liveries.map((favorite) => ({
+/** One entry per favourite livery, in the order stored. */
+export function collectEntries(liveries: readonly FavoriteLivery[]): FavoriteEntry[] {
+  return liveries.map((favorite) => ({
     id: `livery:${favorite.variationId}|${favorite.dir}`,
     variationId: favorite.variationId,
     name: (favorite.displayName || favorite.variationId).trim(),
@@ -36,26 +29,8 @@ export function collectEntries(favorites: readonly FavoriteAircraft[], liveries:
     variation: favorite.variation || '',
     livery: { dir: favorite.dir, title: favorite.title, image: favorite.image },
     image: favorite.image,
-    fixedLivery: true,
     usedAt: favorite.usedAt || 0,
   }));
-  for (const favorite of favorites) {
-    if (favoriteLiveriesOf(liveries, favorite).length > 0) continue;
-    const use = uses[favorite.variationId];
-    const livery = use ? use.livery : undefined;
-    entries.push({
-      id: `aircraft:${favorite.variationId}`,
-      variationId: favorite.variationId,
-      name: (favorite.displayName || favorite.variationId).trim(),
-      creator: (favorite.creator || '').trim(),
-      variation: favorite.variation || '',
-      livery,
-      image: (livery && livery.image) || favorite.thumbnailPath || '',
-      fixedLivery: false,
-      usedAt: use ? use.usedAt : 0,
-    });
-  }
-  return entries;
 }
 
 /**
@@ -77,25 +52,9 @@ export function orderEntries(entries: readonly FavoriteEntry[], order: readonly 
   return { entries: kept.map((item) => item.entry), order: order.slice() };
 }
 
-/**
- * The entry of the current aircraft: same variant, and for a favourite livery the same livery too (`livery` in the
- * form of `liveryKey`).
- */
+/** The entry of the current aircraft: same variant and same livery (`livery` in the form of `liveryKey`). */
 export function isCurrentEntry(entry: FavoriteEntry, current: { variationId: string; livery: string }): boolean {
-  if (entry.variationId !== current.variationId) return false;
-  return !entry.fixedLivery || (!!entry.livery && liveryKey(entry.livery.dir) === current.livery);
-}
-
-/**
- * The favourites without the aircraft of this entry: every variant of it (same variant, or same name and publisher),
- * as the gallery's heart does.
- */
-export function withoutAircraft(favorites: readonly FavoriteAircraft[], entry: FavoriteEntry): FavoriteAircraft[] {
-  return favorites.filter(
-    (favorite) =>
-      favorite.variationId !== entry.variationId &&
-      !(!!favorite.displayName && favorite.displayName.trim() === entry.name && (favorite.creator || '').trim() === entry.creator),
-  );
+  return entry.variationId === current.variationId && liveryKey(entry.livery.dir) === current.livery;
 }
 
 /** The favourite liveries without the one of this entry. */

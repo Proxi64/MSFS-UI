@@ -111,7 +111,7 @@ src/
                        isShown, isOnScreen
     components.ts      createComponent(scope, guid, parent): the sim's own components (see below)
     text-field.ts      the sim's Search_Input as a text field (keyboard handled by the sim)
-    favorites.ts       favourite aircraft and liveries, last uses (MSFS_UI_FAVORITE_*, MSFS_UI_AIRCRAFT_USES)
+    favorites.ts       favourite liveries, last uses (MSFS_UI_FAVORITE_LIVERIES, MSFS_UI_AIRCRAFT_USES)
     configurator.ts    the configurator: read it, guarded choice of a variant or livery, favourite liveries
     profile-save.ts    the sim's profile saved after the mod's writes (its storage reaches the disk only then)
     selection-layout.ts  flag set by the gallery while it shows the liveries, read by the setup panel
@@ -156,7 +156,7 @@ The gallery and the livery column keep components only for the tiles near the vi
 
 Texts too long for their place: the engine shows no ellipsis, and the sim's own tiles scroll such texts on hover (their `text-marquee` / `block-marquee`). The mod puts the sim's `marquee__trigger` class on each tile's host, so that hovering anywhere on the tile scrolls them.
 
-The Free Flight favourites (`freeflight-favorites/`): a card like the sim's (background layers, header) under the sim's "Search location" field, as wide as its aircraft button and hidden while the search shows its results; its rows in the sim's `real-scroll`, as high as they need up to the room left (the bar's room on the right only when the list scrolls). One row per favourite livery, and one per favourite aircraft without favourite liveries with the last livery used with its variant; from the most recently used, an order kept while the screen stays on display. A click loads the variant then the livery (`loadAircraft`; the list is dimmed meanwhile, the card keeps the mouse lock); the row of the current aircraft is selected; the heart removes the favourite livery, or every variant of the favourite aircraft. The use of each aircraft (`trackAircraftUse`: last livery per variant, date of use of each favourite livery) is recorded at every change of aircraft, whatever the screen.
+The Free Flight favourites (`freeflight-favorites/`): a card like the sim's (background layers, header) under the sim's "Search location" field, as wide as its aircraft button and hidden while the search shows its results; its rows in the sim's `real-scroll`, as high as they need up to the room left (the bar's room on the right only when the list scrolls). One row per favourite livery; from the most recently used, an order kept while the screen stays on display. A click loads the variant then the livery (`loadAircraft`; the list is dimmed meanwhile, the card keeps the mouse lock); the row of the current aircraft is selected; the heart removes the favourite livery. The use of each aircraft (`trackAircraftUse`: last livery per variant, date of use of each favourite livery) is recorded at every change of aircraft, whatever the screen.
 
 Text fields use the sim's `Search_Input`: its manipulator handles the keyboard as in the sim's own search fields, so the sim's shortcuts stay off while typing. The mod receives the text with `addChangeCallback`, entering and leaving with `addEnterCallback` / `addExitCallback`, Enter with `addSubmitCallback`, and writes with `setSearchValue`. `updateVisual({ forceInput: true })` gives the plain variant without the magnifier; the element keeps the flag through the manipulator's later updates. The engine shows no ellipsis for cut text: lists of names fit their layout to the measured text (the setup panel's variants: 3, 2 or 1 per row). What the sim draws without a component (card backgrounds, section headers, text) reuses the sim's markup: `blurredBackground`, the accessibility layer (`--colorComplementary2` at `--backgroundOpacity`), a black veil at 20 %, headers at 30 %, text in `--fontSizeXS`.
 
@@ -168,7 +168,7 @@ The mod keeps its data in the sim's **persistent storage** (`datastorage`, where
 |---|---|---|
 | `MSFS_UI_WEATHER_BAR` | `{ "weather": <preset index>, "time": "now" \| "dawn" \| "day" \| "dusk" \| "night", "airtraffic": "AIRTRAFFICAI"…, "multiplayer": "MULTIPLAYEROFF"… }` (traffic keys absent until a click in those sections) | Clicks in the weather bar (option `remember`) |
 | `MSFS_UI_WEATHER_BAR_TAB` | `"weather"` or `"airport"`: the last tab chosen when a card of the sim shares the column (`"airport"` also stands for the traffic card) | Clicks on the tabs |
-| `MSFS_UI_FAVORITE_AIRCRAFT` | Favourite aircraft: `variationId`, name, publisher, variant, thumbnail | Hearts of the gallery and of Free Flight |
+| `MSFS_UI_FAVORITE_AIRCRAFT` | Favourite aircraft of the versions before 1.3.0 (a heart on the aircraft): **removed** at the first start of 1.3.0 (`dropFavoriteAircraft`, logged), the favourites being liveries since | None |
 | `MSFS_UI_FAVORITE_LIVERIES` | Favourite liveries: `variationId`, livery folder (the form of `MSFS_UI_LIVERY_TAILS`), title, thumbnail, aircraft name, publisher, variant, date of last use | Hearts of the setup panel and of Free Flight; the date at each change of aircraft |
 | `MSFS_UI_AIRCRAFT_GALLERY` | `{ "view": "gallery" \| "list" \| "stock", "favoritesOnly": …, "sort": { "option": "name" \| "studio" \| <the sim's option key>, "reversed": … } \| null }` (`stock` is the Default view; the 0.3.0 key `TT:MENU.NAME` reads as `name`) | The gallery's controls |
 | `MSFS_UI_AIRCRAFT_USES` | Per `variationId`: last livery (folder, title, thumbnail) and date of use; 60 variants at most | Recorded at each change of aircraft |
@@ -177,7 +177,7 @@ The mod keeps its data in the sim's **persistent storage** (`datastorage`, where
 
 Aircraft are identified by `variationId` (stable); `aircraftId` may change when an aircraft is installed, so the mod looks it up when loading.
 
-- **Reading or deleting a key** by hand (sim running): `msfs-ui-dev eval "datastorage.getData('MSFS_UI_FAVORITE_AIRCRAFT')"`. Unload the mod first (`window.__msfsUiRuntime.unload()`) before deleting a key: while it runs, it may write the key again at once. A deletion alone may not be saved (seen on 2026-10-16: a deleted key came back after a restart; the sim may write its storage only on a `setData`): after a deletion, any write of another key saves it.
+- **Reading or deleting a key** by hand (sim running): `msfs-ui-dev eval "datastorage.getData('MSFS_UI_FAVORITE_LIVERIES')"`. Unload the mod first (`window.__msfsUiRuntime.unload()`) before deleting a key: while it runs, it may write the key again at once. A deletion alone may not be saved (seen on 2026-10-16: a deleted key came back after a restart; the sim may write its storage only on a `setData`): after a deletion, any write of another key saves it.
 - **Default tail number**: if `MSFS_UI_BASE_TAIL` is deleted, the mod records it again from the sim's field, often the last number applied; set it with `datastorage.setData('MSFS_UI_BASE_TAIL', JSON.stringify('ASXGS'))` to keep a precise default.
 
 ## Start-up and hot reload

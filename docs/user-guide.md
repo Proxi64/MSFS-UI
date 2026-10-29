@@ -115,10 +115,10 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 **Where:** Free Flight, left column, under *Search location*, as wide as the aircraft button. The block hides while the search shows its results.
 
-- One row per **favourite livery** (heart of the setup panel), and one per **favourite aircraft** (heart of the gallery) that has no favourite livery, shown with the last livery used with its variant.
+- One row per **favourite livery** (the heart of the liveries in the aircraft selection).
 - Each row shows the livery's thumbnail, the aircraft's name, then its variant, livery and tail number. A text too long for the row scrolls when the mouse is over it.
 - **Click**: loads the variant, then the livery; the sim's aircraft button follows. The row of the current aircraft is selected.
-- **Heart**: unchecking it removes the favourite (the livery, or every variant of the aircraft).
+- **Heart**: unchecking it removes the favourite livery.
 - **Order**: from the most recently used, computed when the screen opens, then kept while it stays open, so that a clicked row does not jump under the mouse.
 - The use of each aircraft (last livery per variant) is recorded at every change of aircraft, whatever the screen.
 
@@ -134,11 +134,11 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 | Sort | **Name** (natural order: ATR 42, ATR 72, Cessna 172), **Studio** (then name) or **Max Range** (the sim's sort); the arrow reverses the order. A new order starts from the top |
 | **Gallery** / **List** / **Default** | Tiles in columns; one compact row per aircraft; the sim's own grid |
 
-- Favourites always come first, whatever the sort.
-- **Gallery**: the sim's aircraft tiles, with the name, the variant and the studio on three lines. **List**: one row per aircraft, the thumbnail then *name - studio - variant* on one line, the heart at the end of the row; the text stops before the heart.
+- **Favourites are liveries**: an aircraft is a favourite as soon as one of its liveries is (of any of its variants). Favourite aircraft always come first, whatever the sort. The order is set when the screen opens and kept while it stays open, so that an aircraft does not jump away when you mark one of its liveries; it is set again on a new sort, search, filter or category tab.
+- **Gallery**: the sim's aircraft tiles, with the name, the variant and the studio on three lines. **List**: one row per aircraft, the thumbnail then *name - studio - variant* on one line.
 - Both views scroll with the wheel or the sim's scroll bar; a text too long for its tile scrolls on hover.
 - **Click** selects the aircraft, exactly like a tile of the sim; **hover** shows it in the header of the left column, unless the setup panel is shown: the header then stays on the selected aircraft, whose variants and tail number the panel shows.
-- **Heart**: for a modular aircraft the sim shows one tile per aircraft, so the heart is about the aircraft (all its variants). Unchecking it also removes its favourite liveries.
+- **No heart on the aircraft**: the hearts are on the liveries (the setup panel's thumbnails, or the livery column in the side by side layout). The **Favorites** filter shows one tile per favourite livery, with its heart to remove it; a click loads the aircraft with that livery.
 - On opening, the gallery scrolls to the selected aircraft. The view, the Favorites filter and the sort are remembered.
 - **Default** brings the sim's grid back, with its own search; the view buttons stay on its line.
 

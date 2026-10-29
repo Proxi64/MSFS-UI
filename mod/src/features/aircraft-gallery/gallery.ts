@@ -1,5 +1,5 @@
 // The aircraft gallery and list in the aircraft selection, in place of the sim's grid (right block): search (name,
-// publisher, variant), favourites (heart), gallery or compact list, the sim's sort orders, and a button back to the
+// publisher, variant), favourites (an aircraft with a favourite livery, first), gallery or compact list, the sim's sort orders, and a button back to the
 // sim's own grid. Made of the sim's components. The sim's category tabs stay active: the list read
 // (`Game.Aircraft.AircraftList`) is already filtered by category; the search and the favourites filter on top.
 // A click sends the page the `tileClick` event of the sim's tiles, a hover `tileHover`: the selection and the header
@@ -14,7 +14,7 @@ import type { Settings } from '../../generated/catalog.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type ComponentGuid, type SimComponent } from '../../sim/components.ts';
-import { FAVORITE_LIVERIES_CHANGED, favoriteLiveriesOf, loadFavoriteLiveries, loadFavorites, saveFavoriteLiveries, saveFavorites, type FavoriteAircraft, type FavoriteLivery } from '../../sim/favorites.ts';
+import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
@@ -23,7 +23,7 @@ import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
 import { AIRCRAFT_COLUMNS, galleryBodyClass, splitColumns } from './livery-column.ts';
-import { favoriteFrom, favoritesFirst, favoritesOf, isFavoriteAircraft, sortTiles, visibleTiles, type AircraftItem, type LocalSort, type Tile } from './tiles.ts';
+import { favoriteAircraftIds, favoritesFirst, sortTiles, visibleTiles, type AircraftItem, type LocalSort, type Tile } from './tiles.ts';
 
 type View = 'gallery' | 'list' | 'stock';
 type Layout = Settings['aircraftGallery']['layout'];
@@ -151,10 +151,13 @@ export class Gallery {
   private readonly viewTabs = new Map<View, SimComponent>();
 
   private items: AircraftItem[] = [];
-  /** Favourites by `variationId`; shared with Free Flight (sim/favorites.ts). */
-  private favorites: FavoriteAircraft[] = loadFavorites();
-  /** Favourite liveries (setup panel): an aircraft that has some counts as a favourite. */
+  /** Favourite liveries (their hearts: setup panel, livery column, Favorites tiles): an aircraft that has some is a favourite. */
   private favoriteLiveries: FavoriteLivery[] = loadFavoriteLiveries();
+  /**
+   * The favourite aircraft put first (`aircraftId`), as they were when the order was set: kept while the screen stays,
+   * so that a heart clicked does not move the tiles; set again on a new sort, search or filter (resetOrder).
+   */
+  private favoriteIds: number[] | null = null;
   private readonly memory: GalleryMemory = loadData<GalleryMemory>(MEMORY_KEY, { view: 'gallery', favoritesOnly: false });
   /** Current aircraft (variant and livery, as `liveryKey`): selection of the livery tiles. */
   private current = { variationId: '', livery: '' };
@@ -205,10 +208,14 @@ export class Gallery {
 
     const reload = () => this.scheduleReload();
     watch(scope, aircraft.AircraftList, reload);
-    watch(scope, aircraft.FilteredCategory, reload);
+    // Another category tab is another list: its favourites are put first again.
+    watch(scope, aircraft.FilteredCategory, () => {
+      this.resetOrder();
+      reload();
+    });
     watch(scope, aircraft.CurrentAircraft, reload);
     scope.add(() => clearTimeout(this.reloadTimer));
-    // Heart of a livery in the setup panel (same screen): the heart of the aircraft may change.
+    // Heart of a livery (setup panel, livery column, a Favorites tile): the Favorites tiles may change.
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, () => {
       this.favoriteLiveries = loadFavoriteLiveries();
       if (this.items.length > 0) this.render();
@@ -254,6 +261,7 @@ export class Gallery {
     createTextField(this.scope, searchHost, {
       placeholder: 'Search: name, manufacturer, variant',
       onChange: () => {
+        this.resetOrder();
         this.render();
         this.scrollToTop();
       },
@@ -268,6 +276,7 @@ export class Gallery {
       button.onClick(this.scope, () => {
         this.memory.favoritesOnly = !this.memory.favoritesOnly;
         this.saveMemory();
+        this.resetOrder();
         this.render();
       });
     });
@@ -283,6 +292,7 @@ export class Gallery {
         if (!this.memory.sort) return;
         this.memory.sort.reversed = !this.memory.sort.reversed;
         this.saveMemory();
+        this.resetOrder();
         this.applySort();
         this.renderSort();
         this.render();
@@ -363,10 +373,16 @@ export class Gallery {
   private chooseSort(option: string): void {
     this.memory.sort = { option, reversed: this.memory.sort ? this.memory.sort.reversed : false };
     this.saveMemory();
+    this.resetOrder();
     this.applySort();
     this.renderSort();
     this.render();
     this.scrollToTop();
+  }
+
+  /** The favourites put first are taken again at the next drawing (a new sort, search or filter). */
+  private resetOrder(): void {
+    this.favoriteIds = null;
   }
 
   /** A new order starts from its first aircraft. */
@@ -483,23 +499,10 @@ export class Gallery {
       variationId: current ? current.variationId : '',
       livery: current && current.thumbnailPath ? liveryKey(liveryDirectory(current.thumbnailPath)) : '',
     };
-    this.completeFavorites();
     this.render();
     if (first) this.scrollToSelected();
   }
 
-  /** Completes the favourites stored without name or thumbnail (early versions) from the list read. */
-  private completeFavorites(): void {
-    let changed = false;
-    this.favorites = this.favorites.map((favorite) => {
-      if (favorite.displayName) return favorite;
-      const item = this.items.filter((candidate) => candidate.variationId === favorite.variationId)[0];
-      if (!item) return favorite;
-      changed = true;
-      return favoriteFrom(item);
-    });
-    if (changed) saveFavorites(this.favorites);
-  }
 
   // ----- Rendering -----
 
@@ -524,7 +527,6 @@ export class Gallery {
 
     const shown = visibleTiles({
       items: this.items,
-      favorites: this.favorites,
       liveries: this.favoriteLiveries,
       favoritesOnly: this.memory.favoritesOnly,
       search: this.search ? this.search.value : '',
@@ -532,15 +534,16 @@ export class Gallery {
     });
     const choice = this.sortChoice();
     const sorted = choice && choice.local ? sortTiles(shown, choice.local, !!this.memory.sort && this.memory.sort.reversed) : shown;
-    // Favourites always come first, whatever the sort (the sim's included).
-    const tiles = favoritesFirst(sorted, this.favorites, this.favoriteLiveries);
+    // Favourites always come first, whatever the sort (the sim's included), as they were when the order was set.
+    if (this.favoriteIds === null && this.items.length > 0) this.favoriteIds = favoriteAircraftIds(this.items, this.favoriteLiveries);
+    const tiles = favoritesFirst(sorted, this.favoriteIds || []);
     this.count.textContent = `${tiles.length} / ${this.items.length}`;
     const key = `${view}|${tiles.map((tile) => `${tile.item.variationId}:${tile.livery ? tile.livery.dir : ''}`).join(',')}`;
     const empty =
       tiles.length > 0
         ? ''
-        : this.memory.favoritesOnly && this.favorites.length === 0 && this.favoriteLiveries.length === 0
-          ? 'No favorites yet: click the heart on an aircraft.'
+        : this.memory.favoritesOnly && this.favoriteLiveries.length === 0
+          ? 'No favorites yet: click the heart on a livery.'
           : 'No aircraft matches.';
     if (key === this.cellKey && empty === this.cellEmpty) {
       // Same tiles: their texts, images and state are refreshed in place (the set of tiles is unchanged).
@@ -713,7 +716,7 @@ export class Gallery {
     }
   }
 
-  /** Selection, availability and heart of a tile. */
+  /** Selection, availability and heart of a tile: only a favourite livery tile has one (it removes the favourite). */
   private updateCell(cell: Cell): void {
     const { item, livery } = cell.tile;
     if (cell.card) {
@@ -721,11 +724,10 @@ export class Gallery {
       cell.card.select(selected);
       cell.card.disable(!item.isUsable);
     }
+    if (cell.slot) cell.slot.heartHost.style.display = livery ? '' : 'none';
+    toggleClass(cell.host, 'is-without-heart', !livery);
     const heart = cell.heart && cell.heart.manipulator<WishlistManipulator>();
-    if (heart) {
-      const on = !!livery || isFavoriteAircraft(this.favorites, this.favoriteLiveries, item);
-      heart.setData(on, (checked) => (livery ? this.removeFavoriteLivery(livery) : this.setFavorite(item, checked)));
-    }
+    if (heart && livery) heart.setData(true, () => this.removeFavoriteLivery(livery));
   }
 
   /** Scrolls to the selected aircraft. */
@@ -775,23 +777,6 @@ export class Gallery {
     if (content) content.dispatchEvent(new CustomEvent('tileHover', { detail: item, bubbles: true }));
   }
 
-  /**
-   * Checked: adds the current variant. Unchecked: removes every variant of the aircraft and its favourite liveries
-   * (otherwise the heart would stay on).
-   */
-  private setFavorite(item: AircraftItem, on: boolean): void {
-    if (on) {
-      if (favoritesOf(this.favorites, item).length === 0) this.favorites = this.favorites.concat([favoriteFrom(item)]);
-    } else {
-      const removed = favoritesOf(this.favorites, item);
-      this.favorites = this.favorites.filter((favorite) => removed.indexOf(favorite) < 0);
-    }
-    saveFavorites(this.favorites);
-    const liveries = on ? [] : favoriteLiveriesOf(this.favoriteLiveries, item);
-    // The event of the favourite liveries redraws the gallery (and the setup panel).
-    if (liveries.length > 0) saveFavoriteLiveries(this.favoriteLiveries.filter((livery) => liveries.indexOf(livery) < 0));
-    else this.render();
-  }
 
   private saveMemory(): void {
     saveData(MEMORY_KEY, this.memory);

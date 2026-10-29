@@ -6,6 +6,7 @@ import { log, logError } from './core/log.ts';
 import { root, runtime, startRuntime } from './core/runtime.ts';
 import { injectTheme } from './core/theme.ts';
 import { FEATURES } from './features.ts';
+import { dropFavoriteAircraft } from './sim/favorites.ts';
 import { startProfileSaves } from './sim/profile-save.ts';
 import { FEATURE_IDS, type FeatureId, type Settings } from './generated/catalog.ts';
 
@@ -21,6 +22,8 @@ async function start(): Promise<void> {
   if (root.disposed) return;
   // Before the features: their writes are saved to the disk too (sim/profile-save.ts).
   startProfileSaves(root);
+  // The favourites are liveries since 1.3.0: the favourite aircraft of earlier versions go (saved with the profile).
+  dropFavoriteAircraft();
   runtime.settings = loaded.settings;
   runtime.settingsSource = loaded.source;
   if (loaded.problems.length > 0) {

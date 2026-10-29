@@ -122,7 +122,7 @@
     {
       "id": "aircraftGallery",
       "title": "Aircraft gallery and list",
-      "description": "Replaces the aircraft list with a gallery or a compact list, with favourites per aircraft and per livery, a filter and the sim's sort orders.",
+      "description": "Replaces the aircraft list with a gallery or a compact list, with favourite liveries (their aircraft first), a filter and the sim's sort orders.",
       "screen": "Aircraft selection",
       "enabledByDefault": true,
       "options": [
@@ -142,7 +142,7 @@
     {
       "id": "freeflightFavorites",
       "title": "Favourites on Free Flight",
-      "description": "A Favorites block on Free Flight to pick a favourite aircraft or livery directly, and a record of recently used aircraft.",
+      "description": "A Favorites block on Free Flight to load a favourite livery directly, with its aircraft and variant.",
       "screen": "Free Flight",
       "enabledByDefault": true,
       "options": []

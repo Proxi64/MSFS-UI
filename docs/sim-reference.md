@@ -137,6 +137,8 @@ With `singleton = true`, `RegisterViewListener` shares the existing listener.
 | `UITransition.getTransitionStr(changes, options)` | seconds: `options.duration`, `options.delay` | Divided by the speed factor |
 | `<cross-fade>` | CSS rule `img.img-fade.img-fade--enabled { transition: opacity 0.5s }` | Replaced by `transition: none` |
 
+**The wishlist heart** (`IconButton_Light_Wishlist`, `IconButtonLightWishlistManipulator`, 1.9.21): `setData(checked, callback)` sets its state and the callback; a click toggles the state and calls the callback with it (`stopPropagation`: the tile under it gets no click); without a callback a click does nothing. Hovering shows the **opposite** state as a preview (an empty heart looks full while the mouse is over it), the real state coming back when the mouse leaves.
+
 ## Storage and translation
 
 | Element | Use |

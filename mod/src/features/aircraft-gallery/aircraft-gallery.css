@@ -95,6 +95,8 @@
   align-items: center !important;
   justify-content: flex-start !important;
 }
+/* An aircraft row has no heart (the favourites are liveries): its text goes to the end of the row. */
+.msfs-ui-gal__row.is-without-heart [name="TitleBlock"] { right: calc(var(--u) * 6) !important; }
 .msfs-ui-gal__row [name="Title"] { flex-grow: 0 !important; flex-shrink: 0 !important; width: auto !important; }
 .msfs-ui-gal__row [name="Details"] { margin-left: calc(var(--u) * 6) !important; margin-top: 0 !important; }
 

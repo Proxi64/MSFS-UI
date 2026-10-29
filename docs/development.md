@@ -159,7 +159,7 @@ It stops at the first failure:
 4. a check that no file of the release holds the path of the user's folder (in text and UTF-16): it would show the user's name;
 5. the zip `release\MSFS-UI-GENERATOR-<version>.zip`.
 
-A GitHub release: tag `<version>` (no `v`: the first one is `1.0.1`) on `main`, the notes from `CHANGELOG.md` with the installation steps and the zip's SHA-256, and the zip attached. The owner pushes and publishes (GitHub Desktop, the GitHub site); GitHub shows the SHA-256 of each attached file, to compare with the local zip.
+A GitHub release: tag `v<version>` (`v1.2.0` and later; the first one, `1.0.1`, has no `v`) on `main`, the notes from `CHANGELOG.md` with the installation steps and the zip's SHA-256, and the zip attached. The owner pushes and publishes (GitHub Desktop, the GitHub site); GitHub shows the SHA-256 of each attached file, to compare with the local zip.
 
 The version comes from `mod/features.json` (`modVersion`) and must equal `<Version>` in `generator/Directory.Build.props`. The `release\` folder is ignored by Git. Afterwards `mod/dist/main.js` is the release module: `npm run check` builds the development one again.
 

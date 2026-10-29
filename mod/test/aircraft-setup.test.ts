@@ -6,7 +6,7 @@ import {
   favoriteLiveriesOf,
   findFavoriteLivery,
   FAVORITE_LIVERIES_CHANGED,
-  loadFavorites,
+  dropFavoriteAircraft,
   MAX_USES,
   saveFavoriteLiveries,
   withUse,
@@ -136,7 +136,7 @@ describe('favourites in the storage', () => {
     target.addEventListener(FAVORITE_LIVERIES_CHANGED, () => events++);
     (globalThis as { window?: unknown }).window = {
       top: null,
-      datastorage: { getData: (key: string) => data.get(key), setData: (key: string, value: string) => data.set(key, value), deleteData: () => undefined },
+      datastorage: { getData: (key: string) => data.get(key), setData: (key: string, value: string) => data.set(key, value), deleteData: (key: string) => data.delete(key) },
     };
     (globalThis as { document?: unknown }).document = target;
   });
@@ -145,9 +145,13 @@ describe('favourites in the storage', () => {
     delete (globalThis as { document?: unknown }).document;
   });
 
-  it('reads the favourites of early versions (ids only)', () => {
+  it('drops the favourite aircraft of earlier versions once, and keeps the favourite liveries', () => {
     data.set('MSFS_UI_FAVORITE_AIRCRAFT', JSON.stringify(['v1', { variationId: 'v2', displayName: 'Caravan' }]));
-    assert.deepEqual(loadFavorites(), [{ variationId: 'v1' }, { variationId: 'v2', displayName: 'Caravan' }]);
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[]');
+    assert.equal(dropFavoriteAircraft(), 2);
+    assert.equal(data.has('MSFS_UI_FAVORITE_AIRCRAFT'), false);
+    assert.equal(data.get('MSFS_UI_FAVORITE_LIVERIES'), '[]');
+    assert.equal(dropFavoriteAircraft(), 0, 'nothing left to drop');
   });
 
   it('announces a change of the favourite liveries', () => {

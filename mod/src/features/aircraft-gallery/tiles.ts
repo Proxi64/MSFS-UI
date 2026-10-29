@@ -1,8 +1,9 @@
 // Which tiles the gallery shows, without the sim (tested by test/aircraft-gallery.test.ts): one tile per aircraft of
-// the sim's list, or with the Favorites filter one tile per favourite livery (as on Free Flight) and one per favourite
-// aircraft without favourite liveries; the search filters on name, publisher, variant and livery.
+// the sim's list, or with the Favorites filter one tile per favourite livery (as on Free Flight); the search filters
+// on name, publisher, variant and livery. The favourites are liveries: an aircraft is a favourite when one of its
+// liveries is.
 
-import { favoriteLiveriesOf, type FavoriteAircraft, type FavoriteLivery } from '../../sim/favorites.ts';
+import { favoriteLiveriesOf, type FavoriteLivery } from '../../sim/favorites.ts';
 
 /** An item of `Game.Aircraft.AircraftList` (fields used). */
 export interface AircraftItem {
@@ -40,32 +41,20 @@ export function normalize(text: string): string {
 }
 
 /**
- * Favourites of this aircraft, all variants: the sim's list has one entry per modular aircraft (with its current
- * variant), so the heart is about the aircraft (same name, same publisher), not the variant.
+ * At least one favourite livery, of any variant: the sim's list has one entry per modular aircraft (with its current
+ * variant), so a favourite livery of another variant (same name, same publisher) counts too.
  */
-export function favoritesOf(favorites: readonly FavoriteAircraft[], item: AircraftItem): FavoriteAircraft[] {
-  return favorites.filter((favorite) => favorite.variationId === item.variationId || (favorite.displayName === item.displayName && favorite.creator === item.creator));
+export function hasFavoriteLivery(liveries: readonly FavoriteLivery[], item: AircraftItem): boolean {
+  return favoriteLiveriesOf(liveries, item).length > 0;
 }
 
-/** A gallery favourite, or at least one favourite livery (setup panel). */
-export function isFavoriteAircraft(favorites: readonly FavoriteAircraft[], liveries: readonly FavoriteLivery[], item: AircraftItem): boolean {
-  return favoritesOf(favorites, item).length > 0 || favoriteLiveriesOf(liveries, item).length > 0;
-}
-
-/** The favourite of an aircraft as stored (mod/README.md, Data stored in the sim). */
-export function favoriteFrom(item: AircraftItem): FavoriteAircraft {
-  return {
-    variationId: item.variationId,
-    displayName: item.displayName,
-    creator: item.creator,
-    variation: item.isModular ? item.variation : '',
-    thumbnailPath: item.thumbnailPath,
-  };
+/** The `aircraftId` of the favourite aircraft of the list, for an order that stays while the screen does (favoritesFirst). */
+export function favoriteAircraftIds(items: readonly AircraftItem[], liveries: readonly FavoriteLivery[]): number[] {
+  return items.filter((item) => hasFavoriteLivery(liveries, item)).map((item) => item.aircraftId);
 }
 
 export interface TileQuery {
   items: readonly AircraftItem[];
-  favorites: readonly FavoriteAircraft[];
   liveries: readonly FavoriteLivery[];
   favoritesOnly: boolean;
   search: string;
@@ -75,7 +64,7 @@ export interface TileQuery {
 
 /** The tiles to show, in the order of the sim's list. */
 export function visibleTiles(query: TileQuery): Tile[] {
-  const { items, favorites, liveries, favoritesOnly, translate } = query;
+  const { items, liveries, favoritesOnly, translate } = query;
   // Each favourite livery goes to one entry of the list only: its variant's, otherwise the first entry of the same
   // aircraft (name and publisher), so that it is not repeated when several entries bear the same name.
   const owners = new Map<FavoriteLivery, AircraftItem>();
@@ -92,9 +81,7 @@ export function visibleTiles(query: TileQuery): Tile[] {
       tiles.push({ item });
       continue;
     }
-    const own = liveries.filter((livery) => owners.get(livery) === item);
-    if (own.length > 0) for (const livery of own) tiles.push({ item, livery });
-    else if (favoritesOf(favorites, item).length > 0) tiles.push({ item });
+    for (const livery of liveries) if (owners.get(livery) === item) tiles.push({ item, livery });
   }
   const terms = normalize(query.search).split(' ').filter((term) => !!term);
   if (terms.length === 0) return tiles;
@@ -148,10 +135,11 @@ export function sortTiles(tiles: readonly Tile[], sort: LocalSort, reversed: boo
 }
 
 /**
- * Favourites first, whatever the sort: favourite aircraft (heart, or a favourite livery) and favourite livery tiles,
- * then the others, each part in the order given.
+ * Favourites first, whatever the sort: the favourite aircraft (`favoriteIds`, from favoriteAircraftIds) and the
+ * favourite livery tiles, then the others, each part in the order given. The gallery keeps the ids of its first
+ * display while the screen stays, so that an aircraft whose livery gets a heart does not jump away under the mouse.
  */
-export function favoritesFirst(tiles: readonly Tile[], favorites: readonly FavoriteAircraft[], liveries: readonly FavoriteLivery[]): Tile[] {
-  const isFavorite = (tile: Tile) => !!tile.livery || isFavoriteAircraft(favorites, liveries, tile.item);
+export function favoritesFirst(tiles: readonly Tile[], favoriteIds: readonly number[]): Tile[] {
+  const isFavorite = (tile: Tile) => !!tile.livery || favoriteIds.indexOf(tile.item.aircraftId) >= 0;
   return tiles.filter(isFavorite).concat(tiles.filter((tile) => !isFavorite(tile)));
 }

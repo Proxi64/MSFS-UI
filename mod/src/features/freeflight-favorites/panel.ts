@@ -1,7 +1,7 @@
 // The Favorites block on Free Flight, under the sim's "Search location" field, as wide as the sim's aircraft button:
 // a card like the sim's (background layers, header), its rows in the sim's scrolling list, each row the sim's
-// horizontal tile (as the gallery's list view) with the sim's heart at its end. A click loads the aircraft with the
-// row's livery; the heart removes the favourite.
+// horizontal tile (as the gallery's list view) with the sim's heart at its end. One row per favourite livery: a click
+// loads the aircraft with it; the heart removes the favourite.
 
 import { el, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
@@ -9,11 +9,11 @@ import type { Scope } from '../../core/scope.ts';
 import { panel } from '../../core/theme.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
-import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, loadFavorites, loadUses, saveFavoriteLiveries, saveFavorites } from '../../sim/favorites.ts';
+import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { store, translate, watch } from '../../sim/store.ts';
-import { collectEntries, isCurrentEntry, orderEntries, withoutAircraft, withoutLivery, type FavoriteEntry } from './entries.ts';
+import { collectEntries, isCurrentEntry, orderEntries, withoutLivery, type FavoriteEntry } from './entries.ts';
 
 /** The sim's wishlist heart (IconButtonLightWishlistManipulator). */
 interface WishlistManipulator {
@@ -138,7 +138,7 @@ export class FavoritesPanel {
 
   private render(): void {
     if (this.scope.disposed) return;
-    const ordered = orderEntries(collectEntries(loadFavorites(), loadFavoriteLiveries(), loadUses()), this.order);
+    const ordered = orderEntries(collectEntries(loadFavoriteLiveries()), this.order);
     this.order = ordered.order;
     const entries = ordered.entries;
     const key = entries.map((entry) => entry.id).join(',');
@@ -207,8 +207,8 @@ export class FavoritesPanel {
   private fillRow(row: Row): void {
     const { entry, card } = row;
     if (card) {
-      const tail = entry.livery ? loadLiveryTails()[liveryKey(entry.livery.dir)] : undefined;
-      const details = [entry.variation ? translate(entry.variation) : '', entry.livery ? translate(entry.livery.title) : '', tail || ''];
+      const tail = loadLiveryTails()[liveryKey(entry.livery.dir)];
+      const details = [entry.variation ? translate(entry.variation) : '', translate(entry.livery.title), tail || ''];
       card.set('Image', entry.image);
       card.set('Title', entry.name);
       card.set('Creator', details.filter((part) => !!part.trim()).map((part) => part.trim()).join(' · '));
@@ -223,7 +223,7 @@ export class FavoritesPanel {
     if (this.loading) return;
     this.loading = true;
     this.root.classList.add('is-loading');
-    loadAircraft(entry.variationId, entry.livery ? { livery: entry.livery, usedAt: 0 } : undefined)
+    loadAircraft(entry.variationId, { livery: entry.livery, usedAt: 0 })
       .catch((error: unknown) => logError(`${entry.name} could not be loaded`, error))
       .then(() => {
         this.loading = false;
@@ -232,12 +232,8 @@ export class FavoritesPanel {
       });
   }
 
-  /** The heart unchecked: the favourite livery, or every variant of the favourite aircraft, is removed. */
+  /** The heart unchecked: the favourite livery is removed (its change event redraws the block). */
   private remove(entry: FavoriteEntry): void {
-    if (entry.fixedLivery) saveFavoriteLiveries(withoutLivery(loadFavoriteLiveries(), entry));
-    else {
-      saveFavorites(withoutAircraft(loadFavorites(), entry));
-      this.render();
-    }
+    saveFavoriteLiveries(withoutLivery(loadFavoriteLiveries(), entry));
   }
 }

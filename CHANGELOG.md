@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased (1.3.0)
+
+- **Favourites are liveries.** The heart on the aircraft tiles of the gallery and list is gone: it marked the aircraft, not the livery shown on its image, which was confusing next to the livery hearts. Mark liveries with their heart (the setup panel's thumbnails, or the livery column in the side by side layout); an aircraft with a favourite livery is a favourite and comes first. The **Favorites** filter and the Free Flight block show the favourite liveries.
+- **Favourite aircraft of earlier versions are removed** at the first start: mark their liveries again.
+- **No more jumping tiles**: marking a livery no longer moves its aircraft to the top of the gallery under the mouse. The favourites are put first when the screen opens, and again on a new sort, search, filter or category tab.
+
 ## 1.2.1 (2026-10-28)
 
 - **Weather bar**: the map buttons under it (*Legend*, *Map Layers*, *World Map display*) work again. Their panels open in the bar's place, so the bar hid them; it now steps aside while one is open, as the sim's own content does.

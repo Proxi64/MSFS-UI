@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { compareNatural, favoriteFrom, favoritesFirst, isFavoriteAircraft, normalize, sortTiles, visibleTiles, type AircraftItem } from '../src/features/aircraft-gallery/tiles.ts';
+import { compareNatural, favoriteAircraftIds, favoritesFirst, hasFavoriteLivery, normalize, sortTiles, visibleTiles, type AircraftItem } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
 import { galleryBodyClass, liveryTail, liveryTileSize, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
+let nextAircraftId = 1;
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
-  aircraftId: 1,
+  aircraftId: nextAircraftId++,
   variationIndex: 0,
   variationId,
   displayName,
@@ -35,48 +36,44 @@ describe('normalize', () => {
 
 describe('visibleTiles', () => {
   it('gives one tile per aircraft without the filter, searched on every word', () => {
-    const all = visibleTiles({ items: ITEMS, favorites: [], liveries: [], favoritesOnly: false, search: '', translate: identity });
+    const all = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: '', translate: identity });
     assert.equal(all.length, 3);
-    const found = visibleTiles({ items: ITEMS, favorites: [], liveries: [], favoritesOnly: false, search: 'aeronautica cap', translate: identity });
+    const found = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: 'aeronautica cap', translate: identity });
     assert.deepEqual(found.map((tile) => tile.item.variationId), ['cap4']);
-    const variant = visibleTiles({ items: ITEMS, favorites: [], liveries: [], favoritesOnly: false, search: 'executive', translate: identity });
+    const variant = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: 'executive', translate: identity });
     assert.deepEqual(variant.map((tile) => tile.item.variationId), ['sf50-exec']);
   });
 
-  it('gives one tile per favourite livery, and per favourite aircraft without favourite livery', () => {
+  it('gives one tile per favourite livery only', () => {
     const liveries = [livery('sf50-exec', 'Arrivee Alpine'), livery('sf50-exec', 'Apex Corso Red')];
-    const tiles = visibleTiles({ items: ITEMS, favorites: [favoriteFrom(ITEMS[1]!)], liveries, favoritesOnly: true, search: '', translate: identity });
+    const tiles = visibleTiles({ items: ITEMS, liveries, favoritesOnly: true, search: '', translate: identity });
     assert.deepEqual(
       tiles.map((tile) => `${tile.item.variationId}:${tile.livery ? tile.livery.title : '-'}`),
-      ['sf50-exec:Arrivee Alpine', 'sf50-exec:Apex Corso Red', 'c172:-'],
+      ['sf50-exec:Arrivee Alpine', 'sf50-exec:Apex Corso Red'],
     );
   });
 
   it('gives a favourite livery of another variant to the entry of the same aircraft, once', () => {
     const items = [aircraft('sf50-family', 'Vision Jet G2', 'Working Title', 'Family Seating'), aircraft('sf50-copy', 'Vision Jet G2', 'Working Title', 'Family Seating')];
     const liveries = [livery('sf50-exec', 'Arrivee Alpine', { displayName: 'Vision Jet G2', creator: 'Working Title' })];
-    const tiles = visibleTiles({ items, favorites: [], liveries, favoritesOnly: true, search: '', translate: identity });
+    const tiles = visibleTiles({ items, liveries, favoritesOnly: true, search: '', translate: identity });
     assert.deepEqual(tiles.map((tile) => tile.item.variationId), ['sf50-family']);
   });
 
   it('searches favourite liveries on their title and variant', () => {
     const liveries = [livery('sf50-exec', 'Arrivee Alpine', { variation: 'Executive Seating' }), livery('sf50-exec', 'Apex Corso Red')];
-    const tiles = visibleTiles({ items: ITEMS, favorites: [], liveries, favoritesOnly: true, search: 'alpine', translate: identity });
+    const tiles = visibleTiles({ items: ITEMS, liveries, favoritesOnly: true, search: 'alpine', translate: identity });
     assert.deepEqual(tiles.map((tile) => tile.livery && tile.livery.title), ['Arrivee Alpine']);
   });
 });
 
-describe('favourites of an aircraft', () => {
-  it('counts the gallery heart of any variant and the favourite liveries', () => {
-    const other = favoriteFrom(aircraft('sf50-family', 'Vision Jet G2', 'Working Title', 'Family Seating'));
-    assert.equal(isFavoriteAircraft([other], [], ITEMS[0]!), true, 'same aircraft, another variant');
-    assert.equal(isFavoriteAircraft([], [livery('c172', 'Red')], ITEMS[1]!), true);
-    assert.equal(isFavoriteAircraft([], [], ITEMS[2]!), false);
-  });
-
-  it('stores the variant of modular aircraft only', () => {
-    assert.equal(favoriteFrom(ITEMS[0]!).variation, 'Executive Seating');
-    assert.equal(favoriteFrom(ITEMS[1]!).variation, '');
+describe('favourite aircraft', () => {
+  it('are the aircraft with a favourite livery, of any of their variants', () => {
+    const other = livery('sf50-family', 'Red', { displayName: 'Vision Jet G2', creator: 'Working Title' });
+    assert.equal(hasFavoriteLivery([other], ITEMS[0]!), true, 'same aircraft, another variant');
+    assert.equal(hasFavoriteLivery([livery('c172', 'Red')], ITEMS[1]!), true);
+    assert.equal(hasFavoriteLivery([livery('c172', 'Red')], ITEMS[2]!), false);
+    assert.deepEqual(favoriteAircraftIds(ITEMS, [livery('c172', 'Red')]), [ITEMS[1]!.aircraftId]);
   });
 });
 
@@ -117,11 +114,20 @@ describe('sortTiles', () => {
 });
 
 describe('favoritesFirst', () => {
-  it('puts favourite aircraft and livery tiles first, keeping the order of each part', () => {
+  it('puts the favourite aircraft given and the livery tiles first, keeping the order of each part', () => {
     const items = [aircraft('a', 'A', 'S'), aircraft('b', 'B', 'S'), aircraft('c', 'C', 'S'), aircraft('d', 'D', 'S')];
+    const tiles = [{ item: items[0]! }, { item: items[1]! }, { item: items[2]!, livery: livery('c', 'Red') }, { item: items[3]! }];
+    const sorted = favoritesFirst(tiles, [items[3]!.aircraftId]);
+    assert.deepEqual(sorted.map((tile) => tile.item.variationId), ['c', 'd', 'a', 'b']);
+  });
+
+  it('keeps an aircraft in its place while the favourites given are those of an earlier order', () => {
+    const items = [aircraft('a', 'A', 'S'), aircraft('b', 'B', 'S')];
     const tiles = items.map((item) => ({ item }));
-    const sorted = favoritesFirst(tiles, [favoriteFrom(items[3]!)], [livery('b', 'Red')]);
-    assert.deepEqual(sorted.map((tile) => tile.item.variationId), ['b', 'd', 'a', 'c']);
+    // A livery of b made a favourite since the order was set: b does not jump to the top under the mouse.
+    const earlier = favoriteAircraftIds(items, []);
+    assert.deepEqual(favoritesFirst(tiles, earlier).map((tile) => tile.item.variationId), ['a', 'b']);
+    assert.deepEqual(favoritesFirst(tiles, favoriteAircraftIds(items, [livery('b', 'Red')])).map((tile) => tile.item.variationId), ['b', 'a']);
   });
 });
 
