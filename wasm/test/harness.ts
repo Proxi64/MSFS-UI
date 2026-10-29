@@ -18,6 +18,8 @@ export interface Harness {
   writes: string[];
   /** While true, every write fails (fsIOWrite answers an error). */
   failWrites: boolean;
+  /** Paths whose reads fail: the read callback runs with no byte read. */
+  failReads: Set<string>;
   /** Drops every queued callback: the sim stopped now. */
   crash(): void;
 }
@@ -49,6 +51,7 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
   let executed = 0;
   let frozen = false;
   let failWrites = false;
+  const failReads = new Set<string>();
   let exports!: Exports;
 
   const text = (pointer: number, length?: number) => {
@@ -89,8 +92,9 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
       const handle = open(path, flags, false);
       enqueue(() => {
         const buffer = exports.malloc(Math.max(count, 1)); // the sim's buffer: never freed by the module
-        new Uint8Array(exports.memory.buffer).set(file.subarray(offset, offset + count), buffer);
-        call(callback, handle, buffer, offset, count, user);
+        const failed = failReads.has(path);
+        if (!failed) new Uint8Array(exports.memory.buffer).set(file.subarray(offset, offset + count), buffer);
+        call(callback, handle, buffer, offset, failed ? 0 : count, user);
       });
       return handle;
     },
@@ -140,6 +144,7 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
   return {
     sent,
     writes,
+    failReads,
     get failWrites() {
       return failWrites;
     },

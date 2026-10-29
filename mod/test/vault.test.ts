@@ -76,7 +76,7 @@ describe('vault', () => {
     (globalThis as { window?: unknown }).window = { location: { pathname: '/menu.html' } };
     (globalThis as { engine?: unknown }).engine = fake;
     error = mock.method(console, 'error', () => {});
-    mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+    mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] });
   });
   afterEach(() => {
     mock.timers.reset();
@@ -115,7 +115,7 @@ describe('vault', () => {
     scope.dispose();
   });
 
-  it('returns null when nothing answers within the time, and removes its listener', async () => {
+  it('returns null when nothing answers within the time, and removes its listener with the scope', async () => {
     fake.answers = false;
     const scope = new Scope();
     const pending = openVault(scope);
@@ -124,7 +124,74 @@ describe('vault', () => {
     assert.equal(fake.listenerCount(), 1);
     mock.timers.tick(1);
     assert.deepEqual(await pending, { vault: null, reason: 'the vault module did not answer within 3000 ms' });
+    assert.equal(fake.listenerCount(), 1, 'kept to see a late answer');
+    scope.dispose();
     assert.equal(fake.listenerCount(), 0);
+  });
+
+  it('keeps a passive listener after the time-out and reports a late module without switching to it', async () => {
+    fake.answers = false;
+    const log = mock.method(console, 'log', () => {});
+    const scope = new Scope();
+    const late: number[] = [];
+    const pending = openVault(scope, 3000, (afterMs) => late.push(afterMs));
+    const id = fake.sent[0]!.text;
+    mock.timers.tick(3000);
+    assert.equal((await pending).vault, null);
+    assert.equal(fake.listenerCount(), 1, 'still listening');
+    // Another request id is ignored.
+    fake.emit(VAULT_EVENTS.loaded, '123\n7\n{}');
+    assert.deepEqual(late, []);
+    mock.timers.tick(200);
+    fake.emit(VAULT_EVENTS.loaded, `${id}\n7\n{"MSFS_UI_A":"1"}`);
+    assert.deepEqual(late, [3200]);
+    assert.equal(fake.listenerCount(), 0, 'the late answer is seen once');
+    const lines = log.mock.calls.map((call) => String(call.arguments[0]));
+    assert.deepEqual(
+      lines.filter((line) => line.indexOf('answered after') >= 0),
+      ["[msfs-ui] the vault module answered after 3200 ms; this session's data stays in the sim storage"],
+    );
+    log.mock.restore();
+    scope.dispose();
+  });
+
+  it('leaves no listener after the scope ends, even while watching for a late module', async () => {
+    fake.answers = false;
+    const scope = new Scope();
+    const pending = openVault(scope);
+    mock.timers.tick(3000);
+    await pending;
+    assert.equal(fake.listenerCount(), 1);
+    scope.dispose();
+    assert.equal(fake.listenerCount(), 0);
+  });
+
+  it('asks again every 500 ms until the module answers', async () => {
+    let loads = 0;
+    fake.call = (_name, event, text) => {
+      fake.sent.push({ event, text });
+      if (event === VAULT_EVENTS.load && ++loads === 2) Promise.resolve().then(() => fake.emit(VAULT_EVENTS.loaded, `${text}\n3\n{"MSFS_UI_A":"1"}`));
+      return Promise.resolve();
+    };
+    const scope = new Scope();
+    const pending = openVault(scope);
+    assert.equal(loads, 1);
+    mock.timers.tick(500);
+    const result = await pending;
+    assert.equal(loads, 2);
+    assert.ok(result.vault);
+    assert.equal(result.vault.seq, 3);
+    scope.dispose();
+  });
+
+  it('describes the current seq, size and keys after a confirmed write', async () => {
+    const scope = new Scope();
+    const vault = await open(scope);
+    assert.equal(vault.describe(), 'seq 0, 2 bytes, keys: none');
+    vault.backend().set(`${STORAGE_PREFIX}A`, '1');
+    vault.flush();
+    await tick();
+    assert.equal(vault.describe(), 'seq 1, 17 bytes, keys: A');
     scope.dispose();
   });
 

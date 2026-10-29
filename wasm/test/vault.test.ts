@@ -163,3 +163,60 @@ test('answers a LOAD that arrives before the start-up read ends', { skip }, asyn
   await vault.settle();
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['3\n5\nstored']);
 });
+
+test('keeps the last settled snapshot when the third save stops after its data and before its head', { skip }, async () => {
+  const disk = newDisk();
+  // Saves 1 and 2 take 4 callbacks each; save 3 writes slot a's data (open, write) and the sim stops before its head.
+  const vault = await loadVault(disk, { stopAfter: 10 });
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_SAVE', '1\none');
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_SAVE', '2\ntwo');
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_SAVE', '3\nthree');
+  await vault.settle();
+  assert.equal(dataOf(disk, 'a'), 'three');
+  assert.ok(headOf(disk, 'a')!.startsWith('MSFSUI-VAULT 1 0000000001 '), 'the head of slot a still describes save 1');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['1\nok', '2\nok']);
+  assert.equal(await loadedText(disk), 'q\n2\ntwo');
+});
+
+// A read that fails at start-up must not lose a snapshot that was readable: the module writes the slot it did not
+// load from, or, with nothing loaded, the slot other than the one with the newest valid head.
+test('does not write over the loaded snapshot when the newer slot cannot be read', { skip }, async () => {
+  const disk = newDisk();
+  const first = await loadVault(disk);
+  await first.settle();
+  first.send('MSFS_UI_VAULT_SAVE', '4\nfour');
+  await first.settle();
+  first.send('MSFS_UI_VAULT_SAVE', '5\nfive');
+  await first.settle();
+  const vault = await loadVault(disk);
+  vault.failReads.add('/work/vault-b.data');
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n4\nfour']);
+  vault.send('MSFS_UI_VAULT_SAVE', '5\nnew five');
+  await vault.settle();
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['5\nok']);
+  assert.equal(dataOf(disk, 'a'), 'four', 'the loaded snapshot is untouched');
+  assert.equal(await loadedText(disk), 'q\n5\nnew five');
+});
+
+test('does not write first onto the slot with the newest valid head when nothing could be read', { skip }, async () => {
+  const disk = newDisk();
+  const first = await loadVault(disk);
+  await first.settle();
+  first.send('MSFS_UI_VAULT_SAVE', '1\none');
+  await first.settle();
+  const vault = await loadVault(disk);
+  vault.failReads.add('/work/vault-a.data');
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n0\n']);
+  vault.send('MSFS_UI_VAULT_SAVE', '2\ntwo');
+  await vault.settle();
+  assert.equal(dataOf(disk, 'a'), 'one', 'slot a, possibly valid, is spared');
+  assert.equal(dataOf(disk, 'b'), 'two');
+  assert.equal(await loadedText(disk), 'q\n2\ntwo');
+});

@@ -24,17 +24,31 @@ async function start(): Promise<void> {
   if (root.disposed) return;
   // Before the features: the data lives in the vault module when it answers, else in the sim storage, whose writes are
   // saved to the disk through a profile save (sim/profile-save.ts).
-  const opened = await openVault(root);
+  let lateMs: number | undefined;
+  const opened = await openVault(root, undefined, (afterMs) => {
+    lateMs = afterMs;
+  });
   if (root.disposed) return;
   const vault = opened.vault;
   if (vault) {
     setStorageBackend(vault.backend());
     root.add(() => setStorageBackend(null));
-    runtime.storage = { kind: 'vault', detail: vault.describe() };
+    // Live: each read of the app's probe gives the current seq, size and keys.
+    runtime.storage = {
+      kind: 'vault',
+      get detail() {
+        return vault.describe();
+      },
+    };
     log(`data kept in the vault module (${runtime.storage.detail})`);
   } else {
     startProfileSaves(root);
-    runtime.storage = { kind: 'datastorage', detail: opened.reason };
+    runtime.storage = {
+      kind: 'datastorage',
+      get detail() {
+        return lateMs === undefined ? opened.reason : `${opened.reason}; it answered after ${lateMs} ms: this session's data stays in the sim storage`;
+      },
+    };
     log(`data kept in the sim storage: ${opened.reason}`);
   }
   // The favourites are liveries since 1.3.0: the favourite aircraft of earlier versions go (saved with the profile).

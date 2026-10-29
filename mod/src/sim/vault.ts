@@ -4,7 +4,7 @@
 // The messages are in core/vault-protocol.ts. If the module does not answer in time, the mod keeps `datastorage`.
 
 import { debounced } from '../core/async.ts';
-import { describeError, logError } from '../core/log.ts';
+import { describeError, log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import { STORAGE_PREFIX, type StorageBackend } from '../core/storage.ts';
 import { VAULT_EVENTS, VAULT_MAX_BYTES, decodeLoaded, decodeSaved, encodeSave, toAscii } from '../core/vault-protocol.ts';
@@ -40,13 +40,17 @@ export interface OpenResult {
 /**
  * Connects to the vault module and reads its snapshot. No vault when it does not answer within `timeoutMs`, when its
  * snapshot is unreadable or when the CommBus fails. The listener and the timers go with `scope`, which also flushes
- * the pending snapshot. Never rejects.
+ * the pending snapshot. Never rejects. After a time-out the listener stays until the scope ends: a module that
+ * answers late is logged and reported to `onLate` (with the delay), but the session is not switched to it.
  */
-export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<OpenResult> {
+export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS, onLate?: (afterMs: number) => void): Promise<OpenResult> {
   return new Promise<OpenResult>((resolve) => {
     const requestId = 1 + Math.floor(Math.random() * 1000000000);
+    const startedAt = Date.now();
     let settled = false;
     let registered = false;
+    // After the time-out, the listener stays (until the scope ends) to tell a late module from a missing one.
+    let watchingLate = false;
     let retry: ReturnType<typeof setInterval> | undefined;
     let giveUp: ReturnType<typeof setTimeout> | undefined;
     let vault: VaultImpl | undefined;
@@ -68,11 +72,12 @@ export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS): Promise
       }
     };
 
-    const finish = (result: VaultImpl | null, reason: string) => {
+    const finish = (result: VaultImpl | null, reason: string, keepListening = false) => {
       if (settled) return;
       settled = true;
       stopWaiting();
-      if (!result) unregister();
+      if (!result && keepListening && registered) watchingLate = true;
+      else if (!result) unregister();
       resolve({ vault: result, reason });
     };
 
@@ -82,9 +87,19 @@ export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS): Promise
       if (typeof eventName !== 'string' || eventName.indexOf('MSFS_UI_VAULT_') !== 0) return;
       const text = typeof payload === 'string' ? payload : '';
       if (eventName === VAULT_EVENTS.loaded) {
-        if (settled) return;
         const loaded = decodeLoaded(text);
         if (!loaded || loaded.requestId !== requestId) return;
+        if (settled) {
+          if (watchingLate) {
+            // Too late: the features already read the sim storage, so this session stays on it.
+            watchingLate = false;
+            unregister();
+            const afterMs = Date.now() - startedAt;
+            log(`the vault module answered after ${afterMs} ms; this session's data stays in the sim storage`);
+            if (onLate) onLate(afterMs);
+          }
+          return;
+        }
         const copy = parseSnapshot(loaded.text);
         if (!copy) {
           finish(null, 'the vault snapshot is unreadable');
@@ -112,7 +127,7 @@ export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS): Promise
       // The timers first: an answer arriving inside the first call settles the promise and stops them.
       const sendLoad = () => sendToModule(VAULT_EVENTS.load, String(requestId));
       retry = setInterval(sendLoad, LOAD_RETRY_MS);
-      giveUp = setTimeout(() => finish(null, `the vault module did not answer within ${timeoutMs} ms`), timeoutMs);
+      giveUp = setTimeout(() => finish(null, `the vault module did not answer within ${timeoutMs} ms`, true), timeoutMs);
       sendLoad();
     } catch (error) {
       finish(null, `the CommBus is not available: ${describeError(error)}`);

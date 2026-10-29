@@ -73,6 +73,7 @@ struct Snapshot {
 
 static Snapshot* g_loaded = nullptr;   // the newest snapshot known to be on the disk
 static int g_loadedSlot = -1;          // its slot; -1 when none
+static int g_sparedSlot = -1;          // start-up, no readable snapshot: the slot of the newest valid head, not written first
 static Snapshot* g_inflight = nullptr; // being written
 static Snapshot* g_queued = nullptr;   // waiting for the write to end; a newer SAVE replaces it
 static int g_inflightSlot = 0;
@@ -201,7 +202,8 @@ static void onDataOpened(FsIOFile file, void* user) {
 static void startWrite() {
   g_inflight = g_queued;
   g_queued = nullptr;
-  g_inflightSlot = g_loadedSlot == 0 ? 1 : 0;
+  int spared = g_loadedSlot >= 0 ? g_loadedSlot : g_sparedSlot; // see finishStartup
+  g_inflightSlot = spared == 0 ? 1 : 0;
   memset(g_head, ' ', sizeof g_head);
   int length = snprintf(g_head, sizeof g_head, "MSFSUI-VAULT 1 %010u %010u %08x", g_inflight->seq, (unsigned)g_inflight->length,
                         fnv1a(g_inflight->text, g_inflight->length));
@@ -320,12 +322,27 @@ static int g_startupPhase = 0; // 1: heads, 2: data
 static void startupDataPhase();
 
 static void finishStartup() {
+  if (g_ready) return; // idempotent: a late or repeated callback must not run this twice
   Slot* winner = nullptr;
+  Slot* newestHead = nullptr; // the valid head with the highest seq, whether or not its data could be read
   for (int i = 0; i < 2; i++) {
     if (g_slots[i].dataValid && (winner == nullptr || g_slots[i].seq > winner->seq)) winner = &g_slots[i];
+    if (g_slots[i].headValid && (newestHead == nullptr || g_slots[i].seq > newestHead->seq)) newestHead = &g_slots[i];
   }
   for (int i = 0; i < 2; i++) {
     if (&g_slots[i] != winner) free(g_slots[i].data);
+  }
+  // Where the first write goes (startWrite takes the slot other than g_loadedSlot):
+  // - a winner: its slot is spared, the other one is written (it holds an older or unreadable snapshot);
+  // - no winner but a valid head: that slot may hold a snapshot that was only unreadable this time (a failed read),
+  //   so it is spared too and the other slot is written;
+  // - nothing valid at all: slot 0.
+  // Set before the Snapshot allocation, so that a failed malloc does not send the first write onto the winner's slot.
+  if (winner != nullptr) {
+    g_loadedSlot = winner->index;
+    g_acceptedSeq = winner->seq;
+  } else if (newestHead != nullptr) {
+    g_sparedSlot = newestHead->index;
   }
   if (winner != nullptr) {
     g_loaded = (Snapshot*)malloc(sizeof(Snapshot));
@@ -333,8 +350,6 @@ static void finishStartup() {
       g_loaded->seq = winner->seq;
       g_loaded->text = winner->data;
       g_loaded->length = winner->length;
-      g_loadedSlot = winner->index;
-      g_acceptedSeq = winner->seq;
     } else {
       free(winner->data);
     }
@@ -354,6 +369,7 @@ static void finishStartup() {
 }
 
 static void endStartupOperation() {
+  if (g_startupPending <= 0) return; // never below 0, never finishing twice
   if (--g_startupPending > 0) return;
   if (g_startupPhase == 1) startupDataPhase();
   else finishStartup();

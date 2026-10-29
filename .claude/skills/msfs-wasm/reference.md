@@ -93,10 +93,10 @@ From `JS/Services/CommBus.js` and the `ViewListener` class of `JS/common.js`:
 - Send: `engine.call("COMM_BUS_WASM_CALLBACK", eventName, text)`; also `"COMM_BUS_SIMCONNECT_CALLBACK"` (to SimConnect clients) and `"COMM_BUS_ALL_CALLBACK"`. Returns a promise. Plain text passes (JSON not required).
 - Receive: `engine.on("EVENT_FROM_VIEW_LISTENER", (listenerName, eventName, ...args) => …)`, keeping only `listenerName.toUpperCase() === "JS_LISTENER_COMM_BUS"`; `engine.off` the same function when the mod's `Scope` is disposed.
 - **In the main menu (`mainUI.html`) there is no `Coherent` global** (verified): use `engine.on`, `engine.off`, `engine.trigger`, `engine.call`.
-- Measured (verified, main menu, Steam): menu → module → menu round trips of 10 B to 1 MB all arrive, 12 to 22 ms; the menu's frame cadence (about 100 ms per frame at the main menu) is the same idle and while messaging back to back.
+- Measured (verified, main menu, Steam): menu → module → menu round trips of 10 B to 1 MB all arrive, 12 to 22 ms; the menu's frame cadence (about 100 ms per frame at the main menu, in the spike) is the same idle and while messaging back to back.
 - **The bus is shared**: the menu listener also receives other add-ons' events (ChasePlane's `p42_chaseplane_comms_wasm_ping`, many per second); filter on the `MSFS_UI_` prefix, early.
 - Whether the menu answers before the module is up: **unverified**; the mod repeats its first LOAD every 500 ms until the module answers, with a bound of 3000 ms, then falls back on `datastorage` (with a package without the module, measured: it falls back with that reason).
-- With the real module loaded, the menu's frame cadence is unchanged (measured over 4 s: mean 16.57 ms, p95 17.2 ms, max 18.1 ms).
+- With the real module loaded, the frame cadence was measured on the Free Flight screen (not the main menu of the spike above), over 4 s, with no comparison without the module: mean 16.57 ms, p95 17.2 ms, max 18.1 ms.
 
 ## SimConnect side (the app)
 

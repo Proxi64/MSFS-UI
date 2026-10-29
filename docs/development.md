@@ -31,7 +31,7 @@ The mod's own layout, build and conventions are in [mod/README.md](../mod/README
 - Windows 11, MSFS 2024 (to try the mod);
 - .NET 10 SDK, and WinApp CLI 0.7+ with Developer Mode (to run the app from the command line);
 - Node.js 22.18+ (only to build the mod; the app ships the built module);
-- the MSFS 2024 SDK (`MSFS2024_SDK`) and Node 24 or later, only to build the vault module (`wasm/`); the app ships the built module.
+- the MSFS 2024 SDK (`MSFS2024_SDK`) and Node.js 22.18+, only to build the vault module (`wasm/`); the app ships the built module.
 
 ## Build and test
 

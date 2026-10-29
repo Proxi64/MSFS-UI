@@ -193,8 +193,9 @@ Aircraft are identified by `variationId` (stable); `aircraftId` may change when 
    - The query string bypasses the page's module cache, so after a change in the app a hot reload is enough. There is no need to restart the sim.
    - When the file is missing or invalid (load error, not an object, another `schemaVersion`), the mod logs an error and runs with the catalogue defaults.
    - When single values are wrong, each one takes its default or is brought into range, and each adjustment is logged.
-4. The theme stylesheet is injected. Then each enabled feature starts in its own child scope of the root. If the start throws or its promise rejects, that scope is disposed and the feature is listed in `failed`.
-5. `window.__msfsUiRuntime` exposes `version`, `build`, `settingsSource`, `settings`, `started` and `failed` to the app and to `msfs-ui-dev eval`.
+4. The mod opens the vault (`sim/vault.ts`) before the features: it asks the vault module for its snapshot, repeating the request every 500 ms, and waits up to 3000 ms. If the module does not answer, the data stays in the sim's `datastorage` for the session (the reason is logged and shown on the Compatibility page). A listener stays until the mod is unloaded: a module that answers after the bound is logged (`the vault module answered after N ms`) and noted in the storage detail, but the session is not switched to it.
+5. The theme stylesheet is injected. Then each enabled feature starts in its own child scope of the root. If the start throws or its promise rejects, that scope is disposed and the feature is listed in `failed`.
+6. `window.__msfsUiRuntime` exposes `version`, `build`, `settingsSource`, `settings`, `storage` (`kind`: `vault` or `datastorage`, and a `detail` read live: sequence number, size and keys of the vault, or the reason for the fallback), `started` and `failed` to the app and to `msfs-ui-dev eval`.
 
 Verified in the sim (1.9.18, `fs-base-ui` 0.1.10) on 2026-10-17:
 - `config.js` is read by the real menu;

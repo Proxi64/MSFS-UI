@@ -19,13 +19,13 @@ CommBus events, payloads in ASCII, fields separated by `\n`. Answers are broadca
 
 ## Files
 
-Two slots, `a` and `b`, written alternately (the sim offers no rename): `/work/vault-<slot>.data` holds the text exactly; `/work/vault-<slot>.head` is 64 bytes: `MSFSUI-VAULT 1 <seq %010u> <length %010u> <fnv1a32 %08x>`, padded with spaces to 63 bytes, then `\n`. A write is data, then head. At start-up the module reads both heads (64 bytes), then the data of each valid head (exactly its length), and keeps the newest slot whose FNV-1a 32 matches: an interrupted write leaves the previous snapshot.
+Two slots, `a` and `b`, written alternately (the sim offers no rename): `/work/vault-<slot>.data` holds the text exactly; `/work/vault-<slot>.head` is 64 bytes: `MSFSUI-VAULT 1 <seq %010u> <length %010u> <fnv1a32 %08x>`, padded with spaces to 63 bytes, then `\n`. A write is data, then head. At start-up the module reads both heads (64 bytes), then the data of each valid head (exactly its length), and keeps the newest slot whose FNV-1a 32 matches: an interrupted write leaves the previous snapshot. The first write goes to the slot other than the one loaded; with nothing readable, to the slot other than the one with the newest valid head (its data may only have failed to read this time), or to slot a when no head is valid.
 
 Reads use `fsIOOpenRead` with exact sizes only (a count above the file's size fails in the sim).
 
 ## Build and test
 
-Needs the MSFS 2024 SDK (`MSFS2024_SDK`) and Node 24 or later.
+Needs the MSFS 2024 SDK (`MSFS2024_SDK`) and Node 22.18 or later (runs the `.ts` tests by type stripping, as the mod's tests do).
 
 ```powershell
 pwsh -File wasm/build.ps1            # wasm/dist/msfs-ui.wasm, checks, then the tests
