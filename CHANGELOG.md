@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (1.3.0)
+## 1.3.0 (2026-10-29)
 
 - **Favourites are liveries.** The heart on the aircraft tiles of the gallery and list is gone: it marked the aircraft, not the livery shown on its image, which was confusing next to the livery hearts. Mark liveries with their heart (the setup panel's thumbnails, or the livery column in the side by side layout); an aircraft with a favourite livery is a favourite and comes first. The **Favorites** filter and the Free Flight block show the favourite liveries.
 - **Favourite aircraft of earlier versions are removed** at the first start: mark their liveries again.
