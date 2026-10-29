@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
-import { deleteData, loadData, onStorageWrite, saveData } from '../src/core/storage.ts';
+import { deleteData, loadData, onStorageWrite, saveData, setStorageBackend, type StorageBackend } from '../src/core/storage.ts';
 
 /** The sim's `datastorage`, on a fake `window`. */
 function fakePage(onTop = false): Map<string, string> {
@@ -67,6 +67,52 @@ describe('storage', () => {
     saveData('X', 2);
     assert.equal(writes, 2);
   });
+  it('saveData then loadData through a backend', () => {
+    const data = fakePage();
+    const copy = new Map<string, string>();
+    const backend: StorageBackend = { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
+    setStorageBackend(backend);
+    try {
+      saveData('A', { n: 1 });
+      assert.equal(copy.get('MSFS_UI_A'), '{"n":1}');
+      assert.deepEqual(loadData('A', null), { n: 1 });
+      assert.equal(data.size, 0, 'datastorage untouched');
+      deleteData('A');
+      assert.equal(copy.has('MSFS_UI_A'), false);
+    } finally {
+      setStorageBackend(null);
+    }
+  });
+
+  it('falls back to datastorage after setStorageBackend(null)', () => {
+    const data = fakePage();
+    const copy = new Map<string, string>();
+    setStorageBackend({ kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) });
+    setStorageBackend(null);
+    saveData('B', 2);
+    assert.equal(data.get('MSFS_UI_B'), '2');
+    assert.equal(copy.size, 0);
+  });
+
+  it('onStorageWrite fires only on datastorage', () => {
+    fakePage();
+    const copy = new Map<string, string>();
+    let writes = 0;
+    onStorageWrite(() => writes++);
+    try {
+      setStorageBackend({ kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) });
+      saveData('C', 1);
+      deleteData('C');
+      assert.equal(writes, 0);
+      setStorageBackend(null);
+      saveData('C', 1);
+      assert.equal(writes, 1);
+    } finally {
+      setStorageBackend(null);
+      onStorageWrite(null);
+    }
+  });
+
   it('logs instead of failing without a datastorage', () => {
     (globalThis as { window?: unknown }).window = { top: null };
     saveData('X', 1);

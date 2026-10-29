@@ -4,10 +4,12 @@
 import { CONFIG_URL, loadSettings } from './core/config.ts';
 import { log, logError } from './core/log.ts';
 import { root, runtime, startRuntime } from './core/runtime.ts';
+import { setStorageBackend } from './core/storage.ts';
 import { injectTheme } from './core/theme.ts';
 import { FEATURES } from './features.ts';
 import { dropFavoriteAircraft } from './sim/favorites.ts';
 import { startProfileSaves } from './sim/profile-save.ts';
+import { openVault } from './sim/vault.ts';
 import { FEATURE_IDS, type FeatureId, type Settings } from './generated/catalog.ts';
 
 // The app's compatibility check counts console errors from this line on (CompatibilityChecker.ModLoadedMarker):
@@ -20,8 +22,20 @@ async function start(): Promise<void> {
   const loaded = await loadSettings();
   // A newer version may have been loaded while the settings were read: it has unloaded this one.
   if (root.disposed) return;
-  // Before the features: their writes are saved to the disk too (sim/profile-save.ts).
-  startProfileSaves(root);
+  // Before the features: the data lives in the vault module when it answers, else in the sim storage, whose writes are
+  // saved to the disk through a profile save (sim/profile-save.ts).
+  const vault = await openVault(root);
+  if (root.disposed) return;
+  if (vault) {
+    setStorageBackend(vault.backend());
+    root.add(() => setStorageBackend(null));
+    runtime.storage = { kind: 'vault', detail: vault.describe() };
+    log(`data kept in the vault module (${runtime.storage.detail})`);
+  } else {
+    startProfileSaves(root);
+    runtime.storage = { kind: 'datastorage', detail: 'the vault module did not answer within 3000 ms' };
+    log('data kept in the sim storage: the vault module did not answer within 3000 ms');
+  }
   // The favourites are liveries since 1.3.0: the favourite aircraft of earlier versions go (saved with the profile).
   dropFavoriteAircraft();
   runtime.settings = loaded.settings;

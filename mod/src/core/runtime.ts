@@ -13,6 +13,8 @@ export interface RuntimeHandle {
   /** Where the settings came from, once read. */
   settingsSource: 'config.js' | 'defaults' | undefined;
   settings: Settings | undefined;
+  /** Where the mod keeps its data, and why (the vault module, or the sim storage when the module did not answer). */
+  storage: { kind: 'vault' | 'datastorage'; detail: string } | undefined;
   /** Features running, in catalogue order. */
   readonly started: FeatureId[];
   /** Features whose start failed (their changes are undone). */
@@ -35,6 +37,7 @@ export const runtime: RuntimeHandle = {
   build: __MSFS_UI_BUILD__,
   settingsSource: undefined,
   settings: undefined,
+  storage: undefined,
   started: [],
   failed: [],
   unload: () => root.dispose(),
