@@ -70,7 +70,7 @@ The full list is in [docs/sim-reference.md](docs/sim-reference.md#coherent-gt). 
 | Aircraft list | One entry per modular aircraft | Reason per aircraft (name + publisher) |
 | Start-up | The sim activates Free Flight behind the scenes, then resets the flight conditions | Apply a remembered choice when the panel is really visible |
 | Performance | Writing a CSS variable lays the whole subtree out again, even with its current value (about 90 ms under the gallery's tiles) | `setVariable()`: write a variable only when it changes, above all in the 250 ms layout passes |
-| Storage | The sim writes `datastorage` to the disk (its Steam Cloud profile) only when it saves its profile (an option validated): not after a write, not when it quits | `sim/profile-save.ts`: after every write, re-validate one option with its current value |
+| Storage | The sim writes `datastorage` to the disk (its Steam Cloud profile) only when it saves its profile (an option validated): not after a write, not when it quits. On the Microsoft Store edition `datastorage` may be missing from `mainUI.html` (a user's sim; another mod's author: it shows after `ADD_VIEW_LISTENER` of `JS_LISTENER_DATASTORAGE`) | `sim/profile-save.ts`: after every write, re-validate one option with its current value; for the Store edition, next-steps.md 1.5 |
 | Resize | An artificial `resize` event crashes a virtual list of the sim | Never send one |
 | WinUI | A closed `InfoBar` still counts in a `StackPanel`'s `Spacing`; a `ContentDialog` shows as a `Popup` window to UI Automation | Bind its `Visibility` with `IsOpen` |
 
