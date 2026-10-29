@@ -27,7 +27,8 @@ Not for: the menu mod alone (`mod/README.md`), SimConnect without the CommBus (`
 | Files | `MSFS_IO.h` | All async with callbacks: `fsIOOpen`, `fsIORead`, `fsIOWrite`, `fsIOClose`; flags `RDONLY`, `WRONLY`, `RDWR`, `CREAT`, `TRUNC`; no rename, no delete; `FsIOErr_AccessNotAllowed` outside the package |
 | Messages | `MSFS_CommBus.h` | `fsCommBusRegister(name, cb, ctx)`, `fsCommBusCall(name, buf, size, flags)`; flags `FsCommBusBroadcast_JS`, `_Wasm`, `_WasmSelfCall`, `_SimConnect`, `_Default` (JS + Wasm + SimConnect) |
 | App side | `SimConnect SDK/include/SimConnect.h` | `SimConnect_SubscribeToCommBusEvent(h, eventId, name)`, `SimConnect_CallCommBusEvent(h, name, broadcastTo, size, data)`; received as `SIMCONNECT_RECV_ID_COMM_BUS` (`SIMCONNECT_RECV_COMM_BUS`: `uEventID`, `rgData`) |
-| Menu side | sim: `html_ui/JS/Services/CommBus.js`, `JS/common.js` (`ViewListener`) | Listener `JS_LISTENER_COMM_BUS`; send `Coherent.call("COMM_BUS_WASM_CALLBACK", name, text)` (also `COMM_BUS_SIMCONNECT_CALLBACK`, `COMM_BUS_ALL_CALLBACK`); receive `Coherent.on("EVENT_FROM_VIEW_LISTENER", (listener, event, ...args))`, filtered on the listener's name |
+| Menu side | sim: `html_ui/JS/Services/CommBus.js`, `JS/common.js` (`ViewListener`) | `engine.trigger("ADD_VIEW_LISTENER", "JS_LISTENER_COMM_BUS", location.pathname)`; send `engine.call("COMM_BUS_WASM_CALLBACK", name, text)` (also `COMM_BUS_SIMCONNECT_CALLBACK`, `COMM_BUS_ALL_CALLBACK`); receive `engine.on("EVENT_FROM_VIEW_LISTENER", (listener, event, ...args))`, filtered on the listener's name. No `Coherent` global in the main menu |
+| Did it start? | `%APPDATA%\Microsoft Flight Simulator 2024\AsoboReport-RunningSession.txt` | `[Wasm_Modules]`: `Ready` or `Failed` per module (no reason given) |
 | Later | `MSFS_Flow.h`, `MSFS_Network.h`, `MSFS_Vars.h`, `MSFS_PlannedRoute.h` | Flight events (load, start, end, crash, back to menu), HTTP GET / POST / PUT, sim variables, the EFB route |
 
 Details, signatures and the build command: [reference.md](reference.md).
@@ -40,22 +41,27 @@ Details, signatures and the build command: [reference.md](reference.md).
 4. **Event names are global** to every module, gauge and app of the sim: prefix every name `MSFS_UI_`.
 5. **Never break the mod**: the menu must work when the module is missing, late or failing (bounded wait, then fallback, logged and shown on the Compatibility page).
 6. **No personal data** in the binary: no absolute paths of the build machine (`-fdebug-prefix-map`, no debug info in release).
-7. **New file in a mounted package = restart of the sim** (`layout.json` is read at start-up); list the `.wasm` in `layout.json` through `PackageBuilder`.
+7. **New file in a mounted package = restart of the sim** (`layout.json` is read at start-up); list the `.wasm` in `layout.json` through `PackageBuilder`, and give the package an MSFS 2024 manifest (`"builder": "Microsoft Flight Simulator 2024"`, reference.md): it also decides the `work` folder's place on the disk.
 
 ## Common mistakes
 
 | Mistake | Fix |
 |---|---|
 | Following generic WebAssembly advice (wasm-bindgen, wasm-pack, Component Model / WIT, `WebAssembly.instantiate`, WASI Preview 2 runtimes, Rust targets) | None of it applies: the sim loads the module itself and offers only the SDK's imports |
-| Leaving the stack protector on | Build with `/GS-` (clang-cl): otherwise the module imports `__stack_chk_fail`, which the sim does not provide (**unverified**, reported by another mod's author; the SDK's projects set `BufferSecurityCheck` false) |
+| Module `Failed` in the report, even an empty one | Export the memory functions of the SDK's `libc.a` (`malloc`, `free`, `mallinfo`, `mchunkit_begin`, `mchunkit_next`, `get_pages_state`, `mark_decommit_pages`) and the function table; give the package an MSFS 2024 manifest (`builder`). The verified command is in reference.md |
+| Passing `/O2`, `/GS-`, `/imsvc` to `clang-cl` for a wasm target | They are ignored ("argument unused"): run it with `--driver-mode=g++` and gcc flags (`-O2`, `-fno-stack-protector`) |
+| Leaving the stack protector on | `-fno-stack-protector` (the `/GS-` of the reports): otherwise the module imports `__stack_chk_fail`, which the sim does not provide (reported by another mod's author; the SDK's projects set `BufferSecurityCheck` false) |
+| Reading a file with a larger count than its size | `fsIOOpenRead` then fails: the reader must know the size (verified) |
+| A SimConnect message above 32 KB | `SimConnect_CallCommBusEvent` crashes the app between 40 and 50 KB (verified): send in chunks |
+| Using `Microsoft.FlightSimulator.SimConnect.dll` from .NET 10 | It is .NET Framework C++/CLI and does not load: P/Invoke the native `SimConnect.dll` |
 | C++ exceptions, RTTI-dependent code, threads | The SDK's projects build with `ExceptionHandling` false and `_LIBCPP_HAS_NO_THREADS`; return error codes |
 | Assuming a CommBus message is delivered, ordered or of any size | Unverified: measure the largest message and keep framing in the protocol (sequence numbers, acknowledgements) |
-| Guessing the `\work` path or the package path seen by `fsIOOpen` | **Unverified** (not in the SDK): measure on Steam and on the Microsoft Store edition before the app relies on it |
+| Guessing the `\work` path | In the module: `"\\work\\name"` or `"/work/name"`, never `"work/name"`. On the disk (Steam, verified): `%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\<package folder>\work\`; the Microsoft Store edition's is **unverified** |
 | Testing only in a unit test | The sim is the runtime: install with `msfs-ui-dev install`, restart, check the console and the files, measure |
 
 ## Verifying a change
 
 1. Build the module (reference.md), `npm run check` in `mod/`, `dotnet build` / `dotnet test generator/MsfsUi.slnx`.
-2. `msfs-ui-dev install`, then restart the sim (a new or replaced `.wasm` is read at start-up: **unverified** whether a replaced one reloads live).
-3. The module's log lines in the sim's console, the files it wrote, a round trip from the menu with `msfs-ui-dev eval` (store async results in `window.__msfsUiProbe`, read them in a second eval).
+2. `msfs-ui-dev install`, then restart the sim (a new or replaced `.wasm` is read at start-up; restarts cost the owner time: put several variants of a module in one package to compare them in one start).
+3. The module's status in `AsoboReport-RunningSession.txt`, the files it wrote in its `work` folder, a status event it answers (its own log kept in memory) and a round trip from the menu with `msfs-ui-dev eval` (store async results in `window.__msfsUiProbe`, read them in a second eval).
 4. Frame time and the menu's 250 ms layout passes, module idle and while writing: no difference beyond noise.

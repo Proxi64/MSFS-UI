@@ -109,4 +109,4 @@ The original plan, `%USERPROFILE%\.claude\plans\jaunty-foraging-allen.md` (steps
 | 1.3.1 | Version 1.3.1 (2026-10-29): 1.13 (a heart on every livery: one without a folder is identified by its thumbnail's); the owner raises the version at each upload to flightsim.to; release built, not published yet |
 | **6** | Next: new features, from 6a (A1, favourite and recent airports); order, design and open questions in [docs/next-steps.md](docs/next-steps.md) |
 
-The package installed in Community is a development build of 2026-10-29 (1.2.1 with 1.10, `msfs-ui-dev install`, the app's settings: side by side layout); before it, the published 1.0.1, validated in the sim on 2026-10-19 (163/163 compatibility checks, every feature working).
+The package installed in Community is a development build of 2026-10-29 (1.3.1, `msfs-ui-dev install`, the app's settings: side by side layout; no WASM module since the 2.0 spike); before it, the published 1.0.1, validated in the sim on 2026-10-19 (163/163 compatibility checks, every feature working).
