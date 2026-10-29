@@ -73,7 +73,7 @@ The owner dropped a generic `tools/SKILL.md` ("wasm-expert": Rust, wasm-bindgen,
 3. A round trip menu → module → menu over the CommBus (the calls above), the largest message that passes, the latency.
 4. A round trip app → menu over SimConnect `CallCommBusEvent` / `SubscribeToCommBusEvent`.
 5. Cost: frame time and menu responsiveness with the module loaded and idle, then during writes.
-6. Then the Store user tries the spike's package (does the module load, where is `\work`).
+6. Then the user of 1.5 (a Microsoft Store install) tries the spike's package (does the module load, where is `\work`).
 Outcome: a short report in `docs/next-steps.md`; go / no-go for steps 1 and 2. If a point fails, back to the owner before any design change.
 
 **Step 1: the WASM vault (2.0-a).**
@@ -98,5 +98,5 @@ Outcome: a short report in `docs/next-steps.md`; go / no-go for steps 1 and 2. I
 - Fallback: package without the module: the mod works on `datastorage` and the Compatibility page says why.
 - Performance: frame time and the 250 ms layout passes measured with and without the module, idle and while writing; no difference beyond noise.
 - App: with the sim running, edit a favourite in the app, see it in the sim at once; with the sim closed, the Data page reads the file.
-- Store edition: the Store user tests the step 0 package, then the 2.0 beta.
+- The sim of 1.5 (one user's Microsoft Store install; other Store users have no such problem): that user tests the step 0 package, then the 2.0 beta.
 

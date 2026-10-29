@@ -22,7 +22,7 @@ Developed on MSFS 2024 1.9.18 and tested on 1.9.21 (Steam), base UI package `fs-
 3. **Generate & install** puts the `msfs-ui` package in Community.
 4. Start (or restart) the sim: it reads a new package only at start-up.
 
-Version 2.0 also puts a small module, `msfs-ui.wasm`, in the package: it keeps your favourites, tail numbers and last choices in files of its own folder (`%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui\work`), written at once. The sim loads a module only when it starts, so the first install of 2.0, and every installation that adds the module, needs a **restart of the sim** (the app says so). The data kept by version 1.x is not carried over: after installing 2.0 your favourites and tail numbers start empty.
+Version 2.0 also puts a small module, `msfs-ui.wasm`, in the package: it keeps your favourites, tail numbers and last choices in files of its own folder (`%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui\work`), written at once. The sim loads a module only when it starts, so the first install of 2.0, and every installation that adds the module, needs a **restart of the sim** (the app says so). At the first start of 2.0, the favourites, tail numbers and last choices kept by version 1.x are copied into it.
 
 The app keeps its own data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`: your feature settings (`settings.json`), the folders chosen by hand and the theme (`app.json`), and the log files. Earlier versions used `%LOCALAPPDATA%\MSFS-UI`; that folder is moved there the first time.
 

@@ -20,7 +20,7 @@
 - Menu side uses `engine.on/off/trigger/call` (no `Coherent` in the main menu); every subscription removed with its `Scope`.
 - ES2017 in the mod (no operator before `await`, no raw U+2028/U+2029); `\uXXXX` built with `String.fromCharCode` (the Write tool turns escapes into raw characters).
 - App rules of CLAUDE.md (nullable, warnings as errors, public API of `MsfsUi.Core` documented, pinned packages).
-- Losing 1.x data at the move to 2.0 is accepted (no migration).
+- Losing 1.x data at the move to 2.0 is accepted (no migration). Changed after the plan ran: the owner asked for the copy of the 1.x keys into a new vault (done, `copyFromDatastorage`).
 - Branch `v2`; one commit per task; never push.
 
 ## Review Focus
@@ -28,7 +28,7 @@
 1. **Non-ASCII values** (livery titles such as "Air Caraïbes", "全日空"): the snapshot round-trips unchanged; the bus only ever carries ASCII (escaped by the menu). Test in Task 2.
 2. **Crash between the data write and the head write**, or during either: the next start loads the previous snapshot, never a mix or nothing. Test in Task 1 (fake disk, callbacks dropped).
 3. **Hot reload with a save pending** (`msfs-ui-dev reload`, the app's Apply): the old version flushes, the new version's `LOAD` gets that snapshot. Tests in Tasks 1 (SAVE then LOAD order) and 2 (flush on dispose); measured in Task 5.
-4. **Module missing, `Failed` or late** (package from 1.x, Store edition): the mod runs on `datastorage` with the profile saves, says so in its log and on the Compatibility page. Tests in Tasks 2 and 4.
+4. **Module missing, `Failed` or late** (package from 1.x, the sim of 1.5): the mod runs on `datastorage` with the profile saves, says so in its log and on the Compatibility page. Tests in Tasks 2 and 4.
 5. **Bursts and oversize**: hearts clicked fast give one save with the last state; a SAVE arriving while a write runs replaces any queued one; a snapshot above 524,288 bytes is refused (logged, previous kept). Tests in Tasks 1 and 2.
 
 ---

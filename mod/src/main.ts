@@ -4,7 +4,7 @@
 import { CONFIG_URL, loadSettings } from './core/config.ts';
 import { log, logError } from './core/log.ts';
 import { root, runtime, startRuntime } from './core/runtime.ts';
-import { setStorageBackend } from './core/storage.ts';
+import { copyFromDatastorage, setStorageBackend } from './core/storage.ts';
 import { injectTheme } from './core/theme.ts';
 import { FEATURES } from './features.ts';
 import { dropFavoriteAircraft } from './sim/favorites.ts';
@@ -31,7 +31,13 @@ async function start(): Promise<void> {
   if (root.disposed) return;
   const vault = opened.vault;
   if (vault) {
-    setStorageBackend(vault.backend());
+    const backend = vault.backend();
+    // A vault that never saved anything (the first start of 2.0): the data of 1.x comes over from the sim storage.
+    if (vault.seq === 0) {
+      const copied = copyFromDatastorage(backend);
+      if (copied.length > 0) log(`data of an earlier version copied into the vault: ${copied.join(', ')}`);
+    }
+    setStorageBackend(backend);
     root.add(() => setStorageBackend(null));
     // Live: each read of the app's probe gives the current seq, size and keys.
     runtime.storage = {

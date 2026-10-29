@@ -72,6 +72,24 @@ export function setStorageBackend(next: StorageBackend | null): void {
   backend = next || datastorageBackend;
 }
 
+/** The keys 1.x kept in `datastorage` (mod/README.md, Data stored in the sim), copied into a new vault. */
+const KEYS_OF_1X = ['FAVORITE_LIVERIES', 'LIVERY_TAILS', 'AIRCRAFT_USES', 'BASE_TAIL', 'WEATHER_BAR', 'WEATHER_BAR_TAB', 'AIRCRAFT_GALLERY'];
+
+/**
+ * Copies into `target` the keys of 1.x found in `datastorage`, except those `target` already has; `datastorage` is
+ * left as it was. Returns the keys copied (without the prefix).
+ */
+export function copyFromDatastorage(target: StorageBackend): string[] {
+  const copied: string[] = [];
+  for (const key of KEYS_OF_1X) {
+    const value = datastorageBackend.get(STORAGE_PREFIX + key);
+    if (value === undefined || target.get(STORAGE_PREFIX + key) !== undefined) continue;
+    target.set(STORAGE_PREFIX + key, value);
+    copied.push(key);
+  }
+  return copied;
+}
+
 /** The value stored under `MSFS_UI_<key>`, or `fallback` when absent or unreadable. */
 export function loadData<T>(key: string, fallback: T): T {
   try {

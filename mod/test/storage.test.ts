@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
-import { deleteData, loadData, onStorageWrite, saveData, setStorageBackend, type StorageBackend } from '../src/core/storage.ts';
+import { copyFromDatastorage, deleteData, loadData, onStorageWrite, saveData, setStorageBackend, type StorageBackend } from '../src/core/storage.ts';
 
 /** The sim's `datastorage`, on a fake `window`. */
 function fakePage(onTop = false): Map<string, string> {
@@ -111,6 +111,29 @@ describe('storage', () => {
       setStorageBackend(null);
       onStorageWrite(null);
     }
+  });
+
+  it('copies the keys of 1.x from datastorage into a backend, keeping what the backend has', () => {
+    const data = fakePage();
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]');
+    data.set('MSFS_UI_LIVERY_TAILS', '{"a":"F-ABCD"}');
+    data.set('MSFS_UI_BASE_TAIL', '"ASXGS"');
+    data.set('MSFS_UI_OTHER', '1');
+    const copy = new Map<string, string>([['MSFS_UI_BASE_TAIL', '"KEPT"']]);
+    const backend: StorageBackend = { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
+    assert.deepEqual(copyFromDatastorage(backend), ['FAVORITE_LIVERIES', 'LIVERY_TAILS']);
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"a"}]');
+    assert.equal(copy.get('MSFS_UI_BASE_TAIL'), '"KEPT"');
+    assert.equal(copy.has('MSFS_UI_OTHER'), false, 'only the keys of 1.x');
+    assert.equal(data.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"a"}]', 'datastorage left as it was');
+  });
+
+  it('copies nothing without a datastorage', () => {
+    (globalThis as { window?: unknown }).window = { top: null };
+    const copy = new Map<string, string>();
+    const backend: StorageBackend = { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
+    assert.deepEqual(copyFromDatastorage(backend), []);
+    assert.equal(copy.size, 0);
   });
 
   it('logs instead of failing without a datastorage', () => {
