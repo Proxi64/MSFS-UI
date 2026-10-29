@@ -145,6 +145,8 @@
   align-content: flex-start !important;
   padding-right: calc(var(--u) * 24) !important;
 }
+/* List rows that fit without scrolling: no room kept for the bar, the rows end with the header (liveries.ts). */
+.msfs-ui-gal__liveries.is-full-rows .msfs-ui-gal__livery-list .scroll__content { padding-right: 0 !important; }
 .msfs-ui-gal__livery.msfs-ui-gal__tile { margin: 0 0 calc(var(--u) * 12) 0; }
 .msfs-ui-gal__livery.msfs-ui-gal__tile:nth-child(2n + 1) { margin-right: calc(var(--u) * 12); }
 

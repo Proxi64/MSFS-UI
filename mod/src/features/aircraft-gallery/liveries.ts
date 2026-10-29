@@ -2,7 +2,7 @@
 // per row, with their name and tail number, favourites first; in the gallery's List view, as rows. Made of the sim's components (its aircraft tile, its
 // heart, its scrolling list); the choices go through the configurator as in the setup panel (sim/configurator.ts).
 
-import { el, setVariable, uiUnit } from '../../core/dom.ts';
+import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { cellAction, layoutWidth } from '../../core/virtual-list.ts';
@@ -146,8 +146,11 @@ export class LiveryColumn {
     const tileAt = (width: number) => liveryTileSize(width, SCROLL_BAR_ROOM * unit, GAP * unit, BANNER_HEIGHT * unit);
     this.barWidth = Math.max(this.barWidth, scrollBarWidth(this.list));
     const rows = Math.ceil(this.cells.length / LIVERY_COLUMNS);
-    const fit = layoutWidth(rect.width, this.barWidth, (width) => rows * (tileAt(width).height + GAP * unit), this.list.getBoundingClientRect().height);
+    const contentHeight = (width: number) => (this.rows ? this.cells.length * ROW_STEP * unit : rows * (tileAt(width).height + GAP * unit));
+    const fit = layoutWidth(rect.width, this.barWidth, contentHeight, this.list.getBoundingClientRect().height);
     const tile = tileAt(fit.width);
+    // List rows that fit without scrolling go to the column's right edge, as its header; otherwise the bar keeps its room.
+    toggleClass(this.root, 'is-full-rows', this.rows && !fit.scrolls);
     // Variables written only when they change: a write lays the page out again (core/dom.ts).
     setVariable(style, '--tile-w', `${tile.width}px`);
     setVariable(style, '--tile-image-h', `${tile.imageHeight}px`);

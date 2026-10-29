@@ -5,6 +5,7 @@
 - **Favourites are liveries.** The heart on the aircraft tiles of the gallery and list is gone: it marked the aircraft, not the livery shown on its image, which was confusing next to the livery hearts. Mark liveries with their heart (the setup panel's thumbnails, or the livery column in the side by side layout); an aircraft with a favourite livery is a favourite and comes first. The **Favorites** filter and the Free Flight block show the favourite liveries.
 - **Favourite aircraft of earlier versions are removed** at the first start: mark their liveries again.
 - **Side by side is the default layout** of the aircraft selection (the aircraft and the large livery tiles next to each other). Settings already saved keep the layout chosen; *Classic* stays available in MSFS-UI-GENERATOR (Features, Aircraft gallery and list, Layout).
+- **Livery rows**: in the List view of the side by side layout, the livery rows end with the column's header when they all fit, instead of leaving room for a scroll bar that does not show.
 - **No more jumping tiles**: marking a livery no longer moves its aircraft to the top of the gallery under the mouse. The favourites are put first when the screen opens, and again on a new sort, search, filter or category tab.
 
 ## 1.2.1 (2026-10-28)
