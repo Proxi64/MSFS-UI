@@ -159,7 +159,8 @@ public sealed partial class PackageInstaller : IDisposable
 
         var masterPageChanged = previousMasterPage is null || !previousMasterPage.AsSpan().SequenceEqual(newMasterPage);
         var conflicts = FindConflicts(sim);
-        var nextStep = NextStepAfterInstall(previous, newestFileCreatedUtc, masterPageChanged);
+        var vaultChanged = previous?.VaultSha256 != state.VaultSha256;
+        var nextStep = NextStepAfterInstall(previous, newestFileCreatedUtc, masterPageChanged, vaultChanged);
 
         LogInstalled(state.Version, target, nextStep);
         if (conflicts.Count > 0)
@@ -238,16 +239,17 @@ public sealed partial class PackageInstaller : IDisposable
     /// since is not served (seen on sim 1.9.18). A hot reload is therefore enough only if the MasterPage did not
     /// change and every file of the new package already existed when the running sim started. Installs copy over
     /// existing files, which keeps their creation time, however many installs happened since. (A file deleted by
-    /// hand and installed again counts as new: a restart is asked that may not be needed, never the reverse.)
+    /// hand and installed again counts as new: a restart is asked that may not be needed, never the reverse.) The
+    /// vault module is a WASM module the sim loads only at start-up: a changed module asks for a restart too.
     /// </summary>
-    private NextStep NextStepAfterInstall(PackageState? previous, DateTime? newestFileCreatedUtc, bool masterPageChanged)
+    private NextStep NextStepAfterInstall(PackageState? previous, DateTime? newestFileCreatedUtc, bool masterPageChanged, bool vaultChanged)
     {
         if (!_simLocator.IsSimRunning())
         {
             return NextStep.None;
         }
 
-        if (previous is null || masterPageChanged)
+        if (previous is null || masterPageChanged || vaultChanged)
         {
             return NextStep.RestartSim;
         }
@@ -301,7 +303,7 @@ public sealed partial class PackageInstaller : IDisposable
         {
             reasons.Add(UpdateReason.AppVersionChanged);
         }
-        else if (installed.ModSha256 != PackageBuilder.ModHash(expected))
+        else if (installed.ModSha256 != PackageBuilder.ModHash(expected) || installed.VaultSha256 != PackageBuilder.VaultHash(expected))
         {
             reasons.Add(UpdateReason.ModChanged);
         }

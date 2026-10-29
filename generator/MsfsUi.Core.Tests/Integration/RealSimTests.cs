@@ -45,7 +45,7 @@ public sealed class RealSimTests
         using var folder = new TempFolder();
         var state = await new PackageBuilder(TimeProvider.System, NullLogger<PackageBuilder>.Instance).BuildAsync(
             sim,
-            new PackageInputs("1.0.0-test", "export {};\n"u8.ToArray(), "export default {};\n"),
+            new PackageInputs("1.0.0-test", "export {};\n"u8.ToArray(), "export default {};\n", ReadOnlyMemory<byte>.Empty),
             folder["out"],
             TestContext.CancellationToken);
 
@@ -88,7 +88,7 @@ public sealed class RealSimTests
             NullLogger<PackageInstaller>.Instance);
         var communityBefore = Directory.EnumerateFileSystemEntries(sim.CommunityPath).Order(StringComparer.Ordinal).ToList();
 
-        var status = await installer.GetStatusAsync(sim, new PackageInputs("1.0.0-test", "export {};\n"u8.ToArray(), "export default {};\n"), TestContext.CancellationToken);
+        var status = await installer.GetStatusAsync(sim, new PackageInputs("1.0.0-test", "export {};\n"u8.ToArray(), "export default {};\n", ReadOnlyMemory<byte>.Empty), TestContext.CancellationToken);
 
         CollectionAssert.AreEqual(communityBefore, Directory.EnumerateFileSystemEntries(sim.CommunityPath).Order(StringComparer.Ordinal).ToList());
         TestContext.WriteLine($"Package: {status.Kind}, reasons [{string.Join(", ", status.Reasons)}], conflicts [{string.Join(", ", status.Conflicts)}], sim running: {status.SimRunning}");

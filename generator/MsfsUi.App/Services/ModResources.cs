@@ -5,7 +5,7 @@ using MsfsUi.Core.Features;
 namespace MsfsUi.App.Services;
 
 /// <summary>
-/// The menu mod embedded in the app (see the project file): its module (<c>main.js</c>), its feature catalogue
+/// The menu mod embedded in the app (see the project file): its module (<c>main.js</c>), the vault WASM module (<c>msfs-ui.wasm</c>), its feature catalogue
 /// (<c>features.json</c>) and what it needs from the sim (<c>compat.json</c>).
 /// </summary>
 public sealed class ModResources
@@ -15,12 +15,16 @@ public sealed class ModResources
     public ModResources()
     {
         ModScript = ReadBytes("main.js");
+        VaultModule = ReadBytes("msfs-ui.wasm");
         Catalog = FeatureCatalog.Parse(ReadText("features.json"));
         Compat = CompatManifest.Parse(ReadText("compat.json"));
     }
 
     /// <summary>The mod module, copied unchanged into the package.</summary>
     public ReadOnlyMemory<byte> ModScript { get; }
+
+    /// <summary>The vault WASM module, copied unchanged into the package.</summary>
+    public ReadOnlyMemory<byte> VaultModule { get; }
 
     /// <summary>Every feature of the mod with its options and defaults.</summary>
     public FeatureCatalog Catalog { get; }

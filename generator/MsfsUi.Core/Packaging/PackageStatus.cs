@@ -28,7 +28,7 @@ public enum UpdateReason
     /// <summary>The package comes from another version of the app.</summary>
     AppVersionChanged,
 
-    /// <summary>Same version, but a different mod module (development builds).</summary>
+    /// <summary>Same version, but a different mod module or vault module (development builds).</summary>
     ModChanged,
 
     /// <summary>The user's settings changed since the package was installed.</summary>

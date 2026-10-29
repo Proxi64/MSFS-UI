@@ -14,6 +14,7 @@ namespace MsfsUi.Core.Packaging;
 /// <param name="MasterPageSha256">SHA-256 of the sim's original MasterPage HTML (before the loader was inserted).</param>
 /// <param name="ModSha256">SHA-256 of <c>main.js</c>; absent in packages from MSFS-UI 0.3.0.</param>
 /// <param name="SettingsSha256">SHA-256 of <c>config.js</c>; absent in packages from MSFS-UI 0.3.0.</param>
+/// <param name="VaultSha256">SHA-256 of the vault module <c>modules/msfs-ui.wasm</c>; absent before 2.0 and in a package built without the module.</param>
 public sealed record PackageState(
     string Name,
     string Version,
@@ -21,7 +22,8 @@ public sealed record PackageState(
     string FsBaseUiVersion,
     string MasterPageSha256,
     string? ModSha256 = null,
-    string? SettingsSha256 = null)
+    string? SettingsSha256 = null,
+    string? VaultSha256 = null)
 {
     /// <summary>Serialises the state as written in <c>msfs-ui.json</c>.</summary>
     public string ToJson() => JsonSerializer.Serialize(this, PackageStateJsonContext.Default.PackageState) + "\n";

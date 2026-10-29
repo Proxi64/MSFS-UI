@@ -12,8 +12,9 @@ namespace MsfsUi.Core.Packaging;
 public sealed record LayoutEntry(string Path, long Size, long FileTime);
 
 /// <summary>
-/// Text of the two files every package needs: <c>layout.json</c> and <c>manifest.json</c>. Both are formatted
-/// exactly like MSFS-UI 0.3.0 wrote them (two-space indent, LF line endings, final newline).
+/// Text of the two files every package needs: <c>layout.json</c> and <c>manifest.json</c>. Both are formatted like
+/// MSFS-UI 0.3.0 wrote them (two-space indent, LF line endings, final newline). The manifest names the MSFS 2024
+/// builder, which decides the folder the sim runs the package's WASM module from.
 /// </summary>
 public static class SimPackageFiles
 {
@@ -47,7 +48,10 @@ public static class SimPackageFiles
             Manufacturer: string.Empty,
             Creator: ManifestCreator,
             PackageVersion: version,
-            MinimumGameVersion: "1.2.0",
+            MinimumGameVersion: "1.9.12",
+            MinimumCompatibilityVersion: "9.12.0.245",
+            ExportType: "Community",
+            Builder: "Microsoft Flight Simulator 2024",
             ReleaseNotes: new ReleaseNotes(new ReleaseNotesText(string.Empty, string.Empty)),
             TotalPackageSize: totalSize.ToString("D20", CultureInfo.InvariantCulture));
         return JsonSerializer.Serialize(manifest, SimPackageJsonContext.Default.PackageManifest) + "\n";
@@ -100,6 +104,9 @@ internal sealed record PackageManifest(
     [property: JsonPropertyName("creator")] string Creator,
     [property: JsonPropertyName("package_version")] string PackageVersion,
     [property: JsonPropertyName("minimum_game_version")] string MinimumGameVersion,
+    [property: JsonPropertyName("minimum_compatibility_version")] string MinimumCompatibilityVersion,
+    [property: JsonPropertyName("export_type")] string ExportType,
+    [property: JsonPropertyName("builder")] string Builder,
     [property: JsonPropertyName("release_notes")] ReleaseNotes ReleaseNotes,
     [property: JsonPropertyName("total_package_size")] string TotalPackageSize);
 

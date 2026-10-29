@@ -38,6 +38,8 @@ finally {
   Pop-Location
 }
 
+Invoke-Step 'Vault module: build and tests' { pwsh -File wasm\build.ps1 }
+
 $filter = $SkipUiTests ? @('--filter', 'TestCategory!=UI') : @()
 # The whole solution first: the UI tests run the built app, which the test projects do not reference.
 Invoke-Step 'App: build' { dotnet build generator\MsfsUi.slnx -c Release }

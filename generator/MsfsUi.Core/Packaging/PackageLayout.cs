@@ -10,6 +10,7 @@ namespace MsfsUi.Core.Packaging;
 /// html_ui/msfs-ui/main.js         the menu mod (embedded in the app, ES2017)
 /// html_ui/msfs-ui/config.js       the user's settings, read by the mod at runtime
 /// html_ui/msfs-ui/px.gif          1 × 1 image that triggers the loader
+/// modules/msfs-ui.wasm            the vault, a WASM module of the sim (embedded in the app; may be absent)
 /// msfs-ui.json                    package state (versions and hashes)
 /// layout.json, manifest.json      files the sim expects in every package
 /// </code>
@@ -31,6 +32,9 @@ public static class PackageLayout
 
     /// <summary>Path of the generated settings module in the package.</summary>
     public const string ConfigPath = "html_ui/msfs-ui/config.js";
+
+    /// <summary>Path of the vault WASM module in the package (the sim runs it from start-up to quit).</summary>
+    public const string VaultModulePath = "modules/msfs-ui.wasm";
 
     /// <summary>Path of the loader trigger image in the package.</summary>
     public const string PixelPath = "html_ui/msfs-ui/px.gif";

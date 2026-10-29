@@ -65,13 +65,16 @@
        Services/ModResources.cs reads them by these names. -->
   <PropertyGroup>
     <MenuModFolder>$(MSBuildThisFileDirectory)..\..\mod\</MenuModFolder>
+    <VaultModuleFile>$(MSBuildThisFileDirectory)..\..\wasm\dist\msfs-ui.wasm</VaultModuleFile>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="$(MenuModFolder)dist\main.js" LogicalName="MsfsUi.Mod.main.js" Visible="false" />
+    <EmbeddedResource Include="$(VaultModuleFile)" LogicalName="MsfsUi.Mod.msfs-ui.wasm" Visible="false" />
     <EmbeddedResource Include="$(MenuModFolder)features.json" LogicalName="MsfsUi.Mod.features.json" Visible="false" />
     <EmbeddedResource Include="$(MenuModFolder)compat.json" LogicalName="MsfsUi.Mod.compat.json" Visible="false" />
   </ItemGroup>
   <Target Name="CheckMenuModBuilt" BeforeTargets="PrepareForBuild">
     <Error Condition="!Exists('$(MenuModFolder)dist\main.js')" Text="mod\dist\main.js is missing: run `npm run check` in mod first (the app embeds the built mod)." />
+    <Error Condition="!Exists('$(VaultModuleFile)')" Text="wasm\dist\msfs-ui.wasm is missing: run `pwsh -File wasm/build.ps1` first (the app embeds the vault module)." />
   </Target>
 </Project>

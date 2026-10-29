@@ -124,11 +124,13 @@ public sealed class PackageInputsTests
         var catalog = FeatureCatalog.Parse(FeatureTestData.Catalog);
         var selection = SettingsNormalizer.Normalize(catalog, null).Selection;
         byte[] mod = [1, 2, 3];
+        byte[] vault = [4, 5];
 
-        var inputs = PackageInputs.ForMod(catalog, mod, selection);
+        var inputs = PackageInputs.ForMod(catalog, mod, vault, selection);
 
         Assert.AreEqual("1.0.0", inputs.Version);
         CollectionAssert.AreEqual(mod, inputs.ModScript.ToArray());
+        CollectionAssert.AreEqual(vault, inputs.VaultModule.ToArray());
         Assert.AreEqual(ConfigScript.Generate(selection, ProductInfo.Version), inputs.ConfigScript);
     }
 }

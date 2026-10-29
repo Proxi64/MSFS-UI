@@ -73,6 +73,7 @@ $dev = "generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe"
 | `html_ui\msfs-ui\main.js` | The mod, as embedded in the app |
 | `html_ui\msfs-ui\config.js` | The user's settings (`ConfigScript`) |
 | `html_ui\msfs-ui\px.gif` | The 1 × 1 image that triggers the loader |
+| `modules\msfs-ui.wasm` | The vault, a WASM module (`wasm\dist`, embedded in the app); the manifest names the MSFS 2024 builder so the sim runs it |
 | `msfs-ui.json` | State: version, generation time, `fs-base-ui` version, SHA-256 of the original MasterPage, of `main.js` and of `config.js`; tells why the package needs generating again, and that the folder is ours |
 | `layout.json`, `manifest.json` | Files every package needs (exact FILETIME dates, total size) |
 

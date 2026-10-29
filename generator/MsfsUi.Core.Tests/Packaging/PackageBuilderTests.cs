@@ -10,6 +10,7 @@ public sealed class PackageBuilderTests
 {
     private static readonly DateTimeOffset BuildTime = new(2026, 10, 16, 18, 41, 14, 456, TimeSpan.Zero);
     private static readonly byte[] ModScript = Encoding.UTF8.GetBytes("export const mod = 1;\n");
+    private static readonly byte[] VaultModule = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, 0x42];
     private const string ConfigText = "// settings\nexport default {};\n";
 
     public TestContext TestContext { get; set; } = null!;
@@ -23,7 +24,7 @@ public sealed class PackageBuilderTests
         var output = folder["out"];
         var state = await CreateBuilder().BuildAsync(
             FakeFsBaseUi.Installation(fsBaseUi, folder.Path),
-            new PackageInputs("1.0.0", ModScript, ConfigText),
+            new PackageInputs("1.0.0", ModScript, ConfigText, VaultModule),
             output,
             TestContext.CancellationToken);
         return (folder, output, state);
@@ -50,6 +51,7 @@ public sealed class PackageBuilderTests
                     "html_ui/msfs-ui/px.gif",
                     "layout.json",
                     "manifest.json",
+                    "modules/msfs-ui.wasm",
                     "msfs-ui.json",
                 },
                 files);
@@ -80,6 +82,38 @@ public sealed class PackageBuilderTests
             Assert.AreEqual(1, pixel[6] | (pixel[7] << 8), "width");
             Assert.AreEqual(1, pixel[8] | (pixel[9] << 8), "height");
         }
+    }
+
+    [TestMethod]
+    public async Task TheVaultModuleIsWrittenAsGivenListedAndCounted()
+    {
+        var (folder, output, state) = await BuildAsync();
+        using (folder)
+        {
+            CollectionAssert.AreEqual(VaultModule, File.ReadAllBytes(PackageLayout.Resolve(output, PackageLayout.VaultModulePath)));
+            Assert.AreEqual(PackageBuilder.Sha256(VaultModule), state.VaultSha256);
+            StringAssert.Contains(File.ReadAllText(Path.Combine(output, "layout.json")), "\"path\": \"modules/msfs-ui.wasm\"");
+            var entries = PackageBuilder.ListLayoutEntries(output);
+            Assert.AreEqual(VaultModule.Length, entries.Single(entry => entry.Path == PackageLayout.VaultModulePath).Size);
+            StringAssert.Contains(File.ReadAllText(Path.Combine(output, "manifest.json")), $"\"total_package_size\": \"{entries.Sum(entry => entry.Size):D20}\"");
+        }
+    }
+
+    [TestMethod]
+    public async Task WithoutAVaultModuleThereIsNoModulesFolderAndNoHash()
+    {
+        using var folder = new TempFolder();
+        var output = folder["out"];
+
+        var state = await CreateBuilder().BuildAsync(
+            FakeFsBaseUi.Installation(FakeFsBaseUi.Create(folder), folder.Path),
+            new PackageInputs("1.0.0", ModScript, ConfigText, ReadOnlyMemory<byte>.Empty),
+            output,
+            TestContext.CancellationToken);
+
+        Assert.IsFalse(Directory.Exists(Path.Combine(output, "modules")));
+        Assert.IsNull(state.VaultSha256);
+        Assert.DoesNotContain("vaultSha256", File.ReadAllText(Path.Combine(output, PackageLayout.StateFile)));
     }
 
     [TestMethod]
@@ -134,7 +168,7 @@ public sealed class PackageBuilderTests
             File.WriteAllText(Path.Combine(output, "stale.txt"), "old");
             await CreateBuilder().BuildAsync(
                 FakeFsBaseUi.Installation(folder["fs-base-ui"], folder.Path),
-                new PackageInputs("1.0.1", ModScript, ConfigText),
+                new PackageInputs("1.0.1", ModScript, ConfigText, VaultModule),
                 output,
                 TestContext.CancellationToken);
 
@@ -152,7 +186,7 @@ public sealed class PackageBuilderTests
 
         var error = await Assert.ThrowsExactlyAsync<MsfsUiException>(() => CreateBuilder().BuildAsync(
             FakeFsBaseUi.Installation(fsBaseUi, folder.Path),
-            new PackageInputs("1.0.0", ModScript, ConfigText),
+            new PackageInputs("1.0.0", ModScript, ConfigText, VaultModule),
             folder["out"],
             TestContext.CancellationToken));
 
@@ -168,7 +202,7 @@ public sealed class PackageBuilderTests
 
         await Assert.ThrowsExactlyAsync<UnexpectedMasterPageException>(() => CreateBuilder().BuildAsync(
             FakeFsBaseUi.Installation(fsBaseUi, folder.Path),
-            new PackageInputs("1.0.0", ModScript, ConfigText),
+            new PackageInputs("1.0.0", ModScript, ConfigText, VaultModule),
             folder["out"],
             TestContext.CancellationToken));
     }
@@ -183,7 +217,7 @@ public sealed class PackageBuilderTests
 
             await Assert.ThrowsExactlyAsync<UnexpectedMasterPageException>(() => CreateBuilder().BuildAsync(
                 FakeFsBaseUi.Installation(folder["fs-base-ui"], folder.Path),
-                new PackageInputs("1.0.1", ModScript, ConfigText),
+                new PackageInputs("1.0.1", ModScript, ConfigText, VaultModule),
                 output,
                 TestContext.CancellationToken));
 
@@ -200,7 +234,7 @@ public sealed class PackageBuilderTests
 
         var error = await Assert.ThrowsExactlyAsync<MsfsUiException>(() => CreateBuilder().BuildAsync(
             FakeFsBaseUi.Installation(fsBaseUi, folder.Path),
-            new PackageInputs("1.0.0", ModScript, ConfigText),
+            new PackageInputs("1.0.0", ModScript, ConfigText, VaultModule),
             folder["out"],
             TestContext.CancellationToken));
 

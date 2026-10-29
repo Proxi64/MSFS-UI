@@ -172,12 +172,12 @@ public sealed partial class SimSession : ObservableObject, IDisposable
         {
             var preferences = await _store.LoadPreferencesAsync(cancellationToken).ConfigureAwait(false);
             var load = await _store.LoadFeatureSettingsAsync(cancellationToken).ConfigureAwait(false);
-            var inputs = PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, SettingsNormalizer.Normalize(_mod.Catalog, load.Settings).Selection);
+            var inputs = PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, _mod.VaultModule, SettingsNormalizer.Normalize(_mod.Catalog, load.Settings).Selection);
             return known with { Preferences = preferences, SettingsProblem = load.Problem, Inputs = inputs };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            var inputs = known.Inputs ?? PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, SettingsNormalizer.Normalize(_mod.Catalog, null).Selection);
+            var inputs = known.Inputs ?? PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, _mod.VaultModule, SettingsNormalizer.Normalize(_mod.Catalog, null).Selection);
             return known with { SettingsProblem = ex.Message, Inputs = inputs };
         }
     }

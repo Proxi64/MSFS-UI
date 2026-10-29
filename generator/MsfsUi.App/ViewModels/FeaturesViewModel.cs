@@ -197,7 +197,7 @@ public sealed partial class FeaturesViewModel : ObservableObject
 
         // An installation of the session: Home offers none meanwhile (the installer also runs them one at a time).
         using var operation = _session.BeginPackageOperation(Strings.Get("FeaturesBusyApply"));
-        var result = await _installer.InstallAsync(sim, PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, selection));
+        var result = await _installer.InstallAsync(sim, PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, _mod.VaultModule, selection));
         switch (result.NextStep)
         {
             case NextStep.ReloadMod:

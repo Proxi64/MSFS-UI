@@ -22,15 +22,29 @@ public sealed class SimPackageFilesTests
     }
 
     [TestMethod]
-    public void ManifestIsExactlyTheOneOfMsfsUi030ExceptItsEnglishTitle()
+    public void ManifestIsTheOneOfAPackageTheSimRunsAModuleFrom()
     {
-        using var fixture = JsonDocument.Parse(Golden.Text("layout-entries.json"));
-        var version = fixture.RootElement.GetProperty("version").GetString()!;
-        var totalSize = fixture.RootElement.GetProperty("entries").EnumerateArray().Sum(entry => entry.GetProperty("size").GetInt64());
-        var expected = Golden.Text("manifest.json")
-            .Replace("\"title\": \"MSFS-UI (personnel)\"", "\"title\": \"MSFS-UI (personal)\"", StringComparison.Ordinal);
+        var expected = "{\n"
+            + "  \"dependencies\": [],\n"
+            + "  \"content_type\": \"MISC\",\n"
+            + "  \"title\": \"MSFS-UI (personal)\",\n"
+            + "  \"manufacturer\": \"\",\n"
+            + "  \"creator\": \"Proxi64\",\n"
+            + "  \"package_version\": \"2.0.0\",\n"
+            + "  \"minimum_game_version\": \"1.9.12\",\n"
+            + "  \"minimum_compatibility_version\": \"9.12.0.245\",\n"
+            + "  \"export_type\": \"Community\",\n"
+            + "  \"builder\": \"Microsoft Flight Simulator 2024\",\n"
+            + "  \"release_notes\": {\n"
+            + "    \"neutral\": {\n"
+            + "      \"LastUpdate\": \"\",\n"
+            + "      \"OlderHistory\": \"\"\n"
+            + "    }\n"
+            + "  },\n"
+            + "  \"total_package_size\": \"00000000000000381388\"\n"
+            + "}\n";
 
-        Assert.AreEqual(expected, SimPackageFiles.FormatManifest(version, totalSize));
+        Assert.AreEqual(expected, SimPackageFiles.FormatManifest("2.0.0", 381388));
     }
 
     [TestMethod]

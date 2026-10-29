@@ -62,7 +62,11 @@ PackageInputs Inputs()
         Console.WriteLine($"Settings     : {adjustment}");
     }
 
-    var inputs = PackageInputs.ForMod(catalog, ReadMod(Option("--mod", Path.Combine(repository, "mod", "dist", "main.js")), "npm run build in mod"), normalized.Selection);
+    var vaultOption = Option("--vault", Path.Combine(repository, "wasm", "dist", "msfs-ui.wasm"));
+    ReadOnlyMemory<byte> vault = string.Equals(vaultOption, "none", StringComparison.OrdinalIgnoreCase)
+        ? ReadOnlyMemory<byte>.Empty
+        : ReadMod(vaultOption, "pwsh -File wasm/build.ps1");
+    var inputs = PackageInputs.ForMod(catalog, ReadMod(Option("--mod", Path.Combine(repository, "mod", "dist", "main.js")), "npm run build in mod"), vault, normalized.Selection);
     return inputs with { Version = Option("--version", inputs.Version) };
 }
 
@@ -161,6 +165,7 @@ try
                   --settings file   the app's settings format (default %LOCALAPPDATA%\MSFS-UI-GENERATOR\settings.json if present,
                                     else the defaults of mod\features.json)
                   --mod main.js     default mod\dist\main.js (npm run build in mod)
+                  --vault file|none default wasm\dist\msfs-ui.wasm (pwsh -File wasm/build.ps1); none: a package without the module
                   --version v       default the modVersion of features.json
                 """);
             return command == "help" ? 0 : 1;

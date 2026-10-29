@@ -9,7 +9,7 @@ namespace MsfsUi.Core.Tests.Packaging;
 [TestClass]
 public sealed class PackageInstallerTests
 {
-    private static readonly PackageInputs Inputs = new("1.0.0", Encoding.UTF8.GetBytes("export const mod = 1;\n"), "export default { a: 1 };\n");
+    private static readonly PackageInputs Inputs = new("1.0.0", Encoding.UTF8.GetBytes("export const mod = 1;\n"), "export default { a: 1 };\n", new byte[] { 0, 0x61, 0x73, 0x6D, 1 });
 
     public TestContext TestContext { get; set; } = null!;
 
@@ -133,6 +133,21 @@ public sealed class PackageInstallerTests
     }
 
     [TestMethod]
+    public async Task AChangedVaultModuleNeedsARestartEvenWhenEveryFileExisted()
+    {
+        using var setup = new Setup();
+        await setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+        setup.Environment.Running = true;
+        setup.Environment.SimStartedUtc = DateTime.UtcNow.AddSeconds(2);
+
+        var same = await setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+        var changed = await setup.Installer.InstallAsync(setup.Sim, Inputs with { VaultModule = new byte[] { 0, 0x61, 0x73, 0x6D, 2 } }, TestContext.CancellationToken);
+
+        Assert.AreEqual(NextStep.ReloadMod, same.NextStep, "control: nothing changed, every file mounted");
+        Assert.AreEqual(NextStep.RestartSim, changed.NextStep, "the module is read only at start-up");
+    }
+
+    [TestMethod]
     public async Task PackagesInstalledDuringTheSimSessionNeedARestart()
     {
         using var setup = new Setup();
@@ -213,12 +228,14 @@ public sealed class PackageInstallerTests
 
         var settings = await setup.Installer.GetStatusAsync(setup.Sim, Inputs with { ConfigScript = "export default {};\n" }, TestContext.CancellationToken);
         var mod = await setup.Installer.GetStatusAsync(setup.Sim, Inputs with { ModScript = Encoding.UTF8.GetBytes("changed") }, TestContext.CancellationToken);
+        var vault = await setup.Installer.GetStatusAsync(setup.Sim, Inputs with { VaultModule = new byte[] { 9 } }, TestContext.CancellationToken);
         var version = await setup.Installer.GetStatusAsync(setup.Sim, Inputs with { Version = "1.1.0", ModScript = Encoding.UTF8.GetBytes("changed") }, TestContext.CancellationToken);
         setup.Folder.Write($"fs-base-ui/{PackageLayout.MasterPageHtmlPath}", FakeFsBaseUi.MasterPageHtml.Replace("TitlePage", "TitlePage2", StringComparison.Ordinal));
         var sim = await setup.Installer.GetStatusAsync(setup.Sim, Inputs, TestContext.CancellationToken);
 
         CollectionAssert.AreEqual(new[] { UpdateReason.SettingsChanged }, settings.Reasons.ToArray());
         CollectionAssert.AreEqual(new[] { UpdateReason.ModChanged }, mod.Reasons.ToArray());
+        CollectionAssert.AreEqual(new[] { UpdateReason.ModChanged }, vault.Reasons.ToArray(), "a changed vault module is a changed mod");
         CollectionAssert.AreEqual(new[] { UpdateReason.AppVersionChanged }, version.Reasons.ToArray(), "a new version implies a new mod");
         CollectionAssert.AreEqual(new[] { UpdateReason.SimUpdated }, sim.Reasons.ToArray());
         Assert.AreEqual(PackageStatusKind.UpdateNeeded, sim.Kind);

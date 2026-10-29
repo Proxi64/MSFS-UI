@@ -9,17 +9,18 @@ namespace MsfsUi.Core.Packaging;
 /// <param name="Version">Version written in the manifest and the state (the mod version).</param>
 /// <param name="ModScript">The mod module, <c>main.js</c>, as embedded in the app.</param>
 /// <param name="ConfigScript">The settings module, <c>config.js</c> (see <see cref="Features.ConfigScript"/>).</param>
-public sealed record PackageInputs(string Version, ReadOnlyMemory<byte> ModScript, string ConfigScript)
+/// <param name="VaultModule">The vault WASM module, <c>msfs-ui.wasm</c>; empty for a package without it (the mod then falls back to the sim's storage).</param>
+public sealed record PackageInputs(string Version, ReadOnlyMemory<byte> ModScript, string ConfigScript, ReadOnlyMemory<byte> VaultModule)
 {
     /// <summary>
-    /// The inputs of the menu mod: the catalogue's version, the mod module and the settings module generated from a
-    /// complete selection (see <see cref="Features.SettingsNormalizer"/>).
+    /// The inputs of the menu mod: the catalogue's version, the mod module, the vault module and the settings module
+    /// generated from a complete selection (see <see cref="Features.SettingsNormalizer"/>).
     /// </summary>
-    public static PackageInputs ForMod(Features.FeatureCatalog catalog, ReadOnlyMemory<byte> modScript, Features.FeatureSelection selection)
+    public static PackageInputs ForMod(Features.FeatureCatalog catalog, ReadOnlyMemory<byte> modScript, ReadOnlyMemory<byte> vaultModule, Features.FeatureSelection selection)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(selection);
-        return new PackageInputs(catalog.ModVersion, modScript, Features.ConfigScript.Generate(selection, ProductInfo.Version));
+        return new PackageInputs(catalog.ModVersion, modScript, Features.ConfigScript.Generate(selection, ProductInfo.Version), vaultModule);
     }
 }
 
@@ -68,6 +69,11 @@ public sealed partial class PackageBuilder
         await PrepareOutputFolderAsync(outputFolder, cancellationToken).ConfigureAwait(false);
         await WriteAsync(outputFolder, PackageLayout.ModulePath, inputs.ModScript, cancellationToken).ConfigureAwait(false);
         await WriteAsync(outputFolder, PackageLayout.ConfigPath, configBytes, cancellationToken).ConfigureAwait(false);
+        if (!inputs.VaultModule.IsEmpty)
+        {
+            await WriteAsync(outputFolder, PackageLayout.VaultModulePath, inputs.VaultModule, cancellationToken).ConfigureAwait(false);
+        }
+
         await WriteAsync(outputFolder, PackageLayout.PixelPath, PackageLayout.Pixel, cancellationToken).ConfigureAwait(false);
         await WriteAsync(outputFolder, PackageLayout.MasterPageHtmlPath, SimPackageFiles.Utf8.GetBytes(masterPage), cancellationToken).ConfigureAwait(false);
         await WriteAsync(outputFolder, PackageLayout.MasterPageJsonPath, masterPageJson, cancellationToken).ConfigureAwait(false);
@@ -79,7 +85,8 @@ public sealed partial class PackageBuilder
             sim.FsBaseUiVersion,
             Sha256(masterPageBytes),
             ModHash(inputs),
-            SettingsHash(inputs));
+            SettingsHash(inputs),
+            VaultHash(inputs));
         await WriteAsync(outputFolder, PackageLayout.StateFile, SimPackageFiles.Utf8.GetBytes(state.ToJson()), cancellationToken).ConfigureAwait(false);
 
         // layout.json lists every other file; manifest.json gives their total size.
@@ -100,6 +107,13 @@ public sealed partial class PackageBuilder
     {
         ArgumentNullException.ThrowIfNull(inputs);
         return Sha256(inputs.ModScript.Span);
+    }
+
+    /// <summary>Hash recorded as <see cref="PackageState.VaultSha256"/> for these inputs; null without a vault module.</summary>
+    public static string? VaultHash(PackageInputs inputs)
+    {
+        ArgumentNullException.ThrowIfNull(inputs);
+        return inputs.VaultModule.IsEmpty ? null : Sha256(inputs.VaultModule.Span);
     }
 
     /// <summary>Hash recorded as <see cref="PackageState.SettingsSha256"/> for these inputs (of <c>config.js</c> as written).</summary>
