@@ -11,7 +11,7 @@ import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import { chooseLivery, readConfigurator, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
-import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
+import { liveryDirectory, liveryFolder, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
 import { atcIdFromCfg } from '../../sim/registration.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { store, translate, watch } from '../../sim/store.ts';
@@ -309,8 +309,8 @@ export class LiveryColumn {
   /** Selection, availability, tail number and heart of a tile. */
   private update(cell: Cell, favorites: readonly FavoriteLivery[], tails: Record<string, string>): void {
     const { livery, card } = cell;
-    // A livery without a folder cannot be a favourite: no heart.
-    if (cell.slot) cell.slot.heartHost.style.display = livery.directoryPath ? '' : 'none';
+    // A livery without a folder or a thumbnail cannot be a favourite: no heart.
+    if (cell.slot) cell.slot.heartHost.style.display = liveryFolder(livery) ? '' : 'none';
     if (card) {
       card.set(this.rows ? 'Image' : 'AircraftImage', livery.imageUrl);
       card.set(this.rows ? 'Title' : 'AircraftName', translate(livery.title));
@@ -326,7 +326,7 @@ export class LiveryColumn {
   // ----- Tail numbers -----
 
   private keyOf(livery: ConfiguratorLivery): string {
-    return liveryKey(livery.directoryPath || liveryDirectory(livery.imageUrl));
+    return liveryKey(liveryFolder(livery));
   }
 
   private tail(livery: ConfiguratorLivery, tails: Record<string, string>): string {

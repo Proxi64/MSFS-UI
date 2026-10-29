@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
-import { liveryDirectory, liveryKey, loadLiveryTails, matchLivery, saveLiveryTail, variationOf } from '../src/sim/liveries.ts';
+import { liveryDirectory, liveryFolder, liveryKey, loadLiveryTails, matchLivery, saveLiveryTail, variationOf } from '../src/sim/liveries.ts';
 
 const FOLDER = 'coui://html_ui/VFS/SimObjects/Airplanes/Microsoft_SF50/liveries/microsoft/Apex_Corso_Red';
 const KEY = 'simobjects/airplanes/microsoft_sf50/liveries/microsoft/apex_corso_red';
@@ -20,6 +20,13 @@ describe('liveries', () => {
     assert.equal(liveryDirectory(`${FOLDER}/thumbnail.jpg`), FOLDER);
   });
 
+  it('gives the folder of a configurator livery, or the folder of its thumbnail when it has none', () => {
+    const textures = 'coui://html_ui/VFS/SimObjects/Airplanes/iFly 737-MAX8/texture.iFly';
+    assert.equal(liveryFolder({ directoryPath: 'SimObjects\\Airplanes\\X\\liveries\\x\\Red', imageUrl: `${FOLDER}/thumbnail/thumbnail.png` }), 'SimObjects\\Airplanes\\X\\liveries\\x\\Red');
+    assert.equal(liveryFolder({ directoryPath: '', imageUrl: `${textures}/thumbnail.png` }), textures);
+    assert.equal(liveryFolder({ directoryPath: '', imageUrl: '' }), '');
+  });
+
   it('reads the variant of a livery id', () => {
     assert.equal(variationOf('ABC-123:4'), 'ABC-123');
     assert.equal(variationOf('ABC-123'), 'ABC-123');
@@ -32,6 +39,15 @@ describe('liveries', () => {
 
     it('finds the livery of the variant by its folder, in either form', () => {
       assert.equal(matchLivery(variantB, 'B', { dir: FOLDER, title: '' }), variantB[1]);
+    });
+
+    it('finds a livery without a folder by the folder of its thumbnail', () => {
+      const image = (folder: string) => `coui://html_ui/VFS/SimObjects/Airplanes/COWS_DA42TDI/${folder}/thumbnail.png`;
+      const cows = [
+        { id: 'C:0', title: 'White', directoryPath: '', imageUrl: image('texture') },
+        { id: 'C:1', title: 'Ribbon', directoryPath: '', imageUrl: image('texture.RIBBON') },
+      ];
+      assert.equal(matchLivery(cows, 'C', { dir: 'simobjects/airplanes/cows_da42tdi/texture.ribbon', title: '' }), cows[1]);
     });
 
     it('falls back on the title within the variant', () => {

@@ -34,13 +34,24 @@ describe('favourite liveries of the configurator', () => {
     assert.equal(withFavoriteLivery([], { ...red, isSelected: false }, true, state, 1000)![0]!.usedAt, 0);
   });
 
-  it('removes it, and changes nothing when already in that state or without a folder', () => {
+  it('removes it, and changes nothing when already in that state or without a folder or a thumbnail', () => {
     const one = withFavoriteLivery([], red, true, state, 1000)!;
     assert.deepEqual(withFavoriteLivery(one, red, false, state, 2000), []);
     assert.equal(withFavoriteLivery(one, red, true, state, 2000), null);
     assert.equal(withFavoriteLivery([], red, false, state, 2000), null);
-    assert.equal(withFavoriteLivery([], { ...red, directoryPath: '' }, true, state, 2000), null);
-    assert.equal(isFavoriteLivery({ ...red, directoryPath: '' }, one), false);
+    assert.equal(withFavoriteLivery([], { ...red, directoryPath: '', imageUrl: '' }, true, state, 2000), null);
+    assert.equal(isFavoriteLivery({ ...red, directoryPath: '', imageUrl: '' }, one), false);
+  });
+
+  it('identifies a livery without a folder by the folder of its thumbnail (COWS DA42, iFly 737 MAX)', () => {
+    const image = (folder: string) => `coui://html_ui/VFS/SimObjects/Airplanes/COWS_DA42TDI/${folder}/thumbnail.png`;
+    const white = { id: 'v1:0', title: 'White', imageUrl: image('texture'), directoryPath: '', isSelected: false };
+    const ribbon = { id: 'v1:1', title: 'Ribbon', imageUrl: image('texture.RIBBON'), directoryPath: '', isSelected: false };
+    const one = withFavoriteLivery([], ribbon, true, state, 1000)!;
+    assert.equal(one[0]!.dir, 'simobjects/airplanes/cows_da42tdi/texture.ribbon');
+    assert.equal(isFavoriteLivery(ribbon, one), true);
+    assert.equal(isFavoriteLivery(white, one), false);
+    assert.deepEqual(withFavoriteLivery(one, ribbon, false, state, 2000), []);
   });
 
   it('leaves the aircraft details out when the configurator is on another variant', () => {

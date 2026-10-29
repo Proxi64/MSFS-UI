@@ -5,7 +5,7 @@ import { withTimeout } from '../core/async.ts';
 import { log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import { findFavoriteLivery, loadFavoriteLiveries, loadUses, saveFavoriteLiveries, saveUses, withUse, type AircraftUse } from './favorites.ts';
-import { liveryDirectory, matchLivery, variationOf } from './liveries.ts';
+import { liveryDirectory, liveryFolder, matchLivery, variationOf } from './liveries.ts';
 import { readArray, store, watch } from './store.ts';
 
 /** A livery of the configurator (`Configurator.Liveries`). */
@@ -63,12 +63,12 @@ async function recordUse(variationId: string): Promise<void> {
   // The configurator follows the current aircraft; on another aircraft, the livery read would be the wrong one.
   const liveries = details && details.variationId === variationId ? await answer(readArray<ConfiguratorLivery>(configurator.Liveries), 'the liveries') : [];
   const selected = liveries.filter((livery) => livery && livery.isSelected)[0];
-  const livery = selected ? { dir: selected.directoryPath, title: selected.title, image: selected.imageUrl } : undefined;
+  const livery = selected ? { dir: liveryFolder(selected), title: selected.title, image: selected.imageUrl } : undefined;
   saveUses(withUse(loadUses(), variationId, livery, Date.now()));
 
   if (selected) {
     const favorites = loadFavoriteLiveries();
-    const at = findFavoriteLivery(favorites, variationId, selected.directoryPath);
+    const at = findFavoriteLivery(favorites, variationId, liveryFolder(selected));
     if (at >= 0) {
       favorites[at]!.usedAt = Date.now();
       saveFavoriteLiveries(favorites);

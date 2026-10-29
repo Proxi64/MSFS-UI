@@ -18,7 +18,7 @@ import {
   type ConfiguratorState,
 } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries } from '../../sim/favorites.ts';
-import { TAIL_NUMBER } from '../../sim/liveries.ts';
+import { liveryFolder, TAIL_NUMBER } from '../../sim/liveries.ts';
 import { cleanTail } from '../../sim/registration.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
@@ -481,7 +481,7 @@ export class SetupPanel {
       this.liveriesList.appendChild(host);
       this.liveryHosts.push(host);
       const buttonHost = el('div', 'msfs-ui-setup__thumbnail', host);
-      const heartHost = livery.directoryPath ? el('div', 'msfs-ui-setup__heart', host) : null;
+      const heartHost = liveryFolder(livery) ? el('div', 'msfs-ui-setup__heart', host) : null;
       scope.listen(host, 'mouseenter', () => (this.liveryName.textContent = translate(livery.title)));
       scope.listen(host, 'mouseleave', () => (this.liveryName.textContent = this.selectedLiveryTitle));
       Promise.all([

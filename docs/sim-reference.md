@@ -100,7 +100,7 @@ There is **no command** to zoom or move the map from the menu.
 | `Game.Aircraft.Configurator.Details` | `AircraftDetails` | The configurator's aircraft |
 | `Game.Aircraft.Configurator.Items` | array | Variants: `id` (= `variationId`), `title`, `imageUrl`, `isSelected`, `isDisabled` |
 | `Game.Aircraft.Configurator.SelectItem.request(id)` | action | Changes the variant (puts the first livery back) |
-| `Game.Aircraft.Configurator.Liveries` | array | Liveries: `id` (`<variationId>:<n>`), `title`, `imageUrl`, `directoryPath` (`SimObjects\…\liveries\…`), `isSelected` |
+| `Game.Aircraft.Configurator.Liveries` | array | Liveries: `id` (`<variationId>:<n>`), `title`, `imageUrl`, `directoryPath` (`SimObjects\…\liveries\…`; empty for the textures kept beside the aircraft, `texture.<name>`: COWS DA42-TDI, iFly 737-MAX8, whose `imageUrl` is then `…/<aircraft>/texture.<name>/thumbnail.png`), `isSelected` |
 | `Game.Aircraft.Configurator.SaveVariationId.request(id)` | action | Changes the livery |
 | `Game.Aircraft.UpdateCurrentAircraftIdentification.request()` | action | Publishes the current identification |
 | `Game.Aircraft.CurrentIdentification` | object | `identificationInfos`: `dataName` (`TT:MENU.AIRCRAFT.TAIL_NUMBER`…), `value`, `regex`, `allowedLength` (9 for the tail number) |

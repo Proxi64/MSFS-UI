@@ -33,6 +33,15 @@ export interface LiveryCandidate {
   id: string;
   title: string;
   directoryPath: string;
+  imageUrl?: string;
+}
+
+/**
+ * Folder of a configurator livery: its `directoryPath`, or the folder of its thumbnail for a livery that has none
+ * (the textures beside the aircraft, `texture.<name>`: COWS DA42, iFly 737 MAX). Empty when it has neither.
+ */
+export function liveryFolder(livery: { directoryPath: string; imageUrl?: string }): string {
+  return livery.directoryPath || (livery.imageUrl ? liveryDirectory(livery.imageUrl) : '');
 }
 
 /**
@@ -43,7 +52,7 @@ export interface LiveryCandidate {
 export function matchLivery<T extends LiveryCandidate>(liveries: readonly T[], variationId: string, wanted: { dir: string; title: string }): T | undefined {
   const own = liveries.filter((livery) => !!livery && variationOf(livery.id) === variationId);
   const key = liveryKey(wanted.dir);
-  return own.filter((livery) => liveryKey(livery.directoryPath) === key)[0] || own.filter((livery) => !!wanted.title && livery.title === wanted.title)[0];
+  return own.filter((livery) => liveryKey(liveryFolder(livery)) === key)[0] || own.filter((livery) => !!wanted.title && livery.title === wanted.title)[0];
 }
 
 /** Folder of a livery from its thumbnail: `…/liveries/<author>/<livery>/thumbnail/thumbnail.png`. */

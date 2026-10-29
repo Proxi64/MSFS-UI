@@ -5,7 +5,7 @@
 
 import { log } from '../core/log.ts';
 import { deleteData, loadData, saveData } from '../core/storage.ts';
-import { liveryKey, variationOf } from './liveries.ts';
+import { liveryFolder, liveryKey, variationOf } from './liveries.ts';
 
 /** A favourite livery, for one variant. */
 export interface FavoriteLivery {
@@ -99,9 +99,10 @@ export interface ConfiguratorAircraft {
   variationTitle: string;
 }
 
-/** Whether a livery of the configurator is a favourite of its variant (a livery without a folder never is). */
+/** Whether a livery of the configurator is a favourite of its variant (one without a folder or a thumbnail never is). */
 export function isFavoriteLivery(livery: ConfiguratorLiveryRef, favorites: readonly FavoriteLivery[]): boolean {
-  return !!livery.directoryPath && findFavoriteLivery(favorites, variationOf(livery.id), livery.directoryPath) >= 0;
+  const folder = liveryFolder(livery);
+  return !!folder && findFavoriteLivery(favorites, variationOf(livery.id), folder) >= 0;
 }
 
 /**
@@ -115,16 +116,17 @@ export function withFavoriteLivery(
   aircraft: ConfiguratorAircraft,
   now: number,
 ): FavoriteLivery[] | null {
-  if (!livery.directoryPath) return null;
+  const folder = liveryFolder(livery);
+  if (!folder) return null;
   const variationId = variationOf(livery.id);
-  const at = findFavoriteLivery(favorites, variationId, livery.directoryPath);
+  const at = findFavoriteLivery(favorites, variationId, folder);
   if (!on) return at >= 0 ? favorites.filter((_favorite, index) => index !== at) : null;
   if (at >= 0) return null;
   const details = aircraft.details && aircraft.details.variationId === variationId ? aircraft.details : null;
   return favorites.concat([
     {
       variationId,
-      dir: liveryKey(livery.directoryPath),
+      dir: liveryKey(folder),
       title: livery.title,
       image: livery.imageUrl,
       displayName: details ? details.displayName : undefined,
