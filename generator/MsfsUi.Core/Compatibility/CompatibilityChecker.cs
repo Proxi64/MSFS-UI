@@ -185,7 +185,7 @@ public sealed partial class CompatibilityChecker
 
     /// <summary>
     /// The storage part of the live probe, an ES2017 function of the page's <c>window</c> returning
-    /// <c>{ label, ok, detail }</c> items, read only: where <c>datastorage</c> is (or the page's globals that look like
+    /// <c>{ label, ok, detail }</c> items, read only: whether the mod keeps its data in the vault (WASM module, <c>__msfsUiRuntime.storage</c>) or why it fell back, where <c>datastorage</c> is (or the page's globals that look like
     /// it), each method the mod calls (mod/src/core/storage.ts) with the object's members when one is missing, and the
     /// mod's keys found in it. The details tell what another version of the sim exposes.
     /// </summary>
@@ -198,11 +198,29 @@ public sealed partial class CompatibilityChecker
             try { Object.getOwnPropertyNames(o).forEach((name) => { if (found.indexOf(name) < 0) found.push(name); }); } catch (e) { /* not an object */ }
             return found;
           };
+          const runtime = page.__msfsUiRuntime;
+          const reported = runtime && runtime.storage;
+          const vault = !!reported && reported.kind === 'vault';
+          results.push({
+            label: 'vault (WASM module)',
+            ok: vault,
+            detail: reported ? String(reported.detail) : 'not reported by the mod (not started, or a version before 2.0)',
+          });
           let top = null;
           try { top = page.top; } catch (e) { /* no access to the top page */ }
           const own = page.datastorage;
           const onTop = top && top !== page ? top.datastorage : undefined;
           const ds = own || onTop;
+          if (vault) {
+            ['datastorage', 'datastorage.getData', 'datastorage.setData', 'datastorage.deleteData'].forEach((label) => {
+              results.push({ label: label, ok: true, detail: 'not used: the vault keeps the data' });
+            });
+            const text = String(reported.detail);
+            const at = text.indexOf('keys: ');
+            const keys = at < 0 ? '' : text.slice(at + 6).trim();
+            results.push({ label: 'mod data (MSFS_UI_ keys)', ok: true, detail: keys && keys !== 'none' ? 'stored: ' + keys : 'none stored yet' });
+            return results;
+          }
           if (!ds) {
             const similar = [];
             [page, top].forEach((scope) => {

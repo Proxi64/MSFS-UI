@@ -227,10 +227,45 @@ public sealed class CompatibilityCheckerTests
     {
         var checks = StorageChecks("0", new Dictionary<string, string> { ["MSFS_UI_FAVORITE_AIRCRAFT"] = "[]", ["LAYOUT_MAIN"] = "{}" });
 
-        Assert.IsTrue(checks.Values.All(check => check.Ok), "searchData is not required: the mod does not call it");
+        Assert.IsTrue(checks.Values.Where(check => check.Label != "vault (WASM module)").All(check => check.Ok), "searchData is not required: the mod does not call it");
         Assert.AreEqual("on window (object)", checks["datastorage"].Detail);
         Assert.AreEqual("stored: FAVORITE_AIRCRAFT", checks["mod data (MSFS_UI_ keys)"].Detail);
-        Assert.HasCount(5, checks);
+        Assert.HasCount(6, checks);
+        Assert.IsFalse(checks["vault (WASM module)"].Ok);
+        Assert.AreEqual("not reported by the mod (not started, or a version before 2.0)", checks["vault (WASM module)"].Detail);
+    }
+
+    private const string VaultDetail = "seq 12, 3072 bytes, keys: FAVORITE_LIVERIES, WEATHER_BAR";
+
+    [TestMethod]
+    public void TheStorageProbeReportsTheVaultAndNeedsNoDatastorage()
+    {
+        var checks = StorageChecks($"delete window.datastorage; window.__msfsUiRuntime = {{ storage: {{ kind: 'vault', detail: '{VaultDetail}' }} }};");
+
+        Assert.IsTrue(checks.Values.All(check => check.Ok), string.Join("; ", checks.Values.Where(c => !c.Ok).Select(c => c.Label)));
+        Assert.AreEqual(VaultDetail, checks["vault (WASM module)"].Detail);
+        Assert.AreEqual("not used: the vault keeps the data", checks["datastorage"].Detail);
+        Assert.AreEqual("stored: FAVORITE_LIVERIES, WEATHER_BAR", checks["mod data (MSFS_UI_ keys)"].Detail);
+    }
+
+    [TestMethod]
+    public void TheStorageProbeReadsNoKeysFromAVaultWithNone()
+    {
+        var checks = StorageChecks("window.__msfsUiRuntime = { storage: { kind: 'vault', detail: 'seq 0, 0 bytes, keys: none' } };");
+
+        Assert.IsTrue(checks.Values.All(check => check.Ok));
+        Assert.AreEqual("none stored yet", checks["mod data (MSFS_UI_ keys)"].Detail);
+    }
+
+    [TestMethod]
+    public void TheStorageProbeSaysWhyTheModFellBackToDatastorage()
+    {
+        var checks = StorageChecks("window.__msfsUiRuntime = { storage: { kind: 'datastorage', detail: 'the vault module did not answer within 3000 ms' } };", new Dictionary<string, string> { ["MSFS_UI_BASE_TAIL"] = "x" });
+
+        Assert.IsFalse(checks["vault (WASM module)"].Ok);
+        Assert.AreEqual("the vault module did not answer within 3000 ms", checks["vault (WASM module)"].Detail);
+        Assert.AreEqual("on window (object)", checks["datastorage"].Detail);
+        Assert.AreEqual("stored: BASE_TAIL", checks["mod data (MSFS_UI_ keys)"].Detail);
     }
 
     [TestMethod]
@@ -257,7 +292,7 @@ public sealed class CompatibilityCheckerTests
     {
         var checks = StorageChecks("delete window.datastorage; window.DataStorageService = {};");
 
-        Assert.AreEqual(1, checks.Count);
+        Assert.AreEqual(2, checks.Count);
         // __storage is the fake page's own content.
         Assert.AreEqual("missing on window and window.top; globals like it: __storage, DataStorageService", checks["datastorage"].Detail);
     }
