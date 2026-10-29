@@ -36,17 +36,17 @@ describe('normalize', () => {
 
 describe('visibleTiles', () => {
   it('gives one tile per aircraft without the filter, searched on every word', () => {
-    const all = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: '', translate: identity });
+    const all = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: '', hiddenOnly: false, hidden: [], keepIds: [], translate: identity });
     assert.equal(all.length, 3);
-    const found = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: 'aeronautica cap', translate: identity });
+    const found = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: 'aeronautica cap', hiddenOnly: false, hidden: [], keepIds: [], translate: identity });
     assert.deepEqual(found.map((tile) => tile.item.variationId), ['cap4']);
-    const variant = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: 'executive', translate: identity });
+    const variant = visibleTiles({ items: ITEMS, liveries: [], favoritesOnly: false, search: 'executive', hiddenOnly: false, hidden: [], keepIds: [], translate: identity });
     assert.deepEqual(variant.map((tile) => tile.item.variationId), ['sf50-exec']);
   });
 
   it('gives one tile per favourite livery only', () => {
     const liveries = [livery('sf50-exec', 'Arrivee Alpine'), livery('sf50-exec', 'Apex Corso Red')];
-    const tiles = visibleTiles({ items: ITEMS, liveries, favoritesOnly: true, search: '', translate: identity });
+    const tiles = visibleTiles({ items: ITEMS, liveries, favoritesOnly: true, search: '', hiddenOnly: false, hidden: [], keepIds: [], translate: identity });
     assert.deepEqual(
       tiles.map((tile) => `${tile.item.variationId}:${tile.livery ? tile.livery.title : '-'}`),
       ['sf50-exec:Arrivee Alpine', 'sf50-exec:Apex Corso Red'],
@@ -56,14 +56,56 @@ describe('visibleTiles', () => {
   it('gives a favourite livery of another variant to the entry of the same aircraft, once', () => {
     const items = [aircraft('sf50-family', 'Vision Jet G2', 'Working Title', 'Family Seating'), aircraft('sf50-copy', 'Vision Jet G2', 'Working Title', 'Family Seating')];
     const liveries = [livery('sf50-exec', 'Arrivee Alpine', { displayName: 'Vision Jet G2', creator: 'Working Title' })];
-    const tiles = visibleTiles({ items, liveries, favoritesOnly: true, search: '', translate: identity });
+    const tiles = visibleTiles({ items, liveries, favoritesOnly: true, search: '', hiddenOnly: false, hidden: [], keepIds: [], translate: identity });
     assert.deepEqual(tiles.map((tile) => tile.item.variationId), ['sf50-family']);
   });
 
   it('searches favourite liveries on their title and variant', () => {
     const liveries = [livery('sf50-exec', 'Arrivee Alpine', { variation: 'Executive Seating' }), livery('sf50-exec', 'Apex Corso Red')];
-    const tiles = visibleTiles({ items: ITEMS, liveries, favoritesOnly: true, search: 'alpine', translate: identity });
+    const tiles = visibleTiles({ items: ITEMS, liveries, favoritesOnly: true, search: 'alpine', hiddenOnly: false, hidden: [], keepIds: [], translate: identity });
     assert.deepEqual(tiles.map((tile) => tile.livery && tile.livery.title), ['Arrivee Alpine']);
+  });
+});
+
+describe('hidden aircraft', () => {
+  const hiddenVision = [{ displayName: 'Vision Jet G2', creator: 'Working Title' }];
+  const query = (extra: Partial<Parameters<typeof visibleTiles>[0]>) =>
+    visibleTiles(Object.assign({ items: ITEMS, liveries: [], favoritesOnly: false, search: '', hiddenOnly: false, hidden: hiddenVision, keepIds: [], translate: identity }, extra));
+
+  it('leaves a hidden aircraft out of the normal view', () => {
+    assert.deepEqual(query({}).map((tile) => tile.item.variationId), ['c172', 'cap4']);
+  });
+
+  it('keeps a hidden aircraft whose id is in keepIds, veiled', () => {
+    const tiles = query({ keepIds: [ITEMS[0]!.aircraftId] });
+    assert.deepEqual(tiles.map((tile) => tile.item.variationId), ['sf50-exec', 'c172', 'cap4']);
+    assert.deepEqual(tiles.map((tile) => !!tile.veiled), [true, false, false]);
+  });
+
+  it('keeps it veiled when its favourite is of another variant', () => {
+    const liveries = [livery('sf50-family', 'Red', { displayName: 'Vision Jet G2', creator: 'Working Title' })];
+    const keepIds = favoriteAircraftIds(ITEMS, liveries);
+    const tiles = query({ liveries, keepIds });
+    assert.deepEqual(tiles.map((tile) => `${tile.item.variationId}:${!!tile.veiled}`), ['sf50-exec:true', 'c172:false', 'cap4:false']);
+  });
+
+  it('shows only the hidden aircraft in the Hidden view, not veiled, one tile per aircraft', () => {
+    const items = ITEMS.concat([aircraft('sf50-family', 'Vision Jet G2', 'Working Title', 'Family Seating')]);
+    const tiles = query({ items, hiddenOnly: true, keepIds: [items[0]!.aircraftId] });
+    assert.deepEqual(tiles.map((tile) => tile.item.variationId), ['sf50-exec']);
+    assert.equal(!!tiles[0]!.veiled, false);
+  });
+
+  it('filters the Hidden view with the search', () => {
+    const hidden = hiddenVision.concat([{ displayName: 'Cessna 172 Skyhawk', creator: 'Asobo' }]);
+    assert.deepEqual(query({ hidden, hiddenOnly: true }).length, 2);
+    assert.deepEqual(query({ hidden, hiddenOnly: true, search: 'cessna' }).map((tile) => tile.item.variationId), ['c172']);
+  });
+
+  it('veils a Favorites tile whose aircraft is hidden', () => {
+    const liveries = [livery('sf50-exec', 'Alpine'), livery('c172', 'Red')];
+    const tiles = query({ liveries, favoritesOnly: true });
+    assert.deepEqual(tiles.map((tile) => `${tile.item.variationId}:${!!tile.veiled}`), ['sf50-exec:true', 'c172:false']);
   });
 });
 

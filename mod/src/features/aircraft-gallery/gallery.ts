@@ -529,6 +529,9 @@ export class Gallery {
       items: this.items,
       liveries: this.favoriteLiveries,
       favoritesOnly: this.memory.favoritesOnly,
+      hiddenOnly: false,
+      hidden: [],
+      keepIds: [],
       search: this.search ? this.search.value : '',
       translate,
     });

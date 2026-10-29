@@ -4,6 +4,7 @@
 // liveries is.
 
 import { favoriteLiveriesOf, type FavoriteLivery } from '../../sim/favorites.ts';
+import { isHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 
 /** An item of `Game.Aircraft.AircraftList` (fields used). */
 export interface AircraftItem {
@@ -24,6 +25,8 @@ export interface AircraftItem {
 export interface Tile {
   item: AircraftItem;
   livery?: FavoriteLivery;
+  /** Shown darkened: the aircraft is hidden but kept for its favourite liveries. */
+  veiled?: boolean;
 }
 
 /** Lower case without accents or punctuation, for a tolerant search. */
@@ -57,6 +60,11 @@ export interface TileQuery {
   items: readonly AircraftItem[];
   liveries: readonly FavoriteLivery[];
   favoritesOnly: boolean;
+  /** The Hidden view: only the hidden aircraft (never together with `favoritesOnly`). */
+  hiddenOnly: boolean;
+  hidden: readonly HiddenAircraft[];
+  /** `aircraftId`s shown although hidden, veiled (the gallery passes its frozen favourite ids). */
+  keepIds: readonly number[];
   search: string;
   /** Translation of the sim's keys (variant and livery titles may be `TT:` keys). */
   translate: (key: string) => string;
@@ -64,7 +72,7 @@ export interface TileQuery {
 
 /** The tiles to show, in the order of the sim's list. */
 export function visibleTiles(query: TileQuery): Tile[] {
-  const { items, liveries, favoritesOnly, translate } = query;
+  const { items, liveries, favoritesOnly, hiddenOnly, hidden, keepIds, translate } = query;
   // Each favourite livery goes to one entry of the list only: its variant's, otherwise the first entry of the same
   // aircraft (name and publisher), so that it is not repeated when several entries bear the same name.
   const owners = new Map<FavoriteLivery, AircraftItem>();
@@ -76,12 +84,22 @@ export function visibleTiles(query: TileQuery): Tile[] {
     }
   }
   const tiles: Tile[] = [];
+  const seen: AircraftItem[] = [];
   for (const item of items) {
-    if (!favoritesOnly) {
+    const itemHidden = isHidden(hidden, item);
+    if (hiddenOnly) {
+      // One tile per aircraft: the sim's list may hold several entries of the same name and publisher.
+      if (itemHidden && !seen.some((other) => other.displayName === item.displayName && other.creator === item.creator)) {
+        seen.push(item);
+        tiles.push({ item });
+      }
+    } else if (favoritesOnly) {
+      for (const livery of liveries) if (owners.get(livery) === item) tiles.push(itemHidden ? { item, livery, veiled: true } : { item, livery });
+    } else if (!itemHidden) {
       tiles.push({ item });
-      continue;
+    } else if (keepIds.indexOf(item.aircraftId) >= 0) {
+      tiles.push({ item, veiled: true });
     }
-    for (const livery of liveries) if (owners.get(livery) === item) tiles.push({ item, livery });
   }
   const terms = normalize(query.search).split(' ').filter((term) => !!term);
   if (terms.length === 0) return tiles;
