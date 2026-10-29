@@ -4,7 +4,7 @@
 // The messages are in core/vault-protocol.ts. If the module does not answer in time, the mod keeps `datastorage`.
 
 import { debounced } from '../core/async.ts';
-import { logError } from '../core/log.ts';
+import { describeError, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import { STORAGE_PREFIX, type StorageBackend } from '../core/storage.ts';
 import { VAULT_EVENTS, VAULT_MAX_BYTES, decodeLoaded, decodeSaved, encodeSave, toAscii } from '../core/vault-protocol.ts';
@@ -30,17 +30,51 @@ export interface Vault {
 
 type Handler = (...args: unknown[]) => void;
 
+/** What `openVault` found: the vault, or null and the reason the mod keeps `datastorage`. */
+export interface OpenResult {
+  vault: Vault | null;
+  /** Empty when the vault opened. */
+  reason: string;
+}
+
 /**
- * Connects to the vault module and reads its snapshot. Null when it does not answer within `timeoutMs`, or its
- * snapshot is unreadable. The listener and the timers go with `scope`, which also flushes the pending snapshot.
+ * Connects to the vault module and reads its snapshot. No vault when it does not answer within `timeoutMs`, when its
+ * snapshot is unreadable or when the CommBus fails. The listener and the timers go with `scope`, which also flushes
+ * the pending snapshot. Never rejects.
  */
-export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Vault | null> {
-  return new Promise<Vault | null>((resolve) => {
+export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<OpenResult> {
+  return new Promise<OpenResult>((resolve) => {
     const requestId = 1 + Math.floor(Math.random() * 1000000000);
     let settled = false;
+    let registered = false;
     let retry: ReturnType<typeof setInterval> | undefined;
     let giveUp: ReturnType<typeof setTimeout> | undefined;
     let vault: VaultImpl | undefined;
+
+    const stopWaiting = () => {
+      if (retry !== undefined) clearInterval(retry);
+      if (giveUp !== undefined) clearTimeout(giveUp);
+      retry = undefined;
+      giveUp = undefined;
+    };
+
+    const unregister = () => {
+      if (!registered) return;
+      registered = false;
+      try {
+        engine.off('EVENT_FROM_VIEW_LISTENER', onEvent);
+      } catch (error) {
+        logError('the vault listener could not be removed', error);
+      }
+    };
+
+    const finish = (result: VaultImpl | null, reason: string) => {
+      if (settled) return;
+      settled = true;
+      stopWaiting();
+      if (!result) unregister();
+      resolve({ vault: result, reason });
+    };
 
     const onEvent: Handler = (listener, eventName, payload) => {
       // Other add-ons' events arrive many times per second: dropped first.
@@ -52,45 +86,37 @@ export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS): Promise
         const loaded = decodeLoaded(text);
         if (!loaded || loaded.requestId !== requestId) return;
         const copy = parseSnapshot(loaded.text);
-        if (!copy) return finish(null);
+        if (!copy) {
+          finish(null, 'the vault snapshot is unreadable');
+          return;
+        }
         vault = new VaultImpl(copy, loaded.seq);
-        finish(vault);
+        finish(vault, '');
       } else if (eventName === VAULT_EVENTS.saved) {
         const saved = decodeSaved(text);
         if (saved && vault) vault.saved(saved.seq, saved.status);
       }
     };
 
-    const stopWaiting = () => {
-      if (retry !== undefined) clearInterval(retry);
-      if (giveUp !== undefined) clearTimeout(giveUp);
-      retry = undefined;
-      giveUp = undefined;
-    };
-
-    function finish(result: VaultImpl | null): void {
+    try {
+      engine.on('EVENT_FROM_VIEW_LISTENER', onEvent);
+      registered = true;
+      // On an already disposed scope, this runs at once and settles the promise.
+      scope.add(() => {
+        if (vault) vault.dispose();
+        unregister();
+        finish(null, 'the mod was unloaded');
+      });
       if (settled) return;
-      settled = true;
-      stopWaiting();
-      if (!result) engine.off('EVENT_FROM_VIEW_LISTENER', onEvent);
-      resolve(result);
+      engine.trigger('ADD_VIEW_LISTENER', LISTENER, window.location.pathname);
+      // The timers first: an answer arriving inside the first call settles the promise and stops them.
+      const sendLoad = () => sendToModule(VAULT_EVENTS.load, String(requestId));
+      retry = setInterval(sendLoad, LOAD_RETRY_MS);
+      giveUp = setTimeout(() => finish(null, `the vault module did not answer within ${timeoutMs} ms`), timeoutMs);
+      sendLoad();
+    } catch (error) {
+      finish(null, `the CommBus is not available: ${describeError(error)}`);
     }
-
-    const sendLoad = () => {
-      sendToModule(VAULT_EVENTS.load, String(requestId));
-    };
-
-    engine.on('EVENT_FROM_VIEW_LISTENER', onEvent);
-    scope.add(() => {
-      if (vault) vault.dispose();
-      stopWaiting();
-      engine.off('EVENT_FROM_VIEW_LISTENER', onEvent);
-      finish(null);
-    });
-    engine.trigger('ADD_VIEW_LISTENER', LISTENER, window.location.pathname);
-    sendLoad();
-    retry = setInterval(sendLoad, LOAD_RETRY_MS);
-    giveUp = setTimeout(() => finish(null), timeoutMs);
   });
 }
 

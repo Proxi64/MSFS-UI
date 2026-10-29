@@ -89,9 +89,9 @@ describe('vault', () => {
     const pending = openVault(scope);
     await Promise.resolve();
     await Promise.resolve();
-    const vault = await pending;
-    assert.ok(vault, 'the vault opened');
-    return vault;
+    const result = await pending;
+    assert.ok(result.vault, 'the vault opened');
+    return result.vault;
   }
 
   it('opens with the stored snapshot', async () => {
@@ -123,7 +123,7 @@ describe('vault', () => {
     mock.timers.tick(2999);
     assert.equal(fake.listenerCount(), 1);
     mock.timers.tick(1);
-    assert.equal(await pending, null);
+    assert.deepEqual(await pending, { vault: null, reason: 'the vault module did not answer within 3000 ms' });
     assert.equal(fake.listenerCount(), 0);
     scope.dispose();
   });
@@ -136,7 +136,7 @@ describe('vault', () => {
     fake.emit('p42_chaseplane_comms_wasm_ping', 'x');
     fake.emit(VAULT_EVENTS.loaded, '1\n50\n{"MSFS_UI_OTHER":"1"}', 'JS_LISTENER_SOMETHING_ELSE');
     for (const handler of fake.handlers.get('EVENT_FROM_VIEW_LISTENER') || []) handler('js_listener_comm_bus', 'p42_other', 'a', 'b');
-    const vault = await pending;
+    const vault = (await pending).vault;
     assert.ok(vault);
     assert.equal(vault.seq, 1);
     assert.equal(vault.describe(), 'seq 1, 17 bytes, keys: A');
@@ -223,6 +223,58 @@ describe('vault', () => {
     mock.timers.tick(1);
     assert.equal(error.mock.callCount(), 1);
     assert.match(String(error.mock.calls[0]!.arguments[0]), /did not confirm save 1 within 5000 ms/);
+    scope.dispose();
+  });
+
+  it('falls back with a reason when the stored snapshot is unreadable', async () => {
+    fake.stored = { seq: 3, text: '{not json' };
+    const scope = new Scope();
+    const pending = openVault(scope);
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(await pending, { vault: null, reason: 'the vault snapshot is unreadable' });
+    assert.equal(fake.listenerCount(), 0);
+    scope.dispose();
+  });
+
+  it('resolves on an already disposed scope with no timer left running', async () => {
+    const scope = new Scope();
+    scope.dispose();
+    const result = await openVault(scope);
+    assert.equal(result.vault, null);
+    assert.equal(fake.listenerCount(), 0);
+    assert.equal(fake.sent.length, 0);
+    mock.timers.tick(10000);
+    assert.equal(fake.sent.length, 0, 'no retry timer left');
+  });
+
+  it('stops its timers when the module answers inside the first call', async () => {
+    fake.call = (_name, event, text) => {
+      fake.sent.push({ event, text });
+      fake.emit(VAULT_EVENTS.loaded, `${text}
+0
+`);
+      return Promise.resolve();
+    };
+    const scope = new Scope();
+    const result = await openVault(scope);
+    assert.ok(result.vault);
+    const before = fake.sent.length;
+    mock.timers.tick(10000);
+    assert.equal(fake.sent.length, before, 'no LOAD retry after the answer');
+    scope.dispose();
+  });
+
+  it('falls back instead of rejecting when the CommBus throws', async () => {
+    fake.trigger = () => {
+      throw new Error('no bus');
+    };
+    const scope = new Scope();
+    const result = await openVault(scope);
+    assert.deepEqual(result, { vault: null, reason: 'the CommBus is not available: no bus' });
+    assert.equal(fake.listenerCount(), 0);
+    mock.timers.tick(10000);
+    assert.equal(fake.sent.length, 0);
     scope.dispose();
   });
 });
