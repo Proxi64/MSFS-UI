@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0 (2026-10-29)
+
+- **Your data is kept for good.** Favourites, tail numbers and last choices are now kept by a small module of the `msfs-ui` package, `msfs-ui.wasm`, which writes them to files of its own folder (`%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui\work`) at once. They are no longer lost when the sim quits or crashes, and no longer depend on the sim saving its profile.
+- **No more "Applying setting" message** after a change: the mod no longer has to make the sim save its profile (it still does when the module does not answer, as in 1.x).
+- **Your 1.x data comes over**: at the first start of 2.0, the favourites, tail numbers and last choices kept by 1.x are copied into the module's files.
+- **Restart the sim once** after installing 2.0: the sim loads a module only when it starts (MSFS-UI-GENERATOR says so).
+- **Compatibility**: the Storage group says whether the module keeps the data, or why the mod uses the sim's storage instead.
+
 ## 1.3.1 (2026-10-29)
 
 - **Every livery has its heart**, those of aircraft that keep their textures beside the aircraft rather than in a liveries folder too (COWS DA42, iFly 737 MAX): they had none, and could not be favourites.
