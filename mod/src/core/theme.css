@@ -66,3 +66,32 @@
   width: calc(var(--u) * 30) !important;
   height: calc(var(--u) * 30) !important;
 }
+
+/*
+ * The mod's own icon buttons (core/icon-toggle.ts): an inline SVG in currentColor, filling its host, which the feature's
+ * CSS places. White like the sim's line icons, lighter on hover (no preview of the opposite state); dark on a white
+ * hovered list row. The favourite's star is cut out of its disc, so it shows the colour under it. The eye of a hidden
+ * aircraft is dimmed until hovered, full when on. Children take no pointer events: a click on one would not bubble up.
+ */
+.msfs-ui-icon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  color: rgba(255, 255, 255, 0.82);
+}
+.msfs-ui-icon:hover,
+.msfs-ui-icon.is-on { color: #ffffff; }
+.msfs-ui-icon svg,
+.msfs-ui-icon svg * { pointer-events: none; }
+.msfs-ui-icon svg { display: block; width: 100%; height: 100%; }
+.msfs-ui-icon--hidden { opacity: 0.55; }
+.msfs-ui-icon--hidden:hover,
+.msfs-ui-icon--hidden.is-on { opacity: 1; }
+.msfs-ui-gal__row:hover .msfs-ui-icon,
+.msfs-ui-fav__row:hover .msfs-ui-icon { color: rgba(31, 37, 48, 0.82); }
+.msfs-ui-gal__row:hover .msfs-ui-icon:hover,
+.msfs-ui-gal__row:hover .msfs-ui-icon.is-on,
+.msfs-ui-fav__row:hover .msfs-ui-icon:hover,
+.msfs-ui-fav__row:hover .msfs-ui-icon.is-on { color: #1f2530; }

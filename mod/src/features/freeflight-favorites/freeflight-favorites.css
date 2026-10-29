@@ -1,6 +1,6 @@
 /*
  * Layout of the Favorites block only: its background and header are the sim's card layers (core/theme.ts), its rows
- * the sim's horizontal tile and heart, its list the sim's scrolling list. Sizes in units; the heights match
+ * the sim's horizontal tile and the mod's bookmark, its list the sim's scrolling list. Sizes in units; the heights match
  * panel.ts (header 36, rows 77 with 6 between them, 6 of padding).
  */
 
@@ -20,7 +20,7 @@
 /*
  * The marketplace tile, as in the gallery's list view but on its own two lines: the name in its bold Title, then
  * "variant · livery · tail number" in its light Creator. Its rating and separator, price banner and own heart are
- * hidden; the image box takes the thumbnails' ratio (720 x 344); the text stops before the row's heart.
+ * hidden; the image box takes the thumbnails' ratio (720 x 344); the text stops before the row's bookmark.
  */
 .msfs-ui-fav__row [name="Rating_Overview"],
 .msfs-ui-fav__row [name="Details"] [name="Separator"],
@@ -29,7 +29,7 @@
 .msfs-ui-fav__row [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
 .msfs-ui-fav__row [name="TitleBlock"] {
   left: calc(var(--u) * 167) !important;
-  right: calc(var(--u) * 42) !important;
+  right: calc(var(--u) * 40) !important;
   top: 0 !important;
   height: 100% !important;
   justify-content: center !important;
@@ -38,11 +38,11 @@
   background-image: linear-gradient(to bottom, rgb(165, 173, 198), rgb(150, 164, 193) 50%, rgb(100, 118, 152)) !important;
 }
 
-/* The sim's heart, at the end of the row and centred in its height. */
-.msfs-ui-fav__heart {
+/* The mod's bookmark (core/theme.css), in the row's top right corner. */
+.msfs-ui-fav__icon {
   position: absolute;
-  top: calc(50% - var(--u) * 15);
+  top: calc(var(--u) * 6);
   right: calc(var(--u) * 6);
-  width: calc(var(--u) * 30);
-  height: calc(var(--u) * 30);
+  width: calc(var(--u) * 22);
+  height: calc(var(--u) * 22);
 }

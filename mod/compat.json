@@ -18,7 +18,6 @@
     { "label": "Flight category", "guid": "{6C8546B4-5DC2-4565-8344-02BEC2D16F6B}", "name": "FreeFlight_IFR", "attributes": ["Status", "StatusColor"], "values": ["Color_VFR", "Color_MVFR", "Color_IFR", "Color_LIFR"] },
     { "label": "Small button", "guid": "{18790BAC-6BA6-45F1-A5B0-4719AAA02CAB}", "name": "TextButton_Small", "attributes": ["Text"], "states": ["Hover"] },
     { "label": "Livery thumbnail", "guid": "{4F4F64CD-07F8-4B9C-8822-4E076700DB75}", "name": "ImageButton_Livery", "attributes": ["Image"], "states": ["Selected", "Hover"] },
-    { "label": "Favourite heart", "guid": "{A1BD480B-7FFA-4C9E-A63C-346F3974B5EC}", "name": "IconButton_Light_Wishlist", "states": ["State_Full", "State_Empty"] },
     { "label": "Text field", "guid": "{996A0E75-BA4D-4EB4-BD27-683B1013B42C}", "name": "Search_Input", "attributes": ["Placeholder"], "states": ["State_Input"] },
     { "label": "Aircraft tile", "guid": "{4624E83D-9CA8-48D6-B42C-FE4E2810951F}", "name": "TileButton_Fleet", "attributes": ["AircraftImage", "AircraftName", "Subtitle", "Distance"], "states": ["Selected", "Disabled", "Hover"], "children": ["ImageBlock", "Distance", "Content", "Background"] },
     { "label": "Horizontal tile", "guid": "{35A4F244-E2BB-4DF1-984E-BCBE663FC209}", "name": "Marketplace_Tile_Horizontal", "attributes": ["Image", "Title", "Creator"], "states": ["Selected", "Disabled", "Hover"], "children": ["Title", "Details", "Rating_Overview", "Separator", "Banner", "WishlistBlock", "TitleBlock", "ImageBlock", "Image"] },
@@ -58,7 +57,7 @@
     }
   ],
   "symbols": [
-    { "group": "Component manipulators", "names": ["SearchInputManipulator", "addSubmitCallback", "addChangeCallback", "addEnterCallback", "addExitCallback", "setSearchValue", "forceInput", "IconButtonLightWishlistManipulator", "ImageButtonLiveryManipulator", "TileButtonManipulator", "DropdownManipulator", "selectedCallback", "setEmptyTitle", "MarketplaceTileHorizontalManipulator", "isOwnedBySubscription", "tileClickDisabled", "real-scroll", "marquee__trigger", "scroll__content", "scroll__bar-container", "ui-scroll", "scrollToPosition", "updateSizes"] },
+    { "group": "Component manipulators", "names": ["SearchInputManipulator", "addSubmitCallback", "addChangeCallback", "addEnterCallback", "addExitCallback", "setSearchValue", "forceInput", "ImageButtonLiveryManipulator", "TileButtonManipulator", "DropdownManipulator", "selectedCallback", "setEmptyTitle", "MarketplaceTileHorizontalManipulator", "isOwnedBySubscription", "tileClickDisabled", "real-scroll", "marquee__trigger", "scroll__content", "scroll__bar-container", "ui-scroll", "scrollToPosition", "updateSizes"] },
     {
       "group": "Data model",
       "names": [

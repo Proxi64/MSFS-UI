@@ -61,17 +61,17 @@
 /* An unavailable livery: ImageButton_Livery has no Disabled state, so its host is dimmed as the sim's components are. */
 .msfs-ui-setup__livery.is-disabled { opacity: 0.45; }
 .msfs-ui-setup__thumbnail { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
-/* The sim's heart, in the top right corner: shown on hover of the thumbnail, or when the livery is a favourite. */
-.msfs-ui-setup__heart {
+/* The mod's bookmark (core/theme.css), in the top right corner: shown on hover of the thumbnail, or when the livery is a favourite. */
+.msfs-ui-setup__icon {
   position: absolute;
-  top: calc(var(--u) * 3);
-  right: calc(var(--u) * 3);
-  width: calc(var(--u) * 30);
-  height: calc(var(--u) * 30);
+  top: calc(var(--u) * 6);
+  right: calc(var(--u) * 6);
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
   opacity: 0;
 }
-.msfs-ui-setup__livery:hover .msfs-ui-setup__heart,
-.msfs-ui-setup__livery.is-favorite .msfs-ui-setup__heart { opacity: 1; }
+.msfs-ui-setup__livery:hover .msfs-ui-setup__icon,
+.msfs-ui-setup__livery.is-favorite .msfs-ui-setup__icon { opacity: 1; }
 
 /* Tail number: title on the left, the sim's field on the right. */
 .msfs-ui-setup__tail { padding-right: calc(var(--u) * 3); margin-top: auto; }

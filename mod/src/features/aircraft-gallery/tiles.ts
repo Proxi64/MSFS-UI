@@ -155,7 +155,7 @@ export function sortTiles(tiles: readonly Tile[], sort: LocalSort, reversed: boo
 /**
  * Favourites first, whatever the sort: the favourite aircraft (`favoriteIds`, from favoriteAircraftIds) and the
  * favourite livery tiles, then the others, each part in the order given. The gallery keeps the ids of its first
- * display while the screen stays, so that an aircraft whose livery gets a heart does not jump away under the mouse.
+ * display while the screen stays, so that an aircraft whose livery gets a bookmark does not jump away under the mouse.
  */
 export function favoritesFirst(tiles: readonly Tile[], favoriteIds: readonly number[]): Tile[] {
   const isFavorite = (tile: Tile) => !!tile.livery || favoriteIds.indexOf(tile.item.aircraftId) >= 0;

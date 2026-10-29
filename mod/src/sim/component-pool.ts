@@ -1,19 +1,20 @@
 // Components of a list recycled as it scrolls, as the sim's own grid does. Creating one of the sim's tiles means loading
 // its template and image, then laying the page out again: a list that creates and destroys its tiles while scrolling
-// stutters as if loading all the time. A pool creates a few slots (a card and its heart) and moves them between the
+// stutters as if loading all the time. A pool creates a few slots (a card and its icon) and moves them between the
 // cells near the view; a slot far from it waits in a hidden parking (out of the layout). Moving a slot keeps the
 // component loaded and active (measured on 1.9.21: 4.8 ms with the layout).
 
 import { el } from '../core/dom.ts';
 import type { Scope } from '../core/scope.ts';
 import type { SimComponent } from './components.ts';
+import type { IconToggle } from '../core/icon-toggle.ts';
 
-/** A card and its heart, in hosts that move from cell to cell (`cardHost` and `heartHost`, appended to a cell's host). */
+/** A card and its icon, in hosts that move from cell to cell (`cardHost` and `iconHost`, appended to a cell's host). */
 export interface PoolSlot<T> {
   readonly cardHost: HTMLElement;
-  readonly heartHost: HTMLElement;
+  readonly iconHost: HTMLElement;
   card: SimComponent | null;
-  heart: SimComponent | null;
+  icon: IconToggle | null;
   /** What the slot shows now (null while parked). */
   item: T | null;
   /** The host it belongs in (null while parked); a new slot joins it once its components are made. */
@@ -60,17 +61,17 @@ export class ComponentPool<T> {
     if (at >= 0) {
       slot = this.free.splice(at, 1)[0]!;
     } else {
-      slot = { cardHost: el('div', 'msfs-ui-gal__card'), heartHost: el('div', 'msfs-ui-gal__heart'), card: null, heart: null, item, host };
+      slot = { cardHost: el('div', 'msfs-ui-gal__card'), iconHost: el('div', 'msfs-ui-gal__icon'), card: null, icon: null, item, host };
       this.slots.push(slot);
       this.staging.appendChild(slot.cardHost);
-      this.staging.appendChild(slot.heartHost);
+      this.staging.appendChild(slot.iconHost);
       this.create(slot, this.scope);
       return slot;
     }
     slot.item = item;
     slot.host = host;
     host.appendChild(slot.cardHost);
-    host.appendChild(slot.heartHost);
+    host.appendChild(slot.iconHost);
     return slot;
   }
 
@@ -83,7 +84,7 @@ export class ComponentPool<T> {
       this.release(slot);
     } else if (slot.host) {
       slot.host.appendChild(slot.cardHost);
-      slot.host.appendChild(slot.heartHost);
+      slot.host.appendChild(slot.iconHost);
     }
   }
 
@@ -96,7 +97,7 @@ export class ComponentPool<T> {
       return;
     }
     this.parking.appendChild(slot.cardHost);
-    this.parking.appendChild(slot.heartHost);
+    this.parking.appendChild(slot.iconHost);
     this.free.push(slot);
   }
 

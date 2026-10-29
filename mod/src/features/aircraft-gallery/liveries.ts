@@ -1,8 +1,9 @@
 // The livery column of the side by side layout (gallery.ts): the liveries of the current aircraft as large tiles, two
-// per row, with their name and tail number, favourites first; in the gallery's List view, as rows. Made of the sim's components (its aircraft tile, its
-// heart, its scrolling list); the choices go through the configurator as in the setup panel (sim/configurator.ts).
+// per row, with their name and tail number, favourites first; in the gallery's List view, as rows. Made of the sim's components (its aircraft tile,
+// its scrolling list) and the mod's bookmark; the choices go through the configurator as in the setup panel (sim/configurator.ts).
 
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
+import { iconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { cellAction, layoutWidth } from '../../core/virtual-list.ts';
@@ -19,11 +20,6 @@ import { orderLiveries, type LiveryOrder } from '../aircraft-setup/livery-order.
 import { revealPosition } from '../aircraft-setup/setup-layout.ts';
 import { LIVERY_COLUMNS, liveryTail, liveryTileSize } from './livery-column.ts';
 
-/** The sim's wishlist heart (IconButtonLightWishlistManipulator). */
-interface WishlistManipulator {
-  setData(checked: boolean, callback: (checked: boolean) => void): void;
-}
-
 /** The sim's horizontal marketplace tile (see the gallery's List view): an owned item makes its hover do nothing more. */
 interface HorizontalTileManipulator {
   item?: { isOwned: boolean; isOwnedBySubscription: boolean; isFavorite: boolean };
@@ -36,7 +32,6 @@ interface Cell {
   /** Its slot of the pool while near the view (sim/component-pool.ts). */
   slot: PoolSlot<Cell> | null;
   card: SimComponent | null;
-  heart: SimComponent | null;
 }
 
 /** Where the gallery puts the column, in pixels from its own top left corner. */
@@ -198,7 +193,7 @@ export class LiveryColumn {
         this.revealSelected = true;
       }
     } else {
-      // Same tiles: selection, availability and hearts refreshed in place.
+      // Same tiles: selection, availability and bookmarks refreshed in place.
       this.cells.forEach((cell, at) => (cell.livery = ordered.items[at]!));
     }
     const tails = loadLiveryTails();
@@ -219,7 +214,7 @@ export class LiveryColumn {
       // marquee__trigger: hovering the tile scrolls its texts that are too long, as on the sim's own tiles.
       const host = el('div', this.rows ? 'msfs-ui-gal__row msfs-ui-gal__livery-row marquee__trigger' : 'msfs-ui-gal__tile msfs-ui-gal__livery marquee__trigger');
       this.list.appendChild(host);
-      const cell: Cell = { livery, host, slot: null, card: null, heart: null };
+      const cell: Cell = { livery, host, slot: null, card: null };
       scope.listen(host, 'mouseenter', () => (this.name.textContent = translate(cell.livery.title)));
       scope.listen(host, 'mouseleave', () => (this.name.textContent = this.selectedTitle));
       return cell;
@@ -249,7 +244,6 @@ export class LiveryColumn {
     const slot = this.slotPool().acquire(cell.host, cell);
     cell.slot = slot;
     cell.card = slot.card;
-    cell.heart = slot.heart;
     if (slot.card) this.update(cell, loadFavoriteLiveries(), loadLiveryTails());
     this.readAtcId(cell.livery);
   }
@@ -259,7 +253,6 @@ export class LiveryColumn {
     if (cell.slot && this.pool) this.pool.release(cell.slot);
     cell.slot = null;
     cell.card = null;
-    cell.heart = null;
   }
 
   /** The pool of the current view (tiles or rows); the other view makes a new one. */
@@ -276,14 +269,15 @@ export class LiveryColumn {
   /** A slot's components, made once; they show whatever cell holds the slot. */
   private createSlot(slot: PoolSlot<Cell>, scope: Scope, rows: boolean): void {
     for (const name of TILE_EVENTS) scope.listen(slot.cardHost, name, (event) => event.stopPropagation());
-    Promise.all([
-      createComponent(scope, rows ? COMPONENTS.horizontalTile : COMPONENTS.fleetTile, slot.cardHost),
-      createComponent(scope, COMPONENTS.wishlistButton, slot.heartHost),
-    ]).then(
-      ([card, heart]) => {
+    // The change event redraws this column, the setup panel and the gallery.
+    slot.icon = iconToggle(scope, slot.iconHost, 'favorite', (checked) => {
+      const cell = slot.item;
+      if (cell && cell.slot === slot) setFavoriteLivery(this.state, cell.livery.id, checked);
+    });
+    createComponent(scope, rows ? COMPONENTS.horizontalTile : COMPONENTS.fleetTile, slot.cardHost).then(
+      (card) => {
         if (scope.disposed) return;
         slot.card = card;
-        slot.heart = heart;
         if (this.pool) this.pool.markReady(slot);
         if (rows) {
           const horizontal = card.manipulator<HorizontalTileManipulator>();
@@ -298,7 +292,6 @@ export class LiveryColumn {
         const cell = slot.item;
         if (cell && cell.slot === slot) {
           cell.card = card;
-          cell.heart = heart;
           this.update(cell, loadFavoriteLiveries(), loadLiveryTails());
         }
       },
@@ -306,11 +299,11 @@ export class LiveryColumn {
     );
   }
 
-  /** Selection, availability, tail number and heart of a tile. */
+  /** Selection, availability, tail number and bookmark of a tile. */
   private update(cell: Cell, favorites: readonly FavoriteLivery[], tails: Record<string, string>): void {
     const { livery, card } = cell;
-    // A livery without a folder or a thumbnail cannot be a favourite: no heart.
-    if (cell.slot) cell.slot.heartHost.style.display = liveryFolder(livery) ? '' : 'none';
+    // A livery without a folder or a thumbnail cannot be a favourite: no bookmark.
+    if (cell.slot) cell.slot.iconHost.style.display = liveryFolder(livery) ? '' : 'none';
     if (card) {
       card.set(this.rows ? 'Image' : 'AircraftImage', livery.imageUrl);
       card.set(this.rows ? 'Title' : 'AircraftName', translate(livery.title));
@@ -319,9 +312,7 @@ export class LiveryColumn {
       card.disable(!!livery.isDisabled);
       card.set(this.rows ? 'Creator' : 'Subtitle', this.tail(livery, tails));
     }
-    const heart = cell.heart && cell.heart.manipulator<WishlistManipulator>();
-    // The change event redraws this column, the setup panel and the gallery.
-    if (heart) heart.setData(isFavoriteLivery(livery, favorites), (checked) => setFavoriteLivery(this.state, livery.id, checked));
+    if (cell.slot && cell.slot.icon) cell.slot.icon.set(isFavoriteLivery(livery, favorites));
   }
 
   // ----- Tail numbers -----

@@ -23,8 +23,6 @@ export const COMPONENTS = {
   textButtonSmall: '{18790BAC-6BA6-45F1-A5B0-4719AAA02CAB}',
   /** Livery thumbnail button of the sim's configurator. */
   liveryButton: '{4F4F64CD-07F8-4B9C-8822-4E076700DB75}',
-  /** Wishlist heart of the sim's marketplace: the mod's favourites. */
-  wishlistButton: '{A1BD480B-7FFA-4C9E-A63C-346F3974B5EC}',
   /** The sim's aircraft tile (aircraft selection grid). */
   fleetTile: '{4624E83D-9CA8-48D6-B42C-FE4E2810951F}',
   /** Horizontal tile of the sim's marketplace: image, title, publisher. */

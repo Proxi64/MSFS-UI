@@ -73,7 +73,7 @@
 /*
  * The marketplace tile: one line centred in the row, the name in its bold Title, then "- studio - variant" in its
  * light Creator (gallery.ts). Its rating and separator, its price or "Owned" banner and its own heart over the
- * image are hidden: the row's heart is the mod's, at the end of the line.
+ * image are hidden: the row's bookmark is the mod's, in its top right corner.
  */
 .msfs-ui-gal__row [name="Rating_Overview"],
 .msfs-ui-gal__row [name="Details"] [name="Separator"],
@@ -84,10 +84,10 @@
  * cut the top and bottom of each thumbnail. The title block keeps its 6-unit gap after it.
  */
 .msfs-ui-gal__row [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
-/* The text stops before the row's heart and is cut there (no ellipsis in the engine; hovering scrolls it). */
+/* The text stops before the row's bookmark and is cut there (no ellipsis in the engine; hovering scrolls it). */
 .msfs-ui-gal__row [name="TitleBlock"] {
   left: calc(var(--u) * 167) !important;
-  right: calc(var(--u) * 42) !important;
+  right: calc(var(--u) * 40) !important;
   overflow: hidden !important;
   top: 0 !important;
   height: 100% !important;
@@ -95,8 +95,8 @@
   align-items: center !important;
   justify-content: flex-start !important;
 }
-/* An aircraft row has no heart (the favourites are liveries): its text goes to the end of the row. */
-.msfs-ui-gal__row.is-without-heart [name="TitleBlock"] { right: calc(var(--u) * 6) !important; }
+/* An aircraft row has no icon (the favourites are liveries): its text goes to the end of the row. */
+.msfs-ui-gal__row.is-without-icon [name="TitleBlock"] { right: calc(var(--u) * 6) !important; }
 .msfs-ui-gal__row [name="Title"] { flex-grow: 0 !important; flex-shrink: 0 !important; width: auto !important; }
 .msfs-ui-gal__row [name="Details"] { margin-left: calc(var(--u) * 6) !important; margin-top: 0 !important; }
 
@@ -116,16 +116,18 @@
  */
 .msfs-ui-gal__tile.has-third-line [name="Distance"] { display: flex !important; }
 
-/* The sim's heart, over the tile in its top right corner. */
-.msfs-ui-gal__heart {
+/* The mod's icon (core/theme.css), over the tile in its top right corner: 20 units on a tile, 22 on a row. */
+.msfs-ui-gal__icon {
   position: absolute;
   top: calc(var(--u) * 6);
   right: calc(var(--u) * 6);
-  width: calc(var(--u) * 30);
-  height: calc(var(--u) * 30);
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
 }
-/* In a list row, at the end of the line and centred in its height, like the text. */
-.msfs-ui-gal__row .msfs-ui-gal__heart { top: calc(50% - var(--u) * 15); }
+.msfs-ui-gal__row .msfs-ui-gal__icon {
+  width: calc(var(--u) * 22);
+  height: calc(var(--u) * 22);
+}
 
 /*
  * Behind the thumbnails, the sim's studio backdrop (colours measured on the sim's own thumbnails, 1.9.18): a few

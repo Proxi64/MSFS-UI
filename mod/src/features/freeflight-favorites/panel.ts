@@ -1,9 +1,10 @@
 // The Favorites block on Free Flight, under the sim's "Search location" field, as wide as the sim's aircraft button:
 // a card like the sim's (background layers, header), its rows in the sim's scrolling list, each row the sim's
-// horizontal tile (as the gallery's list view) with the sim's heart at its end. One row per favourite livery: a click
-// loads the aircraft with it; the heart removes the favourite.
+// horizontal tile (as the gallery's list view) with the mod's bookmark at its end. One row per favourite livery: a click
+// loads the aircraft with it; the bookmark removes the favourite.
 
 import { el, uiUnit } from '../../core/dom.ts';
+import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { panel } from '../../core/theme.ts';
@@ -14,11 +15,6 @@ import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { store, translate, watch } from '../../sim/store.ts';
 import { collectEntries, isCurrentEntry, orderEntries, withoutLivery, type FavoriteEntry } from './entries.ts';
-
-/** The sim's wishlist heart (IconButtonLightWishlistManipulator). */
-interface WishlistManipulator {
-  setData(checked: boolean, callback: (checked: boolean) => void): void;
-}
 
 /** The sim's horizontal marketplace tile: its hover handler reads `item.isOwned` (see the gallery). */
 interface HorizontalTileManipulator {
@@ -37,7 +33,7 @@ interface Row {
   entry: FavoriteEntry;
   host: HTMLElement;
   card: SimComponent | null;
-  heart: SimComponent | null;
+  icon: IconToggle;
 }
 
 const AIRCRAFT_BUTTON = '[name="FreeFlight_AircraftButton"]';
@@ -54,7 +50,7 @@ const LIST_PADDING = 6;
 const EMPTY_HEIGHT = 33;
 /** The use is recorded 1.5 s after a change of aircraft (sim/aircraft-loading.ts): the block is redrawn after it. */
 const REDRAW_AFTER_USE_MS = 1700;
-const EMPTY = 'Add favorites with the heart in aircraft selection.';
+const EMPTY = 'Add favorites with the bookmark in aircraft selection.';
 
 const aircraft = store.Game.Aircraft;
 
@@ -182,15 +178,17 @@ export class FavoritesPanel {
     const host = el('div', 'msfs-ui-fav__row marquee__trigger');
     this.list.appendChild(host);
     this.listItems.push(host);
-    const row: Row = { entry, host, card: null, heart: null };
-    this.rows.push(row);
     const cardHost = el('div', 'msfs-ui-fav__card', host);
-    const heartHost = el('div', 'msfs-ui-fav__heart', host);
-    Promise.all([createComponent(scope, COMPONENTS.horizontalTile, cardHost), createComponent(scope, COMPONENTS.wishlistButton, heartHost)]).then(
-      ([card, heart]) => {
+    const iconHost = el('div', 'msfs-ui-fav__icon', host);
+    // Every row is a favourite: the bookmark is full, and a click removes the favourite.
+    const icon = iconToggle(scope, iconHost, 'favorite', (checked) => (checked ? undefined : this.remove(entry)));
+    icon.set(true);
+    const row: Row = { entry, host, card: null, icon };
+    this.rows.push(row);
+    createComponent(scope, COMPONENTS.horizontalTile, cardHost).then(
+      (card) => {
         if (scope.disposed) return;
         row.card = card;
-        row.heart = heart;
         const horizontal = card.manipulator<HorizontalTileManipulator>();
         if (horizontal) horizontal.item = { isOwned: true, isOwnedBySubscription: false, isFavorite: false };
         card.onClick(scope, () => this.load(row.entry));
@@ -201,7 +199,7 @@ export class FavoritesPanel {
   }
 
   /**
-   * Texts, image, selection and heart of a row: the name in the tile's bold Title, then "variant · livery · tail
+   * Texts, image and selection of a row: the name in the tile's bold Title, then "variant · livery · tail
    * number" in its light Creator line.
    */
   private fillRow(row: Row): void {
@@ -214,8 +212,6 @@ export class FavoritesPanel {
       card.set('Creator', details.filter((part) => !!part.trim()).map((part) => part.trim()).join(' · '));
       card.select(isCurrentEntry(entry, this.current));
     }
-    const heart = row.heart && row.heart.manipulator<WishlistManipulator>();
-    if (heart) heart.setData(true, (checked) => (checked ? undefined : this.remove(row.entry)));
   }
 
   /** Loads the variant, then the row's livery; the block is dimmed meanwhile. */
@@ -232,7 +228,7 @@ export class FavoritesPanel {
       });
   }
 
-  /** The heart unchecked: the favourite livery is removed (its change event redraws the block). */
+  /** The bookmark clicked: the favourite livery is removed (its change event redraws the block). */
   private remove(entry: FavoriteEntry): void {
     saveFavoriteLiveries(withoutLivery(loadFavoriteLiveries(), entry));
   }

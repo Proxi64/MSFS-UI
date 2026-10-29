@@ -1,9 +1,10 @@
 // The setup panel in the aircraft selection, in place of the statistics (left column): variant, liveries as
-// thumbnails (with a heart: favourite liveries, shown first), editable tail number, shortcuts to Fuel and
+// thumbnails (with a bookmark: favourite liveries, shown first), editable tail number, shortcuts to Fuel and
 // Identification. Made of the sim's own components. Everything goes through the sim's configurator
 // (`Game.Aircraft.Configurator`), which the sim already sets on the aircraft chosen in the list; no 3D preview loads.
 
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
+import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
@@ -32,11 +33,6 @@ interface IdentificationField {
   dataName: string;
   value: string;
   allowedLength: number;
-}
-
-/** The sim's wishlist heart (IconButtonLightWishlistManipulator). */
-interface WishlistManipulator {
-  setData(checked: boolean, callback: (checked: boolean) => void): void;
 }
 
 /** The sim's livery button (ImageButtonLiveryManipulator). */
@@ -89,7 +85,8 @@ function launchFlow(event: string): void {
 
 interface LiveryTile {
   button: SimComponent;
-  heart: SimComponent | null;
+  /** The favourite bookmark; a livery without a folder cannot be a favourite and has none. */
+  icon: IconToggle | null;
   host: HTMLElement;
 }
 
@@ -182,7 +179,7 @@ export class SetupPanel {
     watch(scope, configurator.Details, reload);
     watch(scope, aircraft.CurrentAircraft, reload);
     watch<{ identificationInfos?: IdentificationField[] } | null>(scope, aircraft.CurrentIdentification, (identification) => this.onIdentification(identification));
-    // A gallery heart unchecked also removes the aircraft's favourite liveries.
+    // A gallery bookmark removed also removes the aircraft's favourite liveries.
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, reload);
     scope.add(() => clearTimeout(this.reloadTimer));
   }
@@ -481,18 +478,17 @@ export class SetupPanel {
       this.liveriesList.appendChild(host);
       this.liveryHosts.push(host);
       const buttonHost = el('div', 'msfs-ui-setup__thumbnail', host);
-      const heartHost = liveryFolder(livery) ? el('div', 'msfs-ui-setup__heart', host) : null;
+      const iconHost = liveryFolder(livery) ? el('div', 'msfs-ui-setup__icon', host) : null;
+      // The change event redraws this panel (bookmarks) and the gallery; the order of the thumbnails stays.
+      const icon = iconHost ? iconToggle(scope, iconHost, 'favorite', (checked) => setFavoriteLivery(this.state, livery.id, checked)) : null;
       scope.listen(host, 'mouseenter', () => (this.liveryName.textContent = translate(livery.title)));
       scope.listen(host, 'mouseleave', () => (this.liveryName.textContent = this.selectedLiveryTitle));
-      Promise.all([
-        createComponent(scope, COMPONENTS.liveryButton, buttonHost),
-        heartHost ? createComponent(scope, COMPONENTS.wishlistButton, heartHost) : Promise.resolve(null),
-      ]).then(
-        ([button, heart]) => {
+      createComponent(scope, COMPONENTS.liveryButton, buttonHost).then(
+        (button) => {
           if (scope.disposed) return;
           const thumbnail = button.manipulator<LiveryButtonManipulator>();
           if (thumbnail) thumbnail.setData(livery.imageUrl, () => this.chooseLivery(livery.id));
-          const tile = { button, heart, host };
+          const tile = { button, icon, host };
           this.liveryTiles.set(livery.id, tile);
           const current = this.liveries.filter((candidate) => candidate.id === livery.id)[0];
           if (current) this.updateLivery(current, tile, loadFavoriteLiveries());
@@ -510,7 +506,7 @@ export class SetupPanel {
   }
 
   /**
-   * Selection, favourite heart and availability of one thumbnail. ImageButton_Livery has no Disabled state of its
+   * Selection, favourite bookmark and availability of one thumbnail. ImageButton_Livery has no Disabled state of its
    * own: an unavailable livery is dimmed by its host (aircraft-setup.css), and a click on it is ignored.
    */
   private updateLivery(livery: ConfiguratorLivery, tile: LiveryTile, favorites: ReturnType<typeof loadFavoriteLiveries>): void {
@@ -518,9 +514,7 @@ export class SetupPanel {
     toggleClass(tile.host, 'is-disabled', !!livery.isDisabled);
     const favorite = isFavoriteLivery(livery, favorites);
     toggleClass(tile.host, 'is-favorite', favorite);
-    const heart = tile.heart && tile.heart.manipulator<WishlistManipulator>();
-    // The change event redraws this panel (hearts) and the gallery; the order of the thumbnails stays.
-    if (heart) heart.setData(favorite, (checked) => setFavoriteLivery(this.state, livery.id, checked));
+    if (tile.icon) tile.icon.set(favorite);
   }
 
   /** A choice the configurator ignored (not on the current aircraft): the panel reads it again. */

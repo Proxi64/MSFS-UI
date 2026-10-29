@@ -6,6 +6,7 @@
 // of the left column go through the sim's own logic.
 
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
+import { iconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { cellAction, layoutWidth } from '../../core/virtual-list.ts';
@@ -53,11 +54,6 @@ const SORTS: SortChoice[] = [
   { id: 'maxRange', label: () => translate('TT:MENU.ACPROPUI_MAX_RANGE'), sim: 'TT:MENU.ACPROPUI_MAX_RANGE' },
 ];
 
-/** The sim's wishlist heart (IconButtonLightWishlistManipulator). */
-interface WishlistManipulator {
-  setData(checked: boolean, callback: (checked: boolean) => void): void;
-}
-
 /** The sim's dropdown (DropdownManipulator): items are `{ title, selectedCallback }`. */
 interface DropdownItem {
   title: string;
@@ -90,7 +86,6 @@ interface Cell {
   /** Its slot of the pool while near the view (sim/component-pool.ts). */
   slot: PoolSlot<Cell> | null;
   card: SimComponent | null;
-  heart: SimComponent | null;
 }
 
 const MEMORY_KEY = 'AIRCRAFT_GALLERY';
@@ -151,11 +146,11 @@ export class Gallery {
   private readonly viewTabs = new Map<View, SimComponent>();
 
   private items: AircraftItem[] = [];
-  /** Favourite liveries (their hearts: setup panel, livery column, Favorites tiles): an aircraft that has some is a favourite. */
+  /** Favourite liveries (their bookmarks: setup panel, livery column, Favorites tiles): an aircraft that has some is a favourite. */
   private favoriteLiveries: FavoriteLivery[] = loadFavoriteLiveries();
   /**
    * The favourite aircraft put first (`aircraftId`), as they were when the order was set: kept while the screen stays,
-   * so that a heart clicked does not move the tiles; set again on a new sort, search or filter (resetOrder).
+   * so that a bookmark clicked does not move the tiles; set again on a new sort, search or filter (resetOrder).
    */
   private favoriteIds: number[] | null = null;
   private readonly memory: GalleryMemory = loadData<GalleryMemory>(MEMORY_KEY, { view: 'gallery', favoritesOnly: false });
@@ -215,7 +210,7 @@ export class Gallery {
     });
     watch(scope, aircraft.CurrentAircraft, reload);
     scope.add(() => clearTimeout(this.reloadTimer));
-    // Heart of a livery (setup panel, livery column, a Favorites tile): the Favorites tiles may change.
+    // Bookmark of a livery (setup panel, livery column, a Favorites tile): the Favorites tiles may change.
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, () => {
       this.favoriteLiveries = loadFavoriteLiveries();
       if (this.items.length > 0) this.render();
@@ -546,7 +541,7 @@ export class Gallery {
       tiles.length > 0
         ? ''
         : this.memory.favoritesOnly && this.favoriteLiveries.length === 0
-          ? 'No favorites yet: click the heart on a livery.'
+          ? 'No favorites yet: click the bookmark on a livery.'
           : 'No aircraft matches.';
     if (key === this.cellKey && empty === this.cellEmpty) {
       // Same tiles: their texts, images and state are refreshed in place (the set of tiles is unchanged).
@@ -575,7 +570,7 @@ export class Gallery {
       const host = el('div', `${view === 'gallery' ? 'msfs-ui-gal__tile' : 'msfs-ui-gal__row'} marquee__trigger`);
       this.list.appendChild(host);
       this.listItems.push(host);
-      const cell: Cell = { tile, host, slot: null, card: null, heart: null };
+      const cell: Cell = { tile, host, slot: null, card: null };
       scope.listen(host, 'mouseenter', () => this.hover(cell.tile.item));
       scope.listen(host, 'mouseleave', () => this.hover(null));
       this.cells.push(cell);
@@ -619,7 +614,6 @@ export class Gallery {
     const slot = this.slotPool().acquire(cell.host, cell);
     cell.slot = slot;
     cell.card = slot.card;
-    cell.heart = slot.heart;
     if (slot.card) {
       this.fillCell(cell, this.memory.view === 'gallery');
       this.updateCell(cell);
@@ -631,7 +625,6 @@ export class Gallery {
     if (cell.slot && this.pool) this.pool.release(cell.slot);
     cell.slot = null;
     cell.card = null;
-    cell.heart = null;
   }
 
   /** The pool of the current view (aircraft tiles or list rows); another view makes a new one. */
@@ -655,14 +648,16 @@ export class Gallery {
         if ((event as CustomEvent).detail === undefined || (event as CustomEvent).detail === null) event.stopPropagation();
       });
     }
-    Promise.all([
-      createComponent(scope, gallery ? COMPONENTS.fleetTile : COMPONENTS.horizontalTile, slot.cardHost),
-      createComponent(scope, COMPONENTS.wishlistButton, slot.heartHost),
-    ]).then(
-      ([card, heart]) => {
+    // A Favorites tile's bookmark is full: a click removes the favourite livery the tile stands for.
+    slot.icon = iconToggle(scope, slot.iconHost, 'favorite', () => {
+      const cell = slot.item;
+      if (cell && cell.slot === slot && cell.tile.livery) this.removeFavoriteLivery(cell.tile.livery);
+    });
+    slot.icon.set(true);
+    createComponent(scope, gallery ? COMPONENTS.fleetTile : COMPONENTS.horizontalTile, slot.cardHost).then(
+      (card) => {
         if (scope.disposed) return;
         slot.card = card;
-        slot.heart = heart;
         if (this.pool) this.pool.markReady(slot);
         if (!gallery) {
           const horizontal = card.manipulator<HorizontalTileManipulator>();
@@ -678,7 +673,6 @@ export class Gallery {
         const cell = slot.item;
         if (cell && cell.slot === slot) {
           cell.card = card;
-          cell.heart = heart;
           this.fillCell(cell, gallery);
           this.updateCell(cell);
         }
@@ -719,7 +713,7 @@ export class Gallery {
     }
   }
 
-  /** Selection, availability and heart of a tile: only a favourite livery tile has one (it removes the favourite). */
+  /** Selection, availability and bookmark of a tile: only a favourite livery tile has one (it removes the favourite). */
   private updateCell(cell: Cell): void {
     const { item, livery } = cell.tile;
     if (cell.card) {
@@ -728,10 +722,8 @@ export class Gallery {
       toggleClass(cell.host, 'is-selected', selected);
       cell.card.disable(!item.isUsable);
     }
-    if (cell.slot) cell.slot.heartHost.style.display = livery ? '' : 'none';
-    toggleClass(cell.host, 'is-without-heart', !livery);
-    const heart = cell.heart && cell.heart.manipulator<WishlistManipulator>();
-    if (heart && livery) heart.setData(true, () => this.removeFavoriteLivery(livery));
+    if (cell.slot) cell.slot.iconHost.style.display = livery ? '' : 'none';
+    toggleClass(cell.host, 'is-without-icon', !livery);
   }
 
   /** Scrolls to the selected aircraft. */
