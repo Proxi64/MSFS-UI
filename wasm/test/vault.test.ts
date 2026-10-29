@@ -132,6 +132,25 @@ test('refuses stale and oversize saves', { skip }, async () => {
   assert.equal(answers(vault, 'MSFS_UI_VAULT_SAVED')[3], '2\nok');
 });
 
+test('frees the seq of a failed write', { skip }, async () => {
+  const disk = newDisk();
+  const vault = await loadVault(disk);
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_SAVE', '4\nfour');
+  await vault.settle();
+  vault.failWrites = true;
+  vault.send('MSFS_UI_VAULT_SAVE', '5\nfive');
+  await vault.settle();
+  assert.equal(answers(vault, 'MSFS_UI_VAULT_SAVED')[1], '5\nerror 1');
+  vault.send('MSFS_UI_VAULT_LOAD', 'r');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['r\n4\nfour']);
+  vault.failWrites = false;
+  vault.send('MSFS_UI_VAULT_SAVE', '5\nfive');
+  await vault.settle();
+  assert.equal(answers(vault, 'MSFS_UI_VAULT_SAVED')[2], '5\nok');
+  assert.equal(await loadedText(disk), 'q\n5\nfive');
+});
+
 test('answers a LOAD that arrives before the start-up read ends', { skip }, async () => {
   const disk = newDisk();
   const first = await loadVault(disk);

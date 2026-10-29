@@ -147,6 +147,8 @@ static void finishWrite(FsIOErr error) {
     snprintf(status, sizeof status, "error %u", (unsigned)error);
     answerAcks(done->seq, status);
     freeSnapshot(done);
+    // The failed seq is free again: the stale threshold follows what LOAD reports (a queued newer save keeps its own).
+    if (g_queued == nullptr) g_acceptedSeq = g_loaded == nullptr ? 0 : g_loaded->seq;
   }
   if (g_queued != nullptr) startWrite();
 }

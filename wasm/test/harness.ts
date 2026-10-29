@@ -16,6 +16,8 @@ export interface Harness {
   sent: { event: string; text: string }[];
   /** Paths of the files the module wrote (one entry per write that reached the disk). */
   writes: string[];
+  /** While true, every write fails (fsIOWrite answers an error). */
+  failWrites: boolean;
   /** Drops every queued callback: the sim stopped now. */
   crash(): void;
 }
@@ -46,6 +48,7 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
   let nextHandle = 1n;
   let executed = 0;
   let frozen = false;
+  let failWrites = false;
   let exports!: Exports;
 
   const text = (pointer: number, length?: number) => {
@@ -93,6 +96,7 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
     },
     fsIOWrite(handle: bigint, bufferPointer: number, offset: number, count: number, callback: number, user: number) {
       const file = handles.get(handle);
+      if (failWrites) return 1; // FsIOErr_BadParams
       if (file === undefined || !file.writable) return 4; // FsIOErr_FileNotOpened
       const data = new Uint8Array(exports.memory.buffer).slice(bufferPointer, bufferPointer + count);
       enqueue(() => {
@@ -136,6 +140,12 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
   return {
     sent,
     writes,
+    get failWrites() {
+      return failWrites;
+    },
+    set failWrites(value: boolean) {
+      failWrites = value;
+    },
     send(event, message) {
       const callback = callbacks.get(event);
       if (callback === undefined) throw new Error(`no callback registered for ${event}`);
