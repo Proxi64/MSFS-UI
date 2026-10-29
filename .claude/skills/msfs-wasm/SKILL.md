@@ -1,0 +1,61 @@
+---
+name: msfs-wasm
+description: Use when writing, building, packaging, testing or debugging a WebAssembly module for Microsoft Flight Simulator 2024 (standalone module of a Community package, C++ with the MSFS SDK), or when the sim's HTML/JS menu or an external app (SimConnect) must talk to such a module through the CommBus, or read and write files from the sim (MSFS_IO, the \work folder).
+---
+
+# MSFS 2024 WASM modules
+
+## Overview
+
+An MSFS WASM module is **not** a browser or WASI-runtime module: it is C++ compiled with the SDK's own clang fork, loaded by the sim, with no `main`, calling only the APIs of the SDK's `MSFS/*.h` headers. Every fact below comes from the installed SDK (`C:\MSFS 2024 SDK`, 1.8.1, readable through the `msfs-2024-sdk` MCP server: `sdk_read_file`, `sdk_search`) or from the sim's own files; what is only reported is marked **unverified**: measure it before relying on it.
+
+**REQUIRED BACKGROUND:** the project's rules in `CLAUDE.md` (English everywhere, no personal data, every change to the sim reversible, verify by measuring) apply to the module as to the mod.
+
+## When to use
+
+- Adding or changing the module under `wasm/`, its build, or its place in the `msfs-ui` package.
+- The menu mod (`mod/src`) or MSFS-UI-GENERATOR sending to or receiving from the module.
+- A symptom: the module does not load, a CommBus message never arrives, a file is not written, the sim stutters after the module was added.
+
+Not for: the menu mod alone (`mod/README.md`), SimConnect without the CommBus (`SimConnect.h`).
+
+## Quick reference
+
+| Need | Where (SDK) | Key points |
+|---|---|---|
+| Entry points | `WASM/include/MSFS/MSFS.h`, `Legacy/gauges.h` | `extern "C" MSFS_CALLBACK void module_init(void)` and `module_deinit(void)`; `MSFS_CALLBACK` = `__attribute__((visibility("default")))` |
+| Files | `MSFS_IO.h` | All async with callbacks: `fsIOOpen`, `fsIORead`, `fsIOWrite`, `fsIOClose`; flags `RDONLY`, `WRONLY`, `RDWR`, `CREAT`, `TRUNC`; no rename, no delete; `FsIOErr_AccessNotAllowed` outside the package |
+| Messages | `MSFS_CommBus.h` | `fsCommBusRegister(name, cb, ctx)`, `fsCommBusCall(name, buf, size, flags)`; flags `FsCommBusBroadcast_JS`, `_Wasm`, `_WasmSelfCall`, `_SimConnect`, `_Default` (JS + Wasm + SimConnect) |
+| App side | `SimConnect SDK/include/SimConnect.h` | `SimConnect_SubscribeToCommBusEvent(h, eventId, name)`, `SimConnect_CallCommBusEvent(h, name, broadcastTo, size, data)`; received as `SIMCONNECT_RECV_ID_COMM_BUS` (`SIMCONNECT_RECV_COMM_BUS`: `uEventID`, `rgData`) |
+| Menu side | sim: `html_ui/JS/Services/CommBus.js`, `JS/common.js` (`ViewListener`) | Listener `JS_LISTENER_COMM_BUS`; send `Coherent.call("COMM_BUS_WASM_CALLBACK", name, text)` (also `COMM_BUS_SIMCONNECT_CALLBACK`, `COMM_BUS_ALL_CALLBACK`); receive `Coherent.on("EVENT_FROM_VIEW_LISTENER", (listener, event, ...args))`, filtered on the listener's name |
+| Later | `MSFS_Flow.h`, `MSFS_Network.h`, `MSFS_Vars.h`, `MSFS_PlannedRoute.h` | Flight events (load, start, end, crash, back to menu), HTTP GET / POST / PUT, sim variables, the EFB route |
+
+Details, signatures and the build command: [reference.md](reference.md).
+
+## Rules for this project
+
+1. **Zero cost to the sim.** No work per frame, no polling, no busy wait: the module wakes on a CommBus message or an I/O callback only. The menu sends on change only, debounced. Measure the frame time with and without the module.
+2. **Async I/O only**, one operation per file at a time (`FsIOErr_OperationImpossible` otherwise); keep the state in memory, write it after.
+3. **Crash-safe writes**: no rename exists, so write two files alternately (A / B) with a sequence number and a checksum; on load, the newest valid one wins. A write is confirmed to the menu only from its write callback.
+4. **Event names are global** to every module, gauge and app of the sim: prefix every name `MSFS_UI_`.
+5. **Never break the mod**: the menu must work when the module is missing, late or failing (bounded wait, then fallback, logged and shown on the Compatibility page).
+6. **No personal data** in the binary: no absolute paths of the build machine (`-fdebug-prefix-map`, no debug info in release).
+7. **New file in a mounted package = restart of the sim** (`layout.json` is read at start-up); list the `.wasm` in `layout.json` through `PackageBuilder`.
+
+## Common mistakes
+
+| Mistake | Fix |
+|---|---|
+| Following generic WebAssembly advice (wasm-bindgen, wasm-pack, Component Model / WIT, `WebAssembly.instantiate`, WASI Preview 2 runtimes, Rust targets) | None of it applies: the sim loads the module itself and offers only the SDK's imports |
+| Leaving the stack protector on | Build with `/GS-` (clang-cl): otherwise the module imports `__stack_chk_fail`, which the sim does not provide (**unverified**, reported by another mod's author; the SDK's projects set `BufferSecurityCheck` false) |
+| C++ exceptions, RTTI-dependent code, threads | The SDK's projects build with `ExceptionHandling` false and `_LIBCPP_HAS_NO_THREADS`; return error codes |
+| Assuming a CommBus message is delivered, ordered or of any size | Unverified: measure the largest message and keep framing in the protocol (sequence numbers, acknowledgements) |
+| Guessing the `\work` path or the package path seen by `fsIOOpen` | **Unverified** (not in the SDK): measure on Steam and on the Microsoft Store edition before the app relies on it |
+| Testing only in a unit test | The sim is the runtime: install with `msfs-ui-dev install`, restart, check the console and the files, measure |
+
+## Verifying a change
+
+1. Build the module (reference.md), `npm run check` in `mod/`, `dotnet build` / `dotnet test generator/MsfsUi.slnx`.
+2. `msfs-ui-dev install`, then restart the sim (a new or replaced `.wasm` is read at start-up: **unverified** whether a replaced one reloads live).
+3. The module's log lines in the sim's console, the files it wrote, a round trip from the menu with `msfs-ui-dev eval` (store async results in `window.__msfsUiProbe`, read them in a second eval).
+4. Frame time and the menu's 250 ms layout passes, module idle and while writing: no difference beyond noise.

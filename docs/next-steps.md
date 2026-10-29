@@ -15,6 +15,18 @@ Where MSFS-UI stands, and what is suggested next, in order. Each step is present
 - **Version 1.3.0** (2026-10-29), published on flightsim.to by the owner: favourites are liveries (1.10 below), *Side by side* by default (1.11) and the livery rows as wide as their header (1.12); storage on the Microsoft Store edition (1.5) not in it. `release\MSFS-UI-GENERATOR-1.3.0.zip`, 81 MB (the folder: 463 files, 217 MB), SHA-256 `9F1DB6840C35DF449F16634E3C1EA5F880C192B56AAEE889916999ED62C970BA`, every test passed (UI tests included), checked without personal data. Its liveries without a folder have no heart (1.13).
 - **Version 1.3.1** (2026-10-29), built, not published yet: 1.3.0 with a heart on every livery (1.13 below). `release\MSFS-UI-GENERATOR-1.3.1.zip`, 81 MB (the folder: 463 files, 217 MB), SHA-256 `687EE495D1371214F889366314BAC86779ADE83B696ADC7FD8CD64D93A1851F9`, every test passed (UI tests included), checked without personal data. The owner raises the version at each upload to flightsim.to. A provisional number: the owner plans to reorient the project.
 
+## Version 2.0 (planned on 2026-10-29)
+
+The owner's direction: a more professional version (reliable, a richer app, a polished presentation, open to contributors), with WASM. **The first 2.0 must get reliability right**: a standalone WASM module of the `msfs-ui` package keeps the mod's data in a file of its `\work` folder, written to the disk at once, on Steam and on the Microsoft Store edition (it would settle 1.5). Then the app connected to the sim (SimConnect and the CommBus: the user's data shown, edited, exported and imported). Must not happen: the sim slower, even a little. The 1.x data may be lost at the move to 2.0 (the owner's decision). Developed on a branch, published in place of 1.x.
+
+| Step | Content | State |
+|---|---|---|
+| A | The Claude Code skill `msfs-wasm` (`.claude/skills/msfs-wasm`): the SDK's toolchain and APIs, the menu and SimConnect sides of the CommBus, the project's rules for a module, what is still unverified | Done on 2026-10-29 |
+| 0 | Feasibility spike, thrown away: the module loads from the package, the `\work` path on Steam, round trips menu ↔ module and app ↔ menu, the largest message, the cost to the sim; then the Store user tries it | Next |
+| 1 | The WASM vault (2.0-a): the module keeps the data (A / B files, sequence number), `core/storage.ts` keeps its API over an in-memory copy, falls back to `datastorage` when the module does not answer; the package ships the module; a compatibility check | |
+| 2 | The app connected (2.0-b): a SimConnect + CommBus client, the `\work` file read when the sim is closed, a Data page (edit, export / import) | |
+| 3 | Release 2.0.0, then the 2.x list (installer, auto-update, signing, contributor architecture, logbook through `MSFS_Flow`, scenarios, SimBrief) | |
+
 ## 1. Before new features
 
 | # | Step | Why | How |
