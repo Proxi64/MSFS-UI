@@ -187,6 +187,8 @@ The sim's UI engine is Coherent GT, based on an old WebKit. Findings (1.9.18):
 | Mouse | `mousedown`, `mouseup`, `click` reach only elements with `data-input-group`; without it, only hovers | The sim's components carry it |
 | Mouse | On an element without an input group, click and wheel go to the engine: on Free Flight, to the **map under the panel** ("Custom" point, zoom) | `inputLocker` on every panel |
 | Mouse | `pointer-events: none` is inherited: the children of a disabled row no longer receive anything | A disabled row is only dimmed; a busy list is made inactive, never its panel |
+| Mouse | An element laid over a sim component but outside its element takes the component's Hover state away when the pointer is on it (the component gets `mouseleave`) | Put such an element inside the component's own element (as the sim's own WishlistBlock is inside its tile) |
+| Mouse | An element under a parent with `pointer-events: none` inherits it and gets no click | `pointer-events: auto` on the clickable element, `none` on its SVG children |
 | Mouse | A click on the map or the scene sends no `mousedown` to the page | A "click elsewhere" also listens to `mousePressOutsideView` |
 | Wheel | No reliable native scrolling on a plain element; `wheel` bubbles to the `document` | The sim's `<real-scroll direction="y">`, created by the mod, scrolls on the wheel and draws the sim's scroll bar (`currentScroll`, `maxScroll`, `scrollToPosition`, `updateSizes`, `ui-scroll` event; its `.scroll__content` is a plain block) |
 | Keyboard | A plain field receives only `focus`, `keydown`, `input` | The sim's `Search_Input` component |

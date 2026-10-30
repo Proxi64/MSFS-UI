@@ -11,7 +11,7 @@
 - **Hide aircraft**: a slashed eye in the top right corner of every aircraft tile and row hides it from the gallery and the list (the sim's *Default* grid is unchanged). The new **Hidden** filter, left of *Favorites*, shows the hidden aircraft; a click on the eye brings one back. An aircraft with a favourite livery stays in the gallery, darkened.
 - **A bookmark instead of the hearts**: favourite liveries are marked with a bookmark with a star, smaller and in the top right corner, in the livery column, the setup panel, the *Favorites* tiles and the Free Flight block.
 - **The bar split over the two columns** in the side by side layout: search, count, *Hidden* and *Favorites* above the aircraft; sort, direction, *Gallery*, *List* and *Default* above the liveries.
-- **Rows inside their column**: every livery row has the same width as its column, and the texts stop before the corner icon. Clicking *Favorites* scrolls the list back to the top.
+- **Rows inside their column**: every livery row has the same width as its column, and the texts stop before the corner icon. Switching the *Hidden* or *Favorites* filter scrolls the list back to the top.
 
 ## 1.3.1 (2026-10-29)
 

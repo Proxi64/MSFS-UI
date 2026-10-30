@@ -67,6 +67,16 @@ export function keptAircraftIds(frozen: readonly number[] | null, items: readonl
   return kept;
 }
 
+/**
+ * The ids kept so far (`kept`, changed in place) with those of `current` added: a hidden aircraft that was kept veiled
+ * (a favourite at some time since the order was set) stays so when its last favourite livery goes, until the order is
+ * set again (the gallery empties the list then).
+ */
+export function accumulateKept(kept: number[], current: readonly number[]): number[] {
+  for (const id of current) if (kept.indexOf(id) < 0) kept.push(id);
+  return kept;
+}
+
 export interface TileQuery {
   items: readonly AircraftItem[];
   liveries: readonly FavoriteLivery[];

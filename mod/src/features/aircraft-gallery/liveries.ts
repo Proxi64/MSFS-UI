@@ -275,7 +275,7 @@ export class LiveryColumn {
       (card) => {
         if (scope.disposed) return;
         slot.card = card;
-        // The icon goes inside the card: the pointer on it keeps the card hovered (the sim does the same with its heart).
+        // The icon goes inside the card: the pointer on it keeps the card hovered (the sim does the same with its WishlistBlock).
         card.element.appendChild(slot.iconHost);
         if (this.pool) this.pool.markReady(slot);
         if (rows) {

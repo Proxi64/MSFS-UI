@@ -1,4 +1,4 @@
-// The mod's memory of aircraft: favourite liveries (heart of the liveries: setup panel, livery column, Favorites
+// The mod's memory of aircraft: favourite liveries (bookmark of the liveries: setup panel, livery column, Favorites
 // tiles) and the last use of each variant (livery, date). Same storage keys as 0.3.0 (mod/README.md, Data stored in
 // the sim). The favourites are liveries only since 1.3.0: an aircraft is a favourite when one of its liveries is.
 // Aircraft are identified by `variationId` (stable); `aircraftId` may change when an aircraft is installed.

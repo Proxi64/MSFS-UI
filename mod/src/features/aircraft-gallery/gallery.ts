@@ -28,6 +28,7 @@ import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
 import { AIRCRAFT_COLUMNS, aircraftBarEdges, aircraftRowWidth, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
 import {
+  accumulateKept,
   emptyMessage,
   favoriteAircraftIds,
   favoritesFirst,
@@ -200,6 +201,8 @@ export class Gallery {
    * so that a bookmark clicked does not move the tiles; set again on a new sort, search or filter (resetOrder).
    */
   private favoriteIds: number[] | null = null;
+  /** The hidden aircraft shown veiled since the order was set (the union of keptAircraftIds at each drawing): one stays even when its last favourite livery goes. */
+  private keptIds: number[] = [];
   /** The aircraft hidden by the user (their eye): out of the gallery, unless kept veiled for their favourite liveries. */
   private hidden: HiddenAircraft[] = loadHidden();
   /** The aircraft under the mouse (`aircraftId`), whose name the left column's header shows; null: the selected one. */
@@ -448,6 +451,7 @@ export class Gallery {
   /** The favourites put first are taken again at the next drawing (a new sort, search or filter). */
   private resetOrder(): void {
     this.favoriteIds = null;
+    this.keptIds = [];
   }
 
   /** A new order starts from its first aircraft. */
@@ -625,6 +629,7 @@ export class Gallery {
     // hidden aircraft among them stays, veiled, until the order is set again, and one whose livery is bookmarked since
     // shows at once, veiled, in its place (keptAircraftIds).
     if (this.favoriteIds === null && this.items.length > 0) this.favoriteIds = favoriteAircraftIds(this.items, this.favoriteLiveries);
+    accumulateKept(this.keptIds, keptAircraftIds(this.favoriteIds, this.items, this.favoriteLiveries));
     const filter = readFilter(this.memory);
     const search = this.search ? this.search.value : '';
     const shown = visibleTiles({
@@ -633,7 +638,7 @@ export class Gallery {
       favoritesOnly: filter === 'favorites',
       hiddenOnly: filter === 'hidden',
       hidden: this.hidden,
-      keepIds: keptAircraftIds(this.favoriteIds, this.items, this.favoriteLiveries),
+      keepIds: this.keptIds,
       search,
       translate,
     });
@@ -775,7 +780,7 @@ export class Gallery {
         if (scope.disposed) return;
         slot.card = card;
         // The veil and the icons go inside the card, the icons last (above the veil): the pointer on them keeps the
-        // card hovered (the sim does the same with its heart).
+        // card hovered (the sim does the same with its WishlistBlock).
         card.element.appendChild(veil);
         card.element.appendChild(slot.iconHost);
         if (this.pool) this.pool.markReady(slot);
@@ -854,7 +859,6 @@ export class Gallery {
       extras.eye.set(isHidden(this.hidden, item));
       extras.veil.style.display = cell.tile.veiled ? '' : 'none';
     }
-    toggleClass(cell.host, 'is-veiled', !!cell.tile.veiled);
   }
 
   /** Scrolls to the selected aircraft. */

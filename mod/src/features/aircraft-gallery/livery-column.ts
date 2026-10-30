@@ -71,7 +71,8 @@ export function liveryFit(column: number, bar: number, sizes: LiverySizes, count
   const full = height <= listHeight + 0.5;
   const space = full ? column : column - bar - sizes.room;
   const tile = full ? fullTile : liveryTileSize(column - bar, sizes.room, sizes.gap, sizes.banner);
-  return { full, tile, gap: Math.round(space - 2 * tile.width) };
+  // Rounded down when the bar is there (a fractional width): rounding up could make the two tiles wider than the box.
+  return { full, tile, gap: full ? Math.round(space - 2 * tile.width) : Math.floor(space - 2 * tile.width) };
 }
 
 /**

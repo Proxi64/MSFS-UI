@@ -181,7 +181,7 @@ export class FavoritesPanel {
     const cardHost = el('div', 'msfs-ui-fav__card', host);
     const iconHost = el('div', 'msfs-ui-fav__icon', host);
     // Every row is a favourite: the bookmark is full, and a click removes the favourite.
-    const icon = iconToggle(scope, iconHost, 'favorite', (checked) => (checked ? undefined : this.remove(entry)));
+    const icon = iconToggle(scope, iconHost, 'favorite', (checked) => (checked ? undefined : this.remove(row.entry)));
     icon.set(true);
     const row: Row = { entry, host, card: null, icon };
     this.rows.push(row);

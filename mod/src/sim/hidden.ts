@@ -16,7 +16,15 @@ const HIDDEN_AIRCRAFT_KEY = 'HIDDEN_AIRCRAFT';
 export const HIDDEN_AIRCRAFT_CHANGED = 'msfs-ui-hidden-aircraft';
 
 export function loadHidden(): HiddenAircraft[] {
-  return loadData<HiddenAircraft[]>(HIDDEN_AIRCRAFT_KEY, []);
+  // The stored value is not trusted: only the well-formed items are kept (a wrong one would make isHidden throw).
+  const stored: unknown = loadData<unknown>(HIDDEN_AIRCRAFT_KEY, []);
+  if (!Array.isArray(stored)) return [];
+  const list: HiddenAircraft[] = [];
+  for (const item of stored as unknown[]) {
+    const entry = item as Partial<HiddenAircraft> | null;
+    if (entry && typeof entry.displayName === 'string' && typeof entry.creator === 'string') list.push({ displayName: entry.displayName, creator: entry.creator });
+  }
+  return list;
 }
 
 export function saveHidden(list: HiddenAircraft[]): void {

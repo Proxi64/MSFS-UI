@@ -6,6 +6,7 @@ import {
   favoriteAircraftIds,
   favoritesFirst,
   hasFavoriteLivery,
+  accumulateKept,
   keptAircraftIds,
   normalize,
   readFilter,
@@ -109,6 +110,21 @@ describe('hidden aircraft', () => {
     const vision = tiles.filter((tile) => tile.item.variationId === 'sf50-exec')[0];
     assert.ok(vision, 'the hidden aircraft is shown');
     assert.equal(vision.veiled, true);
+  });
+
+  it('keeps a hidden aircraft veiled after its last bookmark goes, until the order is set again', () => {
+    const kept: number[] = [];
+    const bookmarked = [livery('sf50-exec', 'Alpine')];
+    accumulateKept(kept, keptAircraftIds([], ITEMS, bookmarked));
+    // The bookmark is removed: the aircraft stays, veiled.
+    accumulateKept(kept, keptAircraftIds([], ITEMS, []));
+    const vision = query({ liveries: [], keepIds: kept }).filter((tile) => tile.item.variationId === 'sf50-exec')[0];
+    assert.ok(vision, 'the hidden aircraft is still shown');
+    assert.equal(vision.veiled, true);
+    // The order set again: the list is emptied and the aircraft leaves.
+    kept.length = 0;
+    accumulateKept(kept, keptAircraftIds(null, ITEMS, []));
+    assert.equal(query({ liveries: [], keepIds: kept }).some((tile) => tile.item.variationId === 'sf50-exec'), false);
   });
 
   it('keeps the aircraft frozen with the order and those of the favourites now, once each', () => {
@@ -265,6 +281,19 @@ describe('livery column', () => {
     assert.equal(fit.tile.width, Math.floor((701 - 10 - 32 - 16) / 2));
     assert.equal(fit.tile.width * 2 + fit.gap, 701 - 10 - 32);
     assert.ok(fit.gap >= 16 && fit.gap <= 17);
+  });
+
+  it('never makes the two tiles wider than the box when the bar is fractional', () => {
+    // Bar 7.5 units, room 24 units, gap 12 units, at 1080, 1200 and 1600 lines (unit = lines / 1080 x 1... scaled).
+    for (const unit of [1, 1200 / 1080, 1600 / 1080]) {
+      const sized = { room: 24 * unit, gap: 12 * unit, banner: 54 * unit, rowStep: 83 * unit };
+      for (const column of [600, 650.5, 700.25, 733.75, 799]) {
+        const fit = liveryFit(column, 7.5 * unit, sized, 40, false, 300);
+        assert.equal(fit.full, false);
+        const space = column - 7.5 * unit - sized.room;
+        assert.ok(2 * fit.tile.width + fit.gap <= space, `unit ${unit} column ${column}: ${2 * fit.tile.width + fit.gap} > ${space}`);
+      }
+    }
   });
 
   it('decides on the full width, so the tiles cannot swing between the two sizes', () => {

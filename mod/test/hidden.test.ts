@@ -28,6 +28,15 @@ describe('hidden aircraft list', () => {
     assert.equal(isHidden([], vision), false);
   });
 
+  it('ignores a stored value that is not a list of name and publisher', () => {
+    const data = new Map<string, string>();
+    data.set('MSFS_UI_HIDDEN_AIRCRAFT', JSON.stringify([vision, null, 3, { displayName: 'x' }, { displayName: 1, creator: 'y' }, cessna]));
+    (globalThis as { window?: unknown }).window = { datastorage: { getData: (key: string) => data.get(key), setData: () => undefined, deleteData: () => undefined }, top: null };
+    assert.deepEqual(loadHidden(), [vision, cessna]);
+    data.set('MSFS_UI_HIDDEN_AIRCRAFT', '{"a":1}');
+    assert.deepEqual(loadHidden(), []);
+  });
+
   it('saves under MSFS_UI_HIDDEN_AIRCRAFT and sends the event', () => {
     const data = new Map<string, string>();
     const datastorage = {
