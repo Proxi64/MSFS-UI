@@ -27,9 +27,9 @@ import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layout.ts';
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
-import { columnOf, defaultGrid, settleColumn, WheelColumns, type DefaultGrid } from './default-grid.ts';
+import { barColumns, columnOf, defaultGrid, settleColumn, WheelColumns, type DefaultGrid } from './default-grid.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
-import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
+import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, galleryBodyClass, lastColumnSpan, shortCount, splitColumns } from './livery-column.ts';
 import {
   accumulateKept,
   emptyMessage,
@@ -684,8 +684,9 @@ export class Gallery {
     setVariable(style, '--tile-w', `${tile.width}px`);
     setVariable(style, '--tile-image-h', `${tile.image}px`);
     setVariable(style, '--tile-h', `${tile.height}px`);
-    // Side by side, the bar's first part on the aircraft tiles' edges, its second on the livery column.
-    this.layoutBar(halves ? { start: edges, end: { left: halves.left + gap, width: halves.right } } : null, unit);
+    // Side by side, the bar's first part on the aircraft tiles' edges (Hidden and Favorites over the last column), its
+    // second on the livery column.
+    this.layoutBar(halves ? { start: edges, filters: lastColumnSpan(tile, 6 * unit), end: { left: halves.left + gap, width: halves.right } } : null, unit);
     if (halves) {
       const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
       this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
@@ -718,23 +719,103 @@ export class Gallery {
     if (previous && previous.tileWidth + previous.gap !== this.columnStep() && this.listAxis === 'x') {
       this.scrollToColumn(Math.round((this.list.currentScroll || 0) / (previous.tileWidth + previous.gap)));
     }
-    this.layoutBar(null, unit);
+    this.layoutGridBar(grid, unit);
     this.placeLiveries(null);
   }
 
   /**
-   * The bar's two parts, in pixels from the gallery's left edge. Side by side (`split`): the first from the first
-   * aircraft tile's left edge to the last one's right edge (or the rows' edges), not over the scroll bar; the second
-   * above the livery column, from its left edge to its right one (the sort dropdown takes what the other controls
-   * leave, aircraft-gallery.css). Otherwise one line. The count drops its total when the search would be too narrow.
-   * Written only when a value changes (every 250 ms).
+   * The Default view's bar over the grid's columns (`barColumns`): the search and count over the first column,
+   * Hidden, Favorites and the sort dropdown over the middle ones, the sort's direction and the view tabs over the last,
+   * the grid's gap between the parts (aircraft-gallery.css, is-columns). The bar's two elements keep their controls:
+   * the first (search, count, Hidden, Favorites) ends on Favorites, the second begins with the dropdown, whose width
+   * takes it to the middle part's right edge; the tabs share what the direction leaves. Measured widths, written only
+   * when they change. On one line when the columns are too few or too narrow.
    */
-  private layoutBar(split: { start: { left: number; right: number }; end: { left: number; width: number } } | null, unit: number): void {
+  private layoutGridBar(grid: DefaultGrid, unit: number): void {
+    const spans = barColumns(grid, unit);
+    const hidden = this.bar.querySelector<HTMLElement>('.msfs-ui-gal__hidden');
+    const favorites = this.bar.querySelector<HTMLElement>('.msfs-ui-gal__favorites');
+    const sort = this.bar.querySelector<HTMLElement>('.msfs-ui-gal__sort');
+    if (!spans || !hidden || !favorites || !sort) {
+      this.layoutBar(null, unit);
+      return;
+    }
+    if (this.bar.classList.contains('is-split')) toggleClass(this.bar, 'is-split', false);
+    if (!this.bar.classList.contains('is-columns')) toggleClass(this.bar, 'is-columns', true);
+    this.placeFilters(null, unit);
+    // Hidden starts the middle part (the gap before it is its margin): the first element ends with Favorites.
+    const filters = Math.round(favorites.getBoundingClientRect().right - hidden.getBoundingClientRect().left);
+    const startWidth = spans.middle.left + filters;
+    setStyle(this.barStart.style, 'marginLeft', '');
+    setStyle(this.barStart.style, 'width', `${startWidth}px`);
+    setStyle(this.barEnd.style, 'marginLeft', '');
+    setStyle(this.barEnd.style, 'width', `${grid.gridWidth - startWidth}px`);
+    const sortMargin = Math.round(sort.getBoundingClientRect().left - this.barEnd.getBoundingClientRect().left);
+    setStyle(sort.style, 'width', `${Math.max(0, spans.middle.right - startWidth - sortMargin)}px`);
+    // The tabs in whole pixels after the direction, the last one taking the rest: shared by the engine, they ended a
+    // pixel past the last column (measured at 3440 x 1440, 2026-10-30).
+    const reverse = this.bar.querySelector<HTMLElement>('.msfs-ui-gal__reverse');
+    const tabs = Array.prototype.slice.call(this.bar.querySelectorAll('.msfs-ui-gal__view')) as HTMLElement[];
+    if (reverse && tabs.length > 0) {
+      const margin = Math.round(6 * unit);
+      const room = Math.floor(this.bar.getBoundingClientRect().left + spans.last.right - reverse.getBoundingClientRect().right) - tabs.length * margin;
+      const each = Math.floor(room / tabs.length);
+      tabs.forEach((tab, at) => {
+        setStyle(tab.style, 'marginLeft', `${margin}px`);
+        setStyle(tab.style, 'width', `${at === tabs.length - 1 ? room - each * (tabs.length - 1) : each}px`);
+      });
+    }
+    this.fitCount(unit);
+  }
+
+  /**
+   * The bar's two parts, in pixels from the gallery's left edge. Side by side (`split`): the first from the first
+   * aircraft tile's left edge to the last one's right edge (or the rows' edges), not over the scroll bar, Hidden and
+   * Favorites over the last column of tiles (`filters`, placeFilters) and the search and count over the others; the
+   * second above the livery column, from its left edge to its right one (the sort dropdown takes what the other
+   * controls leave, aircraft-gallery.css). Otherwise one line. The count drops its total when the search would be too
+   * narrow. Written only when a value changes (every 250 ms).
+   */
+  private layoutBar(
+    split: { start: { left: number; right: number }; filters: { left: number; right: number; gap: number }; end: { left: number; width: number } } | null,
+    unit: number,
+  ): void {
     if (this.bar.classList.contains('is-split') !== !!split) toggleClass(this.bar, 'is-split', !!split);
+    if (this.bar.classList.contains('is-columns')) toggleClass(this.bar, 'is-columns', false);
+    // What the Default view's bar writes (layoutGridBar) goes back to the CSS.
+    const sort = this.bar.querySelector<HTMLElement>('.msfs-ui-gal__sort');
+    if (sort) setStyle(sort.style, 'width', '');
+    Array.prototype.forEach.call(this.bar.querySelectorAll('.msfs-ui-gal__view'), (tab: HTMLElement) => {
+      setStyle(tab.style, 'marginLeft', '');
+      setStyle(tab.style, 'width', '');
+    });
     setStyle(this.barStart.style, 'marginLeft', split ? `${split.start.left}px` : '');
     setStyle(this.barStart.style, 'width', split ? `${split.start.right - split.start.left}px` : '');
     setStyle(this.barEnd.style, 'marginLeft', split ? `${split.end.left - split.start.right}px` : '');
     setStyle(this.barEnd.style, 'width', split ? `${split.end.width}px` : '');
+    this.placeFilters(split ? { width: split.filters.right - split.filters.left, gap: split.filters.gap } : null, unit);
+    this.fitCount(unit);
+  }
+
+  /**
+   * Hidden and Favorites side by side in `width` pixels, `gap` pixels after the count (the tiles' gap): they end the
+   * bar's first part, so the search and count fill the columns before. Halves of the width in whole pixels, Favorites
+   * taking the rest; null: their CSS widths and margins.
+   */
+  private placeFilters(span: { width: number; gap: number } | null, unit: number): void {
+    const hidden = this.bar.querySelector<HTMLElement>('.msfs-ui-gal__hidden');
+    const favorites = this.bar.querySelector<HTMLElement>('.msfs-ui-gal__favorites');
+    if (!hidden || !favorites) return;
+    const margin = Math.round(6 * unit);
+    const half = span ? Math.floor((span.width - margin) / 2) : 0;
+    setStyle(hidden.style, 'marginLeft', span ? `${span.gap}px` : '');
+    setStyle(hidden.style, 'width', span ? `${half}px` : '');
+    setStyle(favorites.style, 'marginLeft', span ? `${margin}px` : '');
+    setStyle(favorites.style, 'width', span ? `${span.width - margin - half}px` : '');
+  }
+
+  /** The count drops its total when the search would be too narrow (written only when it changes). */
+  private fitCount(unit: number): void {
     const shortNow = this.count.classList.contains('is-short');
     const room = this.searchHost.getBoundingClientRect().width + this.count.getBoundingClientRect().width;
     // The total's width as measured in the line: out of the flow its leading space collapses (6 pixels less), which

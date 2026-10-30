@@ -73,9 +73,23 @@
 .msfs-ui-setup__livery:hover .msfs-ui-setup__icon,
 .msfs-ui-setup__livery.is-favorite .msfs-ui-setup__icon { opacity: 1; }
 
-/* Tail number: title on the left, the sim's field on the right. */
-.msfs-ui-setup__tail { padding-right: calc(var(--u) * 3); margin-top: auto; }
-.msfs-ui-setup__field { position: relative; width: 45%; height: calc(var(--u) * 30); }
+/*
+ * Tail number: title on the left, the sim's field on the right; in the colours of the sim's "Configure your aircraft"
+ * tile under it (the owner's choice, 2026-10-30; measured on 1.9.21: its Gradient, rgb(59, 132, 235) to rgb(20, 72, 147)
+ * at 165 degrees, at 80 %).
+ */
+.msfs-ui-setup__tail {
+  padding-right: calc(var(--u) * 3);
+  margin-top: auto;
+  background-image: linear-gradient(165deg, rgba(59, 132, 235, 0.8) 0%, rgba(20, 72, 147, 0.8) 100%);
+}
+/*
+ * The sim's text field, in the colours of the gallery's search (the owner's choice, 2026-10-30): both are the same
+ * component, whose background is translucent; the search shows the screen behind it, so the field gets that screen's
+ * colour under it instead of the row's blue (sampled on the owner's screenshot around the search, 3440 x 1440: from
+ * rgb(72, 81, 98) to rgb(83, 91, 103)).
+ */
+.msfs-ui-setup__field { position: relative; width: 45%; height: calc(var(--u) * 30); background-color: rgb(76, 86, 100); }
 
 /* Fuel and Identification. */
 .msfs-ui-setup__actions { display: flex; flex-shrink: 0; }

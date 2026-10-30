@@ -31,7 +31,19 @@
 .msfs-ui-gal__bar-start { flex-grow: 1; flex-shrink: 1; min-width: 0; }
 .msfs-ui-gal__bar-end { flex-shrink: 0; }
 .msfs-ui-gal__bar.is-split .msfs-ui-gal__bar-start { flex-grow: 0; flex-shrink: 0; }
+/* Side by side: the count ends on the second-to-last column of tiles, Hidden starts the last (gallery.ts placeFilters). */
+.msfs-ui-gal__bar.is-split .msfs-ui-gal__count { margin-right: 0; }
 .msfs-ui-gal__bar.is-split .msfs-ui-gal__sort { flex-grow: 1; flex-shrink: 1; flex-basis: 0px; width: auto; min-width: 0; margin-left: 0; }
+/*
+ * Default view (is-columns, gallery.ts layoutGridBar): the search and count over the first column, Hidden, Favorites
+ * and the sort dropdown over the middle ones, the direction and the tabs over the last; the grid's gap before Hidden
+ * and before the direction. The two elements', the dropdown's and the tabs' widths are written in whole pixels.
+ */
+.msfs-ui-gal__bar.is-columns .msfs-ui-gal__bar-start,
+.msfs-ui-gal__bar.is-columns .msfs-ui-gal__bar-end { flex-grow: 0; flex-shrink: 0; }
+.msfs-ui-gal__bar.is-columns .msfs-ui-gal__count { margin-right: 0; }
+.msfs-ui-gal__bar.is-columns .msfs-ui-gal__hidden,
+.msfs-ui-gal__bar.is-columns .msfs-ui-gal__reverse { margin-left: var(--grid-gap); }
 .msfs-ui-gal__control { position: relative; flex-shrink: 0; height: calc(var(--u) * 30); margin-left: calc(var(--u) * 6); }
 .msfs-ui-gal__search { flex-grow: 1; flex-shrink: 1; margin-left: 0; }
 .msfs-ui-gal__count { position: relative; margin: 0 calc(var(--u) * 6) 0 calc(var(--u) * 12); opacity: 0.75; flex-shrink: 0; white-space: nowrap; }
@@ -221,7 +233,11 @@
  * (--tile-w, --tile-h, --tile-image-h: the thumbnails' ratio, two lines of text), two per row, 12 units apart.
  */
 .msfs-ui-gal__liveries { position: absolute; display: flex; flex-direction: column; pointer-events: auto; }
-.msfs-ui-gal__livery-header { flex-shrink: 0; margin-bottom: calc(var(--u) * 6); }
+/*
+ * The header as far from the tiles under it as from the bar's controls above it (the owner's wish, 2026-10-30): the
+ * controls end 3 units inside their 36-unit bar, which keeps 12 units under it (measured: 20 pixels at 1440 lines).
+ */
+.msfs-ui-gal__livery-header { flex-shrink: 0; margin-bottom: calc(var(--u) * 15); }
 .msfs-ui-gal__livery-name { margin-left: calc(var(--u) * 12); flex-grow: 1; overflow: hidden; text-align: right; }
 .msfs-ui-gal__livery-list { position: relative; flex-grow: 1; min-height: 0; }
 .msfs-ui-gal__livery-list .scroll__content {

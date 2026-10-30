@@ -85,6 +85,39 @@ export class WheelColumns {
   }
 }
 
+/** A part of the bar, in pixels from the grid's left edge. */
+export interface BarSpan {
+  left: number;
+  right: number;
+}
+
+/**
+ * Narrowest room for Hidden, Favorites and the sort dropdown, in units: the two buttons (114 and 130, the gallery's
+ * CSS), the margin between them and before the dropdown (6 each), and 100 for the dropdown's title.
+ */
+const MIDDLE_MIN_UNITS = 114 + 6 + 130 + 6 + 100;
+/**
+ * Narrowest room for the sort's direction (30) and the three view tabs (6 before each), in units: 70 for a tab, room
+ * for its label ("Gallery", "List", "Default"), its padding and the selected tab's corner tick.
+ */
+const LAST_MIN_UNITS = 30 + 3 * (6 + 70);
+
+/**
+ * The bar of the Default view over the grid's columns (the owner's wish, 2026-10-30): the search and count over the
+ * first column, Hidden, Favorites and the sort dropdown over the middle ones, the sort's direction and the view tabs
+ * over the last; each part from its columns' left edge to their right one. Null under three columns, or when the
+ * middle or last part would be too narrow for its controls: the bar then stays on one line.
+ */
+export function barColumns(grid: DefaultGrid, unit: number): { first: BarSpan; middle: BarSpan; last: BarSpan } | null {
+  if (grid.columns < 3) return null;
+  const step = grid.tileWidth + grid.gap;
+  const lastLeft = (grid.columns - 1) * step;
+  const middle = { left: step, right: lastLeft - grid.gap };
+  const last = { left: lastLeft, right: grid.gridWidth };
+  if (middle.right - middle.left < MIDDLE_MIN_UNITS * unit || last.right - last.left < LAST_MIN_UNITS * unit) return null;
+  return { first: { left: 0, right: grid.tileWidth }, middle, last };
+}
+
 /** The place of a tile in the Default view's grid: column-major, as the sim (tiles 0 and 1 in column 0). */
 export function columnOf(index: number): { column: number; row: 0 | 1 } {
   return { column: Math.floor(index / 2), row: index % 2 === 0 ? 0 : 1 };

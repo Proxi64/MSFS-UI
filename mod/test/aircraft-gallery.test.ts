@@ -16,7 +16,7 @@ import {
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { aircraftEdges, aircraftRowWidth, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
+import { aircraftEdges, aircraftRowWidth, lastColumnSpan, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
@@ -329,6 +329,13 @@ describe('gallery bar and rows', () => {
     assert.deepEqual(aircraftEdges({ columns: 3, width: 322 }, 8, 1016), { left: 8, right: 1006, rowRight: 1006 });
     // A short list whose tiles take the scroll bar's room: the rows stop before it.
     assert.deepEqual(aircraftEdges({ columns: 3, width: 328 }, 8, 1016), { left: 8, right: 1024, rowRight: 1016 });
+  });
+
+  it('gives the last column of tiles, where Hidden and Favorites stand', () => {
+    // Measured at 1440 lines (8 px margins, tiles 322 px): the last tile from 684 to 1006, 16 px after the second one.
+    assert.deepEqual(lastColumnSpan({ columns: 3, width: 322 }, 8), { left: 684, right: 1006, gap: 16 });
+    // Fractional margins (1200 lines: 6.67 px) still give whole pixels.
+    assert.deepEqual(lastColumnSpan({ columns: 3, width: 268 }, 6 * (1200 / 1080)), { left: 569, right: 837, gap: 13 });
   });
 
   it('gives the aircraft rows the same width whether the list scrolls or not', () => {

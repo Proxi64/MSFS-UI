@@ -88,6 +88,18 @@ export function aircraftEdges(tile: { columns: number; width: number }, margin: 
 }
 
 /**
+ * The last column of the aircraft tiles, in pixels from the list's left edge (`columns` tiles `width` wide, `margin` on
+ * each side, as `aircraftEdges`), and the gap before it (from the previous column's right edge): Hidden and Favorites
+ * stand over it, the search and the count over the columns before it (the owner's wish, 2026-10-30).
+ */
+export function lastColumnSpan(tile: { columns: number; width: number }, margin: number): { left: number; right: number; gap: number } {
+  const pitch = tile.width + 2 * margin;
+  const left = Math.round((tile.columns - 1) * pitch + margin);
+  const previousRight = Math.round((tile.columns - 1) * pitch - margin);
+  return { left, right: Math.round(tile.columns * pitch - margin), gap: left - previousRight };
+}
+
+/**
  * The tail number of a livery as the mod would apply it (features/tail-number.ts): the one chosen for it, the
  * `atc_id` of its livery.cfg, a registration in its name; '' when none fits the field.
  */

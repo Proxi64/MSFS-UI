@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2 (in progress)
+
+- **The bar over the tiles**: in the Default view, the search over the first column, Hidden, Favorites and the sort over the middle one(s), the sort's direction and the views over the last; in Gallery and List (side by side), Hidden and Favorites over the last column of tiles, the search over the others.
+- **Headers in the tiles' blue**: every section header of the mod (setup panel, livery column, Free Flight favourites, weather bar) takes the colour of a tile's text banner; the tail number row the colour of the sim's *Configure your aircraft* tile, its field the search's.
+- **The livery header** as far from the tiles under it as from the controls above it.
+
 ## 2.0.1 (2026-10-30)
 
 - **Favourites kept at every start.** At some starts, the sim never finished a file read of the `msfs-ui.wasm` module: the module stayed silent, and the mod fell back to the sim's storage for the whole session (favourites not saved, or gone at the next start). The module now reads its files again when that happens (but not while a slow start is still reading), and the mod moves to the module as soon as it answers, with the changes made meanwhile, unless the module holds newer ones (those are kept).

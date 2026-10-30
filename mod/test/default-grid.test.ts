@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { columnOf, defaultGrid, settleColumn, WheelColumns } from '../src/features/aircraft-gallery/default-grid.ts';
+import { barColumns, columnOf, defaultGrid, settleColumn, WheelColumns } from '../src/features/aircraft-gallery/default-grid.ts';
 
 describe('default grid', () => {
   it('sizes the owner\'s screen: three columns, the banner over its three lines', () => {
@@ -81,5 +81,25 @@ describe('WheelColumns', () => {
     assert.equal(wheel.add(3, 1), 1);
     assert.equal(wheel.add(-1, 2), -1);
     assert.equal(wheel.add(0, 0), 0);
+  });
+});
+
+describe('barColumns', () => {
+  const unit = 1440 / 1080;
+  it("puts the bar's three parts over the owner's three columns", () => {
+    // Measured on the owner's screen (3440 x 1440): 3 columns of 516 pixels, 32 apart, 1612 in all.
+    const grid = { columns: 3, tileWidth: 516, tileHeight: 404, imageHeight: 246, gap: 32, gridWidth: 1612 };
+    assert.deepEqual(barColumns(grid, unit), { first: { left: 0, right: 516 }, middle: { left: 548, right: 1064 }, last: { left: 1096, right: 1612 } });
+  });
+
+  it('gives the middle part every column between the first and the last', () => {
+    const grid = { columns: 4, tileWidth: 379, tileHeight: 404, imageHeight: 181, gap: 32, gridWidth: 1612 };
+    assert.deepEqual(barColumns(grid, unit), { first: { left: 0, right: 379 }, middle: { left: 411, right: 1201 }, last: { left: 1233, right: 1612 } });
+  });
+
+  it('keeps one line under three columns, or when a part is too narrow for its controls', () => {
+    assert.equal(barColumns({ columns: 2, tileWidth: 791, tileHeight: 404, imageHeight: 377, gap: 32, gridWidth: 1614 }, unit), null);
+    // 300 pixels at one pixel per unit: under the 356 units of Hidden, Favorites and the dropdown.
+    assert.equal(barColumns({ columns: 3, tileWidth: 300, tileHeight: 300, imageHeight: 143, gap: 24, gridWidth: 948 }, 1), null);
   });
 });
