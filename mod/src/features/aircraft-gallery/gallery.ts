@@ -26,7 +26,7 @@ import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layou
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
-import { AIRCRAFT_COLUMNS, aircraftRowWidth, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
+import { AIRCRAFT_COLUMNS, aircraftBarEdges, aircraftRowWidth, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
 import {
   emptyMessage,
   favoriteAircraftIds,
@@ -162,6 +162,8 @@ export class Gallery {
    */
   private readonly barStart = el('div', 'msfs-ui-gal__bar-part msfs-ui-gal__bar-start', this.bar);
   private readonly barEnd = el('div', 'msfs-ui-gal__bar-part msfs-ui-gal__bar-end', this.bar);
+  /** The search's host, first in the bar: it takes what the other controls leave (its width decides the count's form). */
+  private readonly searchHost = el('div', 'msfs-ui-gal__control msfs-ui-gal__search', this.barStart);
   /** The count, "shown / total": the total goes when the search would be too narrow (layoutBar). */
   private readonly count = el('span', 'msfs-ui-gal__count');
   private readonly countShown = el('span', '', this.count);
@@ -295,8 +297,8 @@ export class Gallery {
 
   private build(): void {
     this.root.appendChild(this.bar);
-    const component = (guid: ComponentGuid, className: string, attributes: Record<string, string>, onReady: (created: SimComponent) => void) => {
-      const host = el('div', `msfs-ui-gal__control ${className}`, className.indexOf('msfs-ui-gal__filter') >= 0 ? this.barStart : this.barEnd);
+    const component = (part: HTMLElement, guid: ComponentGuid, className: string, attributes: Record<string, string>, onReady: (created: SimComponent) => void) => {
+      const host = el('div', `msfs-ui-gal__control ${className}`, part);
       createComponent(this.scope, guid, host, attributes).then(
         (created) => {
           if (this.scope.disposed) return;
@@ -308,8 +310,7 @@ export class Gallery {
       return host;
     };
 
-    const searchHost = el('div', 'msfs-ui-gal__control msfs-ui-gal__search', this.barStart);
-    createTextField(this.scope, searchHost, {
+    createTextField(this.scope, this.searchHost, {
       placeholder: 'Search: name, manufacturer, variant',
       onChange: () => {
         this.resetOrder();
@@ -323,23 +324,23 @@ export class Gallery {
     this.barStart.appendChild(this.count);
 
     // Hidden and Favorites, each with the mod's icon before its text; never both on.
-    component(COMPONENTS.textButtonSmall, 'msfs-ui-gal__filter msfs-ui-gal__hidden', { Text: 'Hidden' }, (button) => {
+    component(this.barStart, COMPONENTS.textButtonSmall, 'msfs-ui-gal__filter msfs-ui-gal__hidden', { Text: 'Hidden' }, (button) => {
       this.hiddenButton = button;
       labelIcon(button, EYE_SLASH_SVG);
       button.onClick(this.scope, () => this.setFilter('hidden'));
     });
-    component(COMPONENTS.textButtonSmall, 'msfs-ui-gal__filter msfs-ui-gal__favorites', { Text: 'Favorites' }, (button) => {
+    component(this.barStart, COMPONENTS.textButtonSmall, 'msfs-ui-gal__filter msfs-ui-gal__favorites', { Text: 'Favorites' }, (button) => {
       this.favoritesButton = button;
       labelIcon(button, BOOKMARK_SVG);
       button.onClick(this.scope, () => this.setFilter('favorites'));
     });
-    component(COMPONENTS.dropdown, 'msfs-ui-gal__sort', {}, (dropdown) => {
+    component(this.barEnd, COMPONENTS.dropdown, 'msfs-ui-gal__sort', {}, (dropdown) => {
       this.sortDropdown = dropdown;
       const manipulator = dropdown.manipulator<DropdownManipulator>();
       if (manipulator) manipulator.setEmptyTitle(translate('TT:GENERIC.SORT_BY'));
       this.renderSort();
     });
-    component(COMPONENTS.iconButtonSquared, 'msfs-ui-gal__reverse', { Icon: SORT_ICON }, (button) => {
+    component(this.barEnd, COMPONENTS.iconButtonSquared, 'msfs-ui-gal__reverse', { Icon: SORT_ICON }, (button) => {
       this.reverseButton = button;
       button.onClick(this.scope, () => {
         if (!this.memory.sort) return;
@@ -353,7 +354,7 @@ export class Gallery {
       });
     });
     for (const { view, label } of VIEWS) {
-      component(COMPONENTS.textTab, 'msfs-ui-gal__view', { Text: label }, (tab) => {
+      component(this.barEnd, COMPONENTS.textTab, 'msfs-ui-gal__view', { Text: label }, (tab) => {
         this.viewTabs.set(view, tab);
         tab.onClick(this.scope, () => this.setView(view));
       });
@@ -497,7 +498,6 @@ export class Gallery {
     const halves = this.liveryColumn && !stock ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, 6 * unit) : null;
     toggleClass(this.body, 'is-side-by-side', !!halves);
     this.body.style.width = halves ? `${halves.left}px` : '';
-    this.layoutBar(halves, gap, unit);
     // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
     // before the scroll bar, and less the bar's own width when the tiles do not fit without it (core/virtual-list.ts:
     // decided on the full width, so the bar cannot make the tiles swing between two sizes).
@@ -527,6 +527,9 @@ export class Gallery {
     setVariable(style, '--tile-w', `${tile.width}px`);
     setVariable(style, '--tile-image-h', `${tile.image}px`);
     setVariable(style, '--tile-h', `${tile.height}px`);
+    // Side by side, the bar's first part on the aircraft tiles (or rows), its second on the livery column.
+    const edges = aircraftBarEdges(this.memory.view, tile, 6 * unit, rowWidth);
+    this.layoutBar(halves ? { start: edges, end: { left: halves.left + gap, width: halves.right } } : null, unit);
     if (halves) {
       const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
       this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
@@ -536,19 +539,21 @@ export class Gallery {
   }
 
   /**
-   * The bar's two parts. Side by side: the first above the aircraft column, as wide; the second above the livery
-   * column, from its left edge to its right one (the sort dropdown takes what the other controls leave,
-   * aircraft-gallery.css). Otherwise one line. The count drops its total when the search would be too narrow.
+   * The bar's two parts, in pixels from the gallery's left edge. Side by side (`split`): the first from the first
+   * aircraft tile's left edge to the last one's right edge (or the rows' edges), not over the scroll bar; the second
+   * above the livery column, from its left edge to its right one (the sort dropdown takes what the other controls
+   * leave, aircraft-gallery.css). Otherwise one line. The count drops its total when the search would be too narrow.
+   * Written only when a value changes (every 250 ms).
    */
-  private layoutBar(halves: { left: number; right: number } | null, gap: number, unit: number): void {
-    toggleClass(this.bar, 'is-split', !!halves);
-    this.barStart.style.width = halves ? `${halves.left}px` : '';
-    this.barEnd.style.width = halves ? `${halves.right}px` : '';
-    this.barEnd.style.marginLeft = halves ? `${gap}px` : '';
-    const search = this.barStart.querySelector('.msfs-ui-gal__search');
-    if (!search || this.memory.view === 'stock') return;
+  private layoutBar(split: { start: { left: number; right: number }; end: { left: number; width: number } } | null, unit: number): void {
+    if (this.bar.classList.contains('is-split') !== !!split) toggleClass(this.bar, 'is-split', !!split);
+    setStyle(this.barStart.style, 'marginLeft', split ? `${split.start.left}px` : '');
+    setStyle(this.barStart.style, 'width', split ? `${split.start.right - split.start.left}px` : '');
+    setStyle(this.barEnd.style, 'marginLeft', split ? `${split.end.left - split.start.right}px` : '');
+    setStyle(this.barEnd.style, 'width', split ? `${split.end.width}px` : '');
+    if (this.memory.view === 'stock') return;
     const shortNow = this.count.classList.contains('is-short');
-    const room = search.getBoundingClientRect().width + this.count.getBoundingClientRect().width;
+    const room = this.searchHost.getBoundingClientRect().width + this.count.getBoundingClientRect().width;
     // The total's width as measured in the line: out of the flow its leading space collapses (6 pixels less), which
     // would make the count swing between its two forms at the edge.
     if (!shortNow) this.countTotalWidth = this.countTotal.getBoundingClientRect().width;
@@ -918,6 +923,11 @@ export class Gallery {
   private saveMemory(): void {
     saveData(MEMORY_KEY, this.memory);
   }
+}
+
+/** Sets a style property only when its value changes. */
+function setStyle(style: CSSStyleDeclaration, property: 'marginLeft' | 'width', value: string): void {
+  if (style[property] !== value) style[property] = value;
 }
 
 /**

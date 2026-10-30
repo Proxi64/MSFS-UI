@@ -15,7 +15,7 @@ import {
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { aircraftRowWidth, galleryBodyClass, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
+import { aircraftBarEdges, aircraftRowWidth, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
@@ -249,6 +249,35 @@ describe('livery column', () => {
     assert.deepEqual(liveryTileSize(799, 32, 16, 72), { width: 375, imageHeight: 179, height: 251 });
   });
 
+  // 3440 x 1440: the column 700 px, its bar 10 px, room 24 units = 32 px, gap 12 units = 16 px, banner 72 px, rows 83 units.
+  const sizes = { room: 32, gap: 16, banner: 72, rowStep: 110.67 };
+
+  it('fills the column with its two tiles when the list does not scroll', () => {
+    const fit = liveryFit(700, 10, sizes, 4, false, 816);
+    assert.equal(fit.full, true);
+    assert.equal(fit.tile.width * 2 + fit.gap, 700, 'the second tile ends on the column edge');
+    assert.equal(fit.gap, 16);
+  });
+
+  it('keeps the bar and its room when the tiles scroll, the gap taking the odd pixel', () => {
+    const fit = liveryFit(701, 10, sizes, 8, false, 816);
+    assert.equal(fit.full, false);
+    assert.equal(fit.tile.width, Math.floor((701 - 10 - 32 - 16) / 2));
+    assert.equal(fit.tile.width * 2 + fit.gap, 701 - 10 - 32);
+    assert.ok(fit.gap >= 16 && fit.gap <= 17);
+  });
+
+  it('decides on the full width, so the tiles cannot swing between the two sizes', () => {
+    // Full-width tiles of 342 px are 235 high: two rows of 251 fit 502, not 500; narrower ones would, but are not used.
+    const fit = liveryFit(700, 10, sizes, 4, false, 500);
+    assert.equal(fit.full, false);
+  });
+
+  it('lets List rows fit without the bar', () => {
+    assert.equal(liveryFit(700, 10, sizes, 7, true, 816).full, true);
+    assert.equal(liveryFit(700, 10, sizes, 8, true, 816).full, false);
+  });
+
   it('shows the tail number the mod would apply', () => {
     assert.equal(liveryTail('F-TEST', 'VH-OZG', 'Qantas VH-ABC', 9), 'F-TEST');
     assert.equal(liveryTail(undefined, 'VH-OZG', 'Qantas VH-ABC', 9), 'VH-OZG');
@@ -263,6 +292,13 @@ describe('gallery bar and rows', () => {
     assert.equal(shortCount(700, 100, 320), false);
     assert.equal(shortCount(420, 100, 320), false);
     assert.equal(shortCount(419, 100, 320), true);
+  });
+
+  it('puts the bar of the aircraft column on its tiles or rows', () => {
+    // Three tiles of 322 px with 8 px each side: from the first tile's left to the last one's right.
+    assert.deepEqual(aircraftBarEdges('gallery', { columns: 3, width: 322 }, 8, 1016), { left: 8, right: 1006 });
+    // Rows start on the list's edge and are rowWidth wide.
+    assert.deepEqual(aircraftBarEdges('list', { columns: 3, width: 322 }, 8, 1016), { left: 0, right: 1016 });
   });
 
   it('gives the aircraft rows the same width whether the list scrolls or not', () => {

@@ -74,7 +74,7 @@ export interface TileQuery {
   /** The Hidden view: only the hidden aircraft (never together with `favoritesOnly`). */
   hiddenOnly: boolean;
   hidden: readonly HiddenAircraft[];
-  /** `aircraftId`s shown although hidden, veiled (the gallery passes its frozen favourite ids). */
+  /** `aircraftId`s shown although hidden, veiled (the gallery passes keptAircraftIds: its frozen ids and the favourites of now). */
   keepIds: readonly number[];
   search: string;
   /** Translation of the sim's keys (variant and livery titles may be `TT:` keys). */

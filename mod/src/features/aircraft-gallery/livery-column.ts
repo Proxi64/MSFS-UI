@@ -50,6 +50,40 @@ export function liveryTileSize(column: number, room: number, gap: number, banner
   return { width, imageHeight, height: imageHeight + Math.round(banner) };
 }
 
+/** Sizes of the livery column, in pixels: room kept for the scroll bar, gap between two tiles, text banner, List row and its gap. */
+export interface LiverySizes {
+  room: number;
+  gap: number;
+  banner: number;
+  rowStep: number;
+}
+
+/**
+ * The livery column's tiles (`count` of them; `rows`: the List view) in a column `column` wide over a list
+ * `listHeight` high. When they fit at the full width (`full`), they fill it to its right edge, as the header: no room
+ * kept for a bar that does not show. Otherwise the bar (`bar` wide) and its room are kept. Decided on the full width
+ * only (core/virtual-list.ts: narrower tiles are shorter and would make the list fit again). `gap`: the space between
+ * the two tiles of a row, in whole pixels, so that the second one ends on the edge (the odd pixel goes to it).
+ */
+export function liveryFit(column: number, bar: number, sizes: LiverySizes, count: number, rows: boolean, listHeight: number): { full: boolean; tile: { width: number; imageHeight: number; height: number }; gap: number } {
+  const fullTile = liveryTileSize(column, 0, sizes.gap, sizes.banner);
+  const height = rows ? count * sizes.rowStep : Math.ceil(count / LIVERY_COLUMNS) * (fullTile.height + sizes.gap);
+  const full = height <= listHeight + 0.5;
+  const space = full ? column : column - bar - sizes.room;
+  const tile = full ? fullTile : liveryTileSize(column - bar, sizes.room, sizes.gap, sizes.banner);
+  return { full, tile, gap: Math.round(space - 2 * tile.width) };
+}
+
+/**
+ * Where the bar of the aircraft column starts and ends, in pixels from the list's left edge: on the tiles (the first
+ * one's left, the last one's of a row right: `columns` tiles `width` wide, `margin` on each side) or on the rows
+ * (`rowWidth` wide, from the edge), not over the scroll bar.
+ */
+export function aircraftBarEdges(view: string, tile: { columns: number; width: number }, margin: number, rowWidth: number): { left: number; right: number } {
+  if (view !== 'gallery') return { left: 0, right: rowWidth };
+  return { left: Math.round(margin), right: Math.round(tile.columns * (tile.width + 2 * margin) - margin) };
+}
+
 /**
  * The tail number of a livery as the mod would apply it (features/tail-number.ts): the one chosen for it, the
  * `atc_id` of its livery.cfg, a registration in its name; '' when none fits the field.

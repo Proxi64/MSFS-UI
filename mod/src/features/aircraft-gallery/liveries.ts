@@ -6,7 +6,7 @@ import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { iconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
-import { cellAction, layoutWidth } from '../../core/virtual-list.ts';
+import { cellAction } from '../../core/virtual-list.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
@@ -18,7 +18,7 @@ import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { store, translate, watch } from '../../sim/store.ts';
 import { orderLiveries, type LiveryOrder } from '../aircraft-setup/livery-order.ts';
 import { revealPosition } from '../aircraft-setup/setup-layout.ts';
-import { LIVERY_COLUMNS, liveryTail, liveryTileSize } from './livery-column.ts';
+import { LIVERY_COLUMNS, liveryFit, liveryTail } from './livery-column.ts';
 
 /** The sim's horizontal marketplace tile (see the gallery's List view): an owned item makes its hover do nothing more. */
 interface HorizontalTileManipulator {
@@ -134,25 +134,22 @@ export class LiveryColumn {
     style.top = `${rect.top}px`;
     style.width = `${rect.width}px`;
     style.height = `${rect.height}px`;
-    // Two tiles per row, in whole pixels, in the width the list leaves to its content (its scroll bar takes some).
+    // Two tiles per row, in whole pixels. Tiles or rows that fit without scrolling go to the column's right edge, as
+    // its header; otherwise the scroll bar and its room are kept (liveryFit: decided on the full width).
     const unit = uiUnit();
-    // Less the scroll bar's own width only when the tiles do not fit without it: decided on the full width
-    // (core/virtual-list.ts), since narrower tiles are also shorter and would make the list fit again.
-    const tileAt = (width: number) => liveryTileSize(width, SCROLL_BAR_ROOM * unit, GAP * unit, BANNER_HEIGHT * unit);
     this.barWidth = Math.max(this.barWidth, scrollBarWidth(this.list));
-    const rows = Math.ceil(this.cells.length / LIVERY_COLUMNS);
-    const contentHeight = (width: number) => (this.rows ? this.cells.length * ROW_STEP * unit : rows * (tileAt(width).height + GAP * unit));
-    const fit = layoutWidth(rect.width, this.barWidth, contentHeight, this.list.getBoundingClientRect().height);
-    const tile = tileAt(fit.width);
-    // List rows that fit without scrolling go to the column's right edge, as its header; otherwise the bar keeps its room.
-    toggleClass(this.root, 'is-full-rows', this.rows && !fit.scrolls);
+    const sizes = { room: SCROLL_BAR_ROOM * unit, gap: GAP * unit, banner: BANNER_HEIGHT * unit, rowStep: ROW_STEP * unit };
+    const fit = liveryFit(rect.width, this.barWidth, sizes, this.cells.length, this.rows, this.list.getBoundingClientRect().height);
+    const tile = fit.tile;
+    if (this.root.classList.contains('is-full-rows') !== fit.full) toggleClass(this.root, 'is-full-rows', fit.full);
     // Variables written only when they change: a write lays the page out again (core/dom.ts).
+    setVariable(style, '--livery-gap', `${fit.gap}px`);
     setVariable(style, '--tile-w', `${tile.width}px`);
     setVariable(style, '--tile-image-h', `${tile.imageHeight}px`);
     setVariable(style, '--tile-h', `${tile.height}px`);
-    const sizes = `${tile.width}/${tile.height}/${rect.height}`;
-    if (sizes !== this.sizes) {
-      this.sizes = sizes;
+    const measured = `${tile.width}/${tile.height}/${rect.height}`;
+    if (measured !== this.sizes) {
+      this.sizes = measured;
       if (this.list.updateSizes) this.list.updateSizes();
     }
     this.reveal(this.rows ? ROW_STEP * unit : tile.height + GAP * unit);
