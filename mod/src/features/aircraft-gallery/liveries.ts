@@ -85,8 +85,11 @@ export class LiveryColumn {
   private pool: ComponentPool<Cell> | null = null;
   private poolRows = false;
   private poolScope: Scope | null = null;
-  /** Width of the list's scroll bar, the widest seen (0 until it first shows). */
-  private barWidth = 0;
+  /**
+   * Width of the list's scroll bar, the widest seen (0 until it first shows), in layout units: a change of resolution
+   * in the session changes its pixels (10 at 1440 lines, 20 at 2160).
+   */
+  private barUnits = 0;
   /** Sizes last given to the tiles: the list measures its content again when they change. */
   private sizes = '';
   /** Rows (the gallery's List view) rather than tiles. */
@@ -137,9 +140,9 @@ export class LiveryColumn {
     // Two tiles per row, in whole pixels. Tiles or rows that fit without scrolling go to the column's right edge, as
     // its header; otherwise the scroll bar and its room are kept (liveryFit: decided on the full width).
     const unit = uiUnit();
-    this.barWidth = Math.max(this.barWidth, scrollBarWidth(this.list));
+    this.barUnits = Math.max(this.barUnits, scrollBarWidth(this.list) / unit);
     const sizes = { room: SCROLL_BAR_ROOM * unit, gap: GAP * unit, banner: BANNER_HEIGHT * unit, rowStep: ROW_STEP * unit };
-    const fit = liveryFit(rect.width, this.barWidth, sizes, this.cells.length, this.rows, this.list.getBoundingClientRect().height);
+    const fit = liveryFit(rect.width, Math.round(this.barUnits * unit), sizes, this.cells.length, this.rows, this.list.getBoundingClientRect().height);
     const tile = fit.tile;
     if (this.root.classList.contains('is-full-rows') !== fit.full) toggleClass(this.root, 'is-full-rows', fit.full);
     // Variables written only when they change: a write lays the page out again (core/dom.ts).

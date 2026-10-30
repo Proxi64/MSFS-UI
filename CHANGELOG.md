@@ -8,6 +8,7 @@
 - **Statistics in the setup panel**: the sim's own rows (seats, landing surface, fuel, cruise speed, max altitude, range) for the selected aircraft, in the room under the variants, when the lists leave it.
 - **The setup panel aligned on the sim's title block**: every block as wide, every text 12 units in, no header over the variants, the tail number in two blocks over *Fuel and Payload* and *Identification*, 8 pixels between all blocks down to *Configure your aircraft*.
 - **Hearts again**: a heart marks the favourite liveries (full for a favourite), as the users preferred to the bookmark; the hearts and eyes are full white, with a small dark disc on the thumbnails.
+- **Checked at every common resolution** (1920 × 1080 / 1200, 2560 × 1440 / 1600, 3440 × 1440, 3840 × 2160): the Classic layout's bar now runs on the tiles' edges (it went over the scroll bar's room), and the Free Flight favourites stay shown after a change of resolution during the session (they were hidden, taken for the search's results).
 
 ## 2.0.1 (2026-10-30)
 

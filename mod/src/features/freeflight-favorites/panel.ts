@@ -65,7 +65,7 @@ export class FavoritesPanel {
   private order: string[] | null = null;
   private current = { variationId: '', livery: '' };
   private loading = false;
-  /** Height of the search field when closed: higher, it shows its results. */
+  /** Height of the search field when closed, in layout units: higher, it shows its results. */
   private searchHeight = 0;
 
   constructor(page: Manipulator, scope: Scope) {
@@ -107,12 +107,15 @@ export class FavoritesPanel {
       return;
     }
     const searchRect = search.getBoundingClientRect();
-    if (!this.searchHeight || searchRect.height < this.searchHeight) this.searchHeight = searchRect.height;
-    if (searchRect.height > this.searchHeight * 1.5) {
+    const unit = uiUnit();
+    // In layout units: a change of resolution in the session (window, full screen) changes the pixels, not the units
+    // (measured 2026-10-30: from 1080 to 2160 lines, the closed search was twice the remembered height, the block hidden).
+    const searchHigh = searchRect.height / unit;
+    if (!this.searchHeight || searchHigh < this.searchHeight) this.searchHeight = searchHigh;
+    if (searchHigh > this.searchHeight * 1.5) {
       this.root.style.display = 'none';
       return;
     }
-    const unit = uiUnit();
     const origin = this.page.elt.getBoundingClientRect();
     const rect = button.getBoundingClientRect();
     const top = Math.round(searchRect.bottom - origin.top + GAP * unit);

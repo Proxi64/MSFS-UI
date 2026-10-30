@@ -62,6 +62,18 @@ $dev = "generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe"
 & $dev check [--detail]             # compatibility, offline and live
 ```
 
+### Screen resolutions
+
+The menu is laid out in units of 1/1080 of the window's height (`--unscaledScreenHeight`), so a layout depends on the aspect ratio, and its whole-pixel rounding on the scale. The resolutions above 2 % of Steam's users (October 2026) make four cases: 16:9 at 1080, 1440 and 2160 lines (1920 × 1080, 2560 × 1440, 3840 × 2160) and 21:9 at 1440 (3440 × 1440). The 16:10 ones (1920 × 1200, 2560 × 1600) show the menu in 16:9 with bands above and below (sim-reference.md, The sim's look), so they are the 16:9 cases. To check them on one monitor, with the sim in windowed mode (`tools/resolution-check/`):
+
+```powershell
+pwsh -File tools/resolution-check/sim-window.ps1 -Width 3840 -Height 2160   # the client area; larger than the screen works
+pwsh -File tools/resolution-check/sim-shot.ps1 -Out shot.png               # PrintWindow, even off screen or covered
+& $dev eval "@tools/resolution-check/audit.js"                              # the mod's parts out of the page, overlaps, cut texts, alignments
+```
+
+Grow the window during one session too (1080, then 2160 lines): what the mod remembers between its layout passes must be in units, not pixels.
+
 ## How the package works
 
 1. The main menu (`mainUi.html`) is built from "cooked" components in `fs-base-ui\cookedcomps\`. Its root is the **MasterPage**, `{7DA60FBA-EF32-48F2-974D-F8BEA35337A4}`: one line of nested `<ui-resource-element>`, and a `.json` describing its children.

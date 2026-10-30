@@ -167,6 +167,7 @@ The translation keys the mod uses are listed in `compat.json` ("translations").
 | Section header | 36 units, black at 30 %, title in `--fontSizeXS` bold |
 | Mouse lock | `data-input-group="inputLocker"` on the panels (Flight Conditions widget, flight plan…) |
 | Studio backdrop of the aircraft thumbnails | Light blue-grey gradient (165, 173, 198) → (100, 118, 152); a few publishers ship transparent thumbnails |
+| Screen shapes (measured 2026-10-30, windowed sim) | The menu page is the window up to 21:9 (3440 × 1440 measured); a 16:10 window shows it in 16:9, centred, bands above and below (1920 × 1200 → a 1920 × 1080 page, 2560 × 1600 → 2560 × 1440). `--unscaledScreenHeight` is the page's height; the scroll bar of a `real-scroll` is 10 pixels at 1440 lines, 20 at 2160 |
 
 ## Aircraft files (VFS)
 

@@ -252,8 +252,11 @@ export class Gallery {
   private reloadTimer: ReturnType<typeof setTimeout> | undefined;
   private reloadNumber = 0;
 
-  /** Width of the list's scroll bar, the widest seen (0 until it first shows). */
-  private barWidth = 0;
+  /**
+   * Width of the list's scroll bar, the widest seen (0 until it first shows), in layout units: a change of resolution
+   * in the session changes its pixels (10 at 1440 lines, 20 at 2160).
+   */
+  private barUnits = 0;
   /**
    * The pool of slots of the current kind of component, and its scope: aircraft tiles (Gallery and Default share it)
    * or List rows.
@@ -661,12 +664,13 @@ export class Gallery {
       return { columns, width, image, height: image + Math.round(BANNER_HEIGHT * unit) };
     };
     // The vertical list's bar only (a horizontal one, between two views, is as wide as the grid).
-    if (this.listAxis === 'y') this.barWidth = Math.max(this.barWidth, scrollBarWidth(this.list));
+    if (this.listAxis === 'y') this.barUnits = Math.max(this.barUnits, scrollBarWidth(this.list) / unit);
+    const barWidth = Math.round(this.barUnits * unit);
     // The tiles the Gallery view shows or would show (one per row of the List view): both views keep their edges.
     const tiles = this.cells.length;
     const fit = layoutWidth(
       halves ? halves.left : Math.round(rect.width),
-      this.barWidth,
+      barWidth,
       (listWidth) => {
         const tile = tileAt(listWidth);
         return Math.ceil(tiles / tile.columns) * (tile.height + 12 * unit);
@@ -675,7 +679,7 @@ export class Gallery {
     );
     const tile = tileAt(fit.width);
     // List rows: one width whether the list scrolls or not (the bar's room kept; its width measured once it shows).
-    const rowWidth = aircraftRowWidth(halves ? halves.left : Math.round(rect.width), SCROLL_BAR_ROOM * unit, this.barWidth || Math.round(SCROLL_BAR_WIDTH * unit));
+    const rowWidth = aircraftRowWidth(halves ? halves.left : Math.round(rect.width), SCROLL_BAR_ROOM * unit, barWidth || Math.round(SCROLL_BAR_WIDTH * unit));
     // The rows on the tiles' edges (the bar does not move between the two views).
     const edges = aircraftEdges(tile, 6 * unit, rowWidth);
     setVariable(style, '--aircraft-row-x', `${edges.left}px`);
