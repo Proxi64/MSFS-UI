@@ -2,11 +2,12 @@
 
 ## 2.0.1 (in progress)
 
-- **Favourites kept at every start.** At some starts, the sim never finished a file read of the `msfs-ui.wasm` module: the module stayed silent, and the mod fell back to the sim's storage for the whole session (favourites not saved, or gone at the next start). The module now reads its files again when that happens, and the mod moves to the module as soon as it answers, with the changes made meanwhile.
-- **A click is never lost**: on a sim without the sim's storage, the mod keeps the data for the session when the module does not answer.
+- **Favourites kept at every start.** At some starts, the sim never finished a file read of the `msfs-ui.wasm` module: the module stayed silent, and the mod fell back to the sim's storage for the whole session (favourites not saved, or gone at the next start). The module now reads its files again when that happens (but not while a slow start is still reading), and the mod moves to the module as soon as it answers, with the changes made meanwhile, unless the module holds newer ones (those are kept).
+- **Clicks kept for the session on a sim without its storage**: when the module does not answer either, the mod keeps the data in memory until the sim quits, instead of losing each click.
 - **Compatibility**: the Storage group shows the module's own state (whether it is ready, how many times it read its files).
 - **The search stays put** when switching between Gallery and List: the List rows now start and end where the gallery tiles do.
-- **The Default view is made by the mod**: the same bar, filters (Hidden, Favorites) and sorts as Gallery and List, the sim's large tiles in two rows scrolling sideways, and whole columns aligned on the scroll bar; one wheel notch moves one column.
+- **The Default view is made by the mod**: the same bar, filters (Hidden, Favorites) and sorts as Gallery and List, the sim's large tiles in two rows scrolling sideways, and whole columns aligned on the scroll bar; one wheel notch moves one column (a touchpad's small moves add up), and a bar held still while dragging stays where it is until released.
+- **The sim's own grid no longer shows** in the aircraft selection: *Default* is the mod's view in its layout. Gamepad users navigate the mod's views with the mouse.
 - **Favourites stand out**: the bookmark of a favourite livery is in the sim's own yellow.
 
 ## 2.0.0 (2026-10-30)
