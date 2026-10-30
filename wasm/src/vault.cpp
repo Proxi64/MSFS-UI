@@ -13,12 +13,15 @@
 #define EVENT_SAVE "MSFS_UI_VAULT_SAVE"
 #define EVENT_LOADED "MSFS_UI_VAULT_LOADED"
 #define EVENT_SAVED "MSFS_UI_VAULT_SAVED"
+#define EVENT_STATUS "MSFS_UI_VAULT_STATUS"
+#define EVENT_STATUS_REPLY "MSFS_UI_VAULT_STATE"
 
 static const int MAX_TEXT = 524288;
 static const int HEAD_SIZE = 64;
 static const char* const DATA_PATH[2] = {"/work/vault-a.data", "/work/vault-b.data"};
 static const char* const HEAD_PATH[2] = {"/work/vault-a.head", "/work/vault-b.head"};
 static const FsCommBusBroadcastFlags TO_JS = FsCommBusBroadcast_JS;
+static const int STALLED_AFTER_LOADS = 2; // LOADs received during the start-up read before it starts again
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Helpers
@@ -86,6 +89,13 @@ static int g_ackCount = 0;
 static int g_ackCapacity = 0;
 
 static char g_head[HEAD_SIZE];
+
+// What STATUS reports: the bus registrations, the start-up reads launched and ended, the messages received.
+static bool g_registered[3] = {false, false, false}; // LOAD, SAVE, STATUS
+static int g_readsLaunched = 0;
+static int g_readsEnded = 0;
+static int g_loadsReceived = 0;
+static int g_savesReceived = 0;
 
 static void freeSnapshot(Snapshot* snapshot) {
   if (snapshot == nullptr) return;
@@ -281,8 +291,13 @@ static Deferred* g_deferred = nullptr;
 static int g_deferredCount = 0;
 static int g_deferredCapacity = 0;
 
+static void restartStartup();
+static int g_loadsWhileStarting = 0; // LOADs received since the start-up read last (re)started
+
 static void dispatch(bool isSave, const char* buf, unsigned int size) {
   int length = trimmedSize(buf, size);
+  if (isSave) g_savesReceived++;
+  else g_loadsReceived++;
   if (!g_ready) {
     if (g_deferredCount == g_deferredCapacity) {
       int capacity = g_deferredCapacity == 0 ? 4 : g_deferredCapacity * 2;
@@ -294,6 +309,9 @@ static void dispatch(bool isSave, const char* buf, unsigned int size) {
     char* copy = copyOf(buf, length);
     if (copy == nullptr) return;
     g_deferred[g_deferredCount++] = Deferred{isSave, copy, length};
+    // The sim sometimes never calls back a read launched at its start (measured: 1 of 2 head reads, the module then
+    // waited for good). The menu asks again every 500 ms: at its second LOAD, the start-up read starts again.
+    if (!isSave && ++g_loadsWhileStarting >= STALLED_AFTER_LOADS) restartStartup();
     return;
   }
   if (isSave) handleSave(buf, length);
@@ -318,6 +336,18 @@ struct Slot {
 static Slot g_slots[2] = {{0, false, 0, 0, 0, nullptr, false}, {1, false, 0, 0, 0, nullptr, false}};
 static int g_startupPending = 0;
 static int g_startupPhase = 0; // 1: heads, 2: data
+static int g_startupAttempts = 0;
+
+// A start-up read in flight. A restart closes its file and marks it stale: a late callback then changes nothing.
+struct Ticket {
+  Slot* slot;
+  FsIOFile file;
+  bool stale;
+};
+static Ticket* g_tickets[2] = {nullptr, nullptr}; // the read in flight of each slot
+// A read of the file could be launched once: the file is there (a later failure to open it is not "no file").
+static bool g_headSeen[2] = {false, false};
+static bool g_dataSeen[2] = {false, false};
 
 static void startupDataPhase();
 
@@ -375,8 +405,42 @@ static void endStartupOperation() {
   else finishStartup();
 }
 
+// Launches a start-up read of `count` bytes of `path` for `slot`, counted in g_startupPending. A file that cannot be
+// opened is taken as absent, unless a read of it was launched before (`seen`): a read that never ended may still hold
+// it, so it stays pending until the next restart rather than leaving out the newest snapshot.
+static void launchRead(Slot* slot, const char* path, int count, FsIOFileReadCallback callback, bool* seen) {
+  g_startupPending++;
+  Ticket* ticket = (Ticket*)malloc(sizeof(Ticket));
+  FsIOFile file = FS_IO_ERROR_FILE;
+  if (ticket != nullptr) {
+    ticket->slot = slot;
+    ticket->stale = false;
+    file = fsIOOpenRead(path, FsIOOpenFlag_RDONLY, 0, count, callback, ticket);
+    ticket->file = file;
+  }
+  if (file == FS_IO_ERROR_FILE) {
+    free(ticket);
+    if (!*seen) g_startupPending--;
+    return;
+  }
+  *seen = true;
+  g_tickets[slot->index] = ticket;
+  g_readsLaunched++;
+}
+
+// The slot of a read callback; null when a restart dropped that read (its file is already closed).
+static Slot* claim(void* user) {
+  Ticket* ticket = (Ticket*)user;
+  Slot* slot = ticket->stale ? nullptr : ticket->slot;
+  if (slot != nullptr) g_tickets[slot->index] = nullptr;
+  free(ticket);
+  if (slot != nullptr) g_readsEnded++;
+  return slot;
+}
+
 static void onHeadRead(FsIOFile file, char* buf, int offset, int read, void* user) {
-  Slot* slot = (Slot*)user;
+  Slot* slot = claim(user);
+  if (slot == nullptr) return;
   if (read == HEAD_SIZE && memcmp(buf, "MSFSUI-VAULT 1 ", 15) == 0 && buf[25] == ' ' && buf[36] == ' ' && buf[45] == ' ' &&
       buf[HEAD_SIZE - 1] == '\n') {
     unsigned long long seq, length, hash;
@@ -393,7 +457,8 @@ static void onHeadRead(FsIOFile file, char* buf, int offset, int read, void* use
 }
 
 static void onDataRead(FsIOFile file, char* buf, int offset, int read, void* user) {
-  Slot* slot = (Slot*)user;
+  Slot* slot = claim(user);
+  if (slot == nullptr) return;
   if (read == slot->length) {
     memcpy(slot->data, buf, (size_t)read);
     slot->data[read] = 0;
@@ -416,25 +481,58 @@ static void startupDataPhase() {
       slot->dataValid = slot->hash == fnv1a("", 0);
       continue;
     }
-    g_startupPending++;
-    if (fsIOOpenRead(DATA_PATH[i], FsIOOpenFlag_RDONLY, 0, slot->length, onDataRead, slot) == FS_IO_ERROR_FILE) g_startupPending--;
+    launchRead(slot, DATA_PATH[i], slot->length, onDataRead, &g_dataSeen[i]);
   }
   endStartupOperation();
 }
 
 static void startupHeadPhase() {
+  g_startupAttempts++;
+  g_loadsWhileStarting = 0;
   g_startupPhase = 1;
   g_startupPending = 1;
-  for (int i = 0; i < 2; i++) {
-    g_startupPending++;
-    if (fsIOOpenRead(HEAD_PATH[i], FsIOOpenFlag_RDONLY, 0, HEAD_SIZE, onHeadRead, &g_slots[i]) == FS_IO_ERROR_FILE) g_startupPending--;
-  }
+  for (int i = 0; i < 2; i++) launchRead(&g_slots[i], HEAD_PATH[i], HEAD_SIZE, onHeadRead, &g_headSeen[i]);
   endStartupOperation();
 }
 
+// The start-up read again from the heads: the reads in flight are dropped (closed, their callbacks ignored).
+static void restartStartup() {
+  for (int i = 0; i < 2; i++) {
+    if (g_tickets[i] != nullptr) {
+      g_tickets[i]->stale = true; // freed by its callback, if it ever comes
+      fsIOClose(g_tickets[i]->file);
+      g_tickets[i] = nullptr;
+    }
+    free(g_slots[i].data);
+    g_slots[i] = Slot{i, false, 0, 0, 0, nullptr, false};
+  }
+  startupHeadPhase();
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Status: answered at once, even before the start-up read ends (what the menu's Compatibility check and a probe read).
+
+static void onStatus(const char* buf, unsigned int size, void* ctx) {
+  int length = trimmedSize(buf, size);
+  if (length > 32) length = 32;
+  char line[384];
+  int used = 0;
+  if (length > 0) memcpy(line, buf, (size_t)length);
+  used += length;
+  used += snprintf(line + used, sizeof line - (size_t)used,
+                   "\nready %d phase %d pending %d deferred %d attempts %d\nregistered %d %d %d\nreads %d %d\nheads %d %d data %d %d\n"
+                   "received %d %d\nseq %u",
+                   g_ready ? 1 : 0, g_startupPhase, g_startupPending, g_deferredCount, g_startupAttempts, g_registered[0] ? 1 : 0,
+                   g_registered[1] ? 1 : 0,
+                   g_registered[2] ? 1 : 0, g_readsLaunched, g_readsEnded, g_slots[0].headValid ? 1 : 0, g_slots[1].headValid ? 1 : 0,
+                   g_slots[0].dataValid ? 1 : 0, g_slots[1].dataValid ? 1 : 0, g_loadsReceived, g_savesReceived, g_acceptedSeq);
+  send(EVENT_STATUS_REPLY, line, used);
+}
+
 extern "C" MSFS_CALLBACK void module_init(void) {
-  fsCommBusRegister(EVENT_LOAD, onLoad, nullptr);
-  fsCommBusRegister(EVENT_SAVE, onSave, nullptr);
+  g_registered[0] = fsCommBusRegister(EVENT_LOAD, onLoad, nullptr);
+  g_registered[1] = fsCommBusRegister(EVENT_SAVE, onSave, nullptr);
+  g_registered[2] = fsCommBusRegister(EVENT_STATUS, onStatus, nullptr);
   startupHeadPhase();
 }
 

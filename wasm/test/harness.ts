@@ -20,6 +20,12 @@ export interface Harness {
   failWrites: boolean;
   /** Paths whose reads fail: the read callback runs with no byte read. */
   failReads: Set<string>;
+  /** Paths whose next read is launched but never calls back (as the sim did at a start); each entry is used once. */
+  loseReads: Set<string>;
+  /** Paths that cannot be opened for reading while listed (fsIOOpenRead answers no file). */
+  refuseOpens: Set<string>;
+  /** Queues the callbacks of the lost reads after all (a callback the sim gives very late); run them with settle(). */
+  releaseLost(): void;
   /** Drops every queued callback: the sim stopped now. */
   crash(): void;
 }
@@ -27,6 +33,9 @@ export interface Harness {
 export interface LoadOptions {
   /** The instance freezes (drops its queued callbacks) once this many I/O callbacks have run. */
   stopAfter?: number;
+  /** `loseReads` and `refuseOpens` from the start (module_init reads at once). */
+  loseReads?: string[];
+  refuseOpens?: string[];
 }
 
 const OPEN_FLAGS = { RDONLY: 1, WRONLY: 2, RDWR: 4, CREAT: 8, TRUNC: 16 };
@@ -52,6 +61,9 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
   let frozen = false;
   let failWrites = false;
   const failReads = new Set<string>();
+  const loseReads = new Set<string>(options.loseReads);
+  const refuseOpens = new Set<string>(options.refuseOpens);
+  const lost: (() => void)[] = [];
   let exports!: Exports;
 
   const text = (pointer: number, length?: number) => {
@@ -88,9 +100,10 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
     fsIOOpenRead(pathPointer: number, flags: number, offset: number, count: number, callback: number, user: number) {
       const path = text(pathPointer);
       const file = disk.get(path);
-      if (file === undefined || count > file.length) return 0n;
+      if (file === undefined || count > file.length || refuseOpens.has(path)) return 0n;
       const handle = open(path, flags, false);
-      enqueue(() => {
+      const run = (task: () => void) => (loseReads.delete(path) ? lost.push(task) : enqueue(task));
+      run(() => {
         const buffer = exports.malloc(Math.max(count, 1)); // the sim's buffer: never freed by the module
         const failed = failReads.has(path);
         if (!failed) new Uint8Array(exports.memory.buffer).set(file.subarray(offset, offset + count), buffer);
@@ -145,6 +158,11 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
     sent,
     writes,
     failReads,
+    loseReads,
+    refuseOpens,
+    releaseLost() {
+      for (const task of lost.splice(0)) enqueue(task);
+    },
     get failWrites() {
       return failWrites;
     },
