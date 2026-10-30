@@ -1,6 +1,6 @@
-// Sizes and texts of the livery column of the side by side layout, without the sim (tested by
-// test/aircraft-gallery.test.ts). The gallery is cut in two columns: the aircraft on the left, the liveries of the
-// current aircraft on the right, two large tiles per row.
+// Sizes and texts of the gallery's layout, above all the livery column of the side by side layout, without the sim
+// (tested by test/aircraft-gallery.test.ts). The gallery is cut in two columns: the aircraft on the left, the liveries
+// of the current aircraft on the right, two large tiles per row; the bar is cut the same way (gallery.ts).
 
 import { pickRegistration, registrationFromName } from '../../sim/registration.ts';
 
@@ -20,6 +20,24 @@ export function splitColumns(width: number, gap: number, room: number, margin: n
   const tile = (width - gap - 2 * room - 2 * margin * AIRCRAFT_COLUMNS - 2 * margin * (LIVERY_COLUMNS - 1)) / (AIRCRAFT_COLUMNS + LIVERY_COLUMNS);
   const left = Math.round(AIRCRAFT_COLUMNS * (tile + 2 * margin) + room);
   return { left, right: width - gap - left };
+}
+
+/**
+ * Whether the bar's count shows only the number of tiles shown (not "shown / total"): when the full count would leave
+ * the search narrower than `minSearch`. `room` is the search's width and the count's together, as now: the search
+ * takes what the count leaves, so the sum does not change with the count's text (no swing between the two forms).
+ */
+export function shortCount(room: number, fullCount: number, minSearch: number): boolean {
+  return room - fullCount < minSearch;
+}
+
+/**
+ * The width of the gallery's List rows, in whole pixels: the list's width less the room kept on the right and the
+ * scroll bar's width, whether the list scrolls or not, so that the rows keep one width (a short list, the Hidden view,
+ * would otherwise give them the bar's width too).
+ */
+export function aircraftRowWidth(list: number, room: number, bar: number): number {
+  return Math.floor(list - room - bar);
 }
 
 /**

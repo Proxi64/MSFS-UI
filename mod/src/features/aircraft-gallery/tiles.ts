@@ -56,6 +56,17 @@ export function favoriteAircraftIds(items: readonly AircraftItem[], liveries: re
   return items.filter((item) => hasFavoriteLivery(liveries, item)).map((item) => item.aircraftId);
 }
 
+/**
+ * The hidden aircraft kept in the normal view, veiled (`keepIds`): those that were favourites when the order was set
+ * (`frozen`, kept while the screen stays, as the favourites put first) and those that are favourites now, so that a
+ * livery bookmarked since shows its hidden aircraft at once ("favourites come first", without exception).
+ */
+export function keptAircraftIds(frozen: readonly number[] | null, items: readonly AircraftItem[], liveries: readonly FavoriteLivery[]): number[] {
+  const kept = frozen ? frozen.slice() : [];
+  for (const id of favoriteAircraftIds(items, liveries)) if (kept.indexOf(id) < 0) kept.push(id);
+  return kept;
+}
+
 export interface TileQuery {
   items: readonly AircraftItem[];
   liveries: readonly FavoriteLivery[];

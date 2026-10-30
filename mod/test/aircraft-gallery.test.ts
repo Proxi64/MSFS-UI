@@ -6,6 +6,7 @@ import {
   favoriteAircraftIds,
   favoritesFirst,
   hasFavoriteLivery,
+  keptAircraftIds,
   normalize,
   readFilter,
   sortTiles,
@@ -14,7 +15,7 @@ import {
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { galleryBodyClass, liveryTail, liveryTileSize, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
+import { aircraftRowWidth, galleryBodyClass, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
@@ -99,6 +100,22 @@ describe('hidden aircraft', () => {
     const keepIds = favoriteAircraftIds(ITEMS, liveries);
     const tiles = query({ liveries, keepIds });
     assert.deepEqual(tiles.map((tile) => `${tile.item.variationId}:${!!tile.veiled}`), ['sf50-exec:true', 'c172:false', 'cap4:false']);
+  });
+
+  it('keeps a hidden aircraft veiled when its favourite was added after the order was set', () => {
+    // The order was set without favourites (frozen ids empty); a livery of the hidden Vision Jet got its bookmark since.
+    const liveries = [livery('sf50-exec', 'Alpine')];
+    const tiles = query({ liveries, keepIds: keptAircraftIds([], ITEMS, liveries) });
+    const vision = tiles.filter((tile) => tile.item.variationId === 'sf50-exec')[0];
+    assert.ok(vision, 'the hidden aircraft is shown');
+    assert.equal(vision.veiled, true);
+  });
+
+  it('keeps the aircraft frozen with the order and those of the favourites now, once each', () => {
+    const liveries = [livery('sf50-exec', 'Alpine')];
+    // The Cessna was a favourite when the order was set: it stays until the order is set again.
+    assert.deepEqual(keptAircraftIds([ITEMS[1]!.aircraftId, ITEMS[0]!.aircraftId], ITEMS, liveries), [ITEMS[1]!.aircraftId, ITEMS[0]!.aircraftId]);
+    assert.deepEqual(keptAircraftIds(null, ITEMS, liveries), [ITEMS[0]!.aircraftId]);
   });
 
   it('shows only the hidden aircraft in the Hidden view, not veiled, one tile per aircraft', () => {
@@ -237,6 +254,21 @@ describe('livery column', () => {
     assert.equal(liveryTail(undefined, 'VH-OZG', 'Qantas VH-ABC', 9), 'VH-OZG');
     assert.equal(liveryTail(undefined, null, 'Qantas VH-ABC', 9), 'VH-ABC');
     assert.equal(liveryTail(undefined, null, 'FSReborn Livery', 9), '');
+  });
+});
+
+describe('gallery bar and rows', () => {
+  it('shortens the count only when the full count would leave the search too narrow', () => {
+    // The room is the search's width and the count's together (the search takes what the count leaves).
+    assert.equal(shortCount(700, 100, 320), false);
+    assert.equal(shortCount(420, 100, 320), false);
+    assert.equal(shortCount(419, 100, 320), true);
+  });
+
+  it('gives the aircraft rows the same width whether the list scrolls or not', () => {
+    // 3440 x 1440: the list 1058 px, the room 24 units = 32 px, the sim's scroll bar 10 px.
+    assert.equal(aircraftRowWidth(1058, 32, 10), 1016);
+    assert.equal(aircraftRowWidth(1058.6, 32, 10), 1016);
   });
 });
 

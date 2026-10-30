@@ -22,9 +22,21 @@
 /* Bar: search, count, Hidden, Favorites, sort and its direction, views. */
 /* Above the tiles: the sort dropdown opens over them. */
 .msfs-ui-gal__bar { position: relative; z-index: 2; display: flex; align-items: center; flex-shrink: 0; height: calc(var(--u) * 36); margin-bottom: calc(var(--u) * 12); }
+/*
+ * Its two parts (gallery.ts): search, count, Hidden, Favorites; then the sort, its direction and the views. One line,
+ * the search taking what the others leave; side by side (is-split), each part above its column, as wide (written by
+ * the layout pass), the sort dropdown taking what the views leave so that Default ends on the livery column's edge.
+ */
+.msfs-ui-gal__bar-part { position: relative; display: flex; align-items: center; height: 100%; }
+.msfs-ui-gal__bar-start { flex-grow: 1; flex-shrink: 1; min-width: 0; }
+.msfs-ui-gal__bar-end { flex-shrink: 0; }
+.msfs-ui-gal__bar.is-split .msfs-ui-gal__bar-start { flex-grow: 0; flex-shrink: 0; }
+.msfs-ui-gal__bar.is-split .msfs-ui-gal__sort { flex-grow: 1; flex-shrink: 1; flex-basis: 0px; width: auto; min-width: 0; margin-left: 0; }
 .msfs-ui-gal__control { position: relative; flex-shrink: 0; height: calc(var(--u) * 30); margin-left: calc(var(--u) * 6); }
 .msfs-ui-gal__search { flex-grow: 1; flex-shrink: 1; margin-left: 0; }
-.msfs-ui-gal__count { margin: 0 calc(var(--u) * 6) 0 calc(var(--u) * 12); opacity: 0.75; flex-shrink: 0; white-space: nowrap; }
+.msfs-ui-gal__count { position: relative; margin: 0 calc(var(--u) * 6) 0 calc(var(--u) * 12); opacity: 0.75; flex-shrink: 0; white-space: nowrap; }
+/* Too little room for the search: the count shows the tiles shown only (its total out of the flow, hidden). */
+.msfs-ui-gal__count.is-short .msfs-ui-gal__count-total { position: absolute; left: 0; top: 0; visibility: hidden; }
 .msfs-ui-gal__hidden { width: calc(var(--u) * 114); }
 .msfs-ui-gal__favorites { width: calc(var(--u) * 130); }
 /* The mod's icon before the text of Hidden and Favorites, in the button's content row, in the text's colour. */
@@ -42,6 +54,7 @@
 .msfs-ui-gal__view { width: calc(var(--u) * 100); }
 /* Default view: only the views stay, on the line of the sim's search, on the right. */
 .msfs-ui-gal.is-stock .msfs-ui-gal__bar { height: 100%; margin-bottom: 0; justify-content: flex-end; }
+.msfs-ui-gal.is-stock .msfs-ui-gal__bar-start,
 .msfs-ui-gal.is-stock .msfs-ui-gal__search,
 .msfs-ui-gal.is-stock .msfs-ui-gal__count,
 .msfs-ui-gal.is-stock .msfs-ui-gal__filter,
@@ -81,6 +94,8 @@
 /* List: the sim's horizontal tile, one per row. */
 /* Full width: its content is absolute, so in a column aligned to the start it would shrink to nothing. */
 .msfs-ui-gal__row { position: relative; flex-shrink: 0; width: 100%; height: calc(var(--u) * 77); margin-bottom: calc(var(--u) * 6); }
+/* The aircraft rows keep one width, in whole pixels, whether the list scrolls or not (gallery.ts, aircraftRowWidth). */
+.msfs-ui-gal__body .msfs-ui-gal__row { width: var(--aircraft-row-w, 100%); }
 /*
  * The marketplace tile: one line centred in the row, the name in its bold Title, then "- studio - variant" in its
  * light Creator (gallery.ts). Its rating and separator, its price or "Owned" banner and its own heart over the
@@ -106,7 +121,8 @@
   align-items: center !important;
   justify-content: flex-start !important;
 }
-.msfs-ui-gal__row [name="Title"] { flex-grow: 0 !important; flex-shrink: 0 !important; width: auto !important; }
+/* The name never wider than the title block: a long one is cut by its own box, before the icon. */
+.msfs-ui-gal__row [name="Title"] { flex-grow: 0 !important; flex-shrink: 0 !important; width: auto !important; max-width: 100% !important; }
 .msfs-ui-gal__row [name="Details"] { margin-left: calc(var(--u) * 6) !important; margin-top: 0 !important; }
 
 .msfs-ui-gal__card { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
@@ -215,3 +231,11 @@
 }
 .msfs-ui-gal__body.is-side-by-side .msfs-ui-gal__row [name="Details"],
 .msfs-ui-gal__livery-row [name="Details"] { margin-left: 0 !important; }
+/*
+ * Both lines as wide as the title block: each text is cut by its own box, before the row's icon, whatever its length
+ * (and the sim's marquee scrolls it on hover within that box).
+ */
+.msfs-ui-gal__body.is-side-by-side .msfs-ui-gal__row [name="Title"],
+.msfs-ui-gal__body.is-side-by-side .msfs-ui-gal__row [name="Details"],
+.msfs-ui-gal__livery-row [name="Title"],
+.msfs-ui-gal__livery-row [name="Details"] { width: 100% !important; flex-shrink: 1 !important; }
