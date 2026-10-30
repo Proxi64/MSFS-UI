@@ -8,6 +8,10 @@
 - **Restart the sim once** after installing 2.0: the sim loads a module only when it starts (MSFS-UI-GENERATOR says so).
 - **Compatibility**: the Storage group says whether the module keeps the data, or why the mod uses the sim's storage instead.
 - **List view in the colours of the gallery**: the aircraft and livery rows have the light blue of the gallery's tiles instead of a dark grey; the selected row stays bright blue and the hovered one white.
+- **Hide aircraft**: a slashed eye in the top right corner of every aircraft tile and row hides it from the gallery and the list (the sim's *Default* grid is unchanged). The new **Hidden** filter, left of *Favorites*, shows the hidden aircraft; a click on the eye brings one back. An aircraft with a favourite livery stays in the gallery, darkened.
+- **A bookmark instead of the hearts**: favourite liveries are marked with a bookmark with a star, smaller and in the top right corner, in the livery column, the setup panel, the *Favorites* tiles and the Free Flight block.
+- **The bar split over the two columns** in the side by side layout: search, count, *Hidden* and *Favorites* above the aircraft; sort, direction, *Gallery*, *List* and *Default* above the liveries.
+- **Rows inside their column**: every livery row has the same width as its column, and the texts stop before the corner icon. Clicking *Favorites* scrolls the list back to the top.
 
 ## 1.3.1 (2026-10-29)
 
