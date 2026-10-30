@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (2026-10-29)
+## 2.0.0 (2026-10-30)
 
 - **Your data is kept for good.** Favourites, tail numbers and last choices are now kept by a small module of the `msfs-ui` package, `msfs-ui.wasm`, which writes them to files of its own folder (`%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui\work`) at once. They are no longer lost when the sim quits or crashes, and no longer depend on the sim saving its profile.
 - **No more "Applying setting" message** after a change: the mod no longer has to make the sim save its profile (it still does when the module does not answer, as in 1.x).
