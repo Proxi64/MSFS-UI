@@ -135,7 +135,7 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 | **Hidden** | Shows the hidden aircraft only (see *Hiding aircraft* below). Left of *Favorites*; the two are never on together |
 | **Favorites** | Shows the favourites only, with one tile per favourite livery |
 | Sort | **Name** (natural order: ATR 42, ATR 72, Cessna 172), **Studio** (then name) or **Max Range** (the sim's sort); the arrow reverses the order. A new order starts from the top |
-| **Gallery** / **List** / **Default** | Tiles in columns; one compact row per aircraft; the sim's own grid |
+| **Gallery** / **List** / **Default** | Tiles in columns; one compact row per aircraft; the mod's view in the sim's layout: large tiles in two rows, scrolling sideways |
 
 - **Favourites are liveries**: an aircraft is a favourite as soon as one of its liveries is (of any of its variants). Favourite aircraft always come first, whatever the sort. The order is set when the screen opens and kept while it stays open, so that an aircraft does not jump away when you mark one of its liveries; it is set again on a new sort, search, filter or category tab.
 - **Gallery**: the sim's aircraft tiles, with the name, the variant and the studio on three lines. **List**: one row per aircraft, the thumbnail then *name - studio - variant* on one line.
@@ -158,7 +158,7 @@ In the side by side layout:
 - each livery tile shows the livery's thumbnail whole, its name and its tail number (the one you chose for it, else the `atc_id` of its `livery.cfg`, else a registration found in its name; nothing when none is found);
 - **List** shows both sides as rows, on two lines: the aircraft's name then *studio · variant*; the livery's name then its tail number;
 - a click on a livery changes it, as in the setup panel; the bookmark marks it as a favourite; hovering shows its name above the column, which opens on the selected livery;
-- **Default** brings the sim's grid back, and the setup panel its thumbnails.
+- **Default** has no livery column: the setup panel shows its thumbnails.
 
 ### Aircraft setup panel
 

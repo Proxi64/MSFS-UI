@@ -424,9 +424,8 @@ export class Gallery {
    * button goes up, unless the button is still held on the bar.
    */
   private keepWholeColumns(scope: Scope, list: RealScroll): void {
-    let pressed = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    scope.add(() => clearTimeout(timer));
+    // A scope's timeout cannot be cancelled: each ui-scroll takes a new ticket and only the last one settles.
+    let ticket = 0;
     scope.listen(
       this.body,
       'wheel',
@@ -443,18 +442,12 @@ export class Gallery {
       },
       true,
     );
-    scope.listen(list, 'mousedown', () => {
-      pressed = true;
-    });
-    scope.listen(document, 'mouseup', () => {
-      if (!pressed) return;
-      pressed = false;
-      this.settle(list);
-    });
+    // The release may never reach the document (off an input group): the quiet time settles on its own too.
+    scope.listen(document, 'mouseup', () => this.settle(list));
     scope.listen(list, 'ui-scroll', () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (!pressed) this.settle(list);
+      const mine = ++ticket;
+      scope.timeout(() => {
+        if (mine === ticket) this.settle(list);
       }, SETTLE_DELAY_MS);
     });
   }
