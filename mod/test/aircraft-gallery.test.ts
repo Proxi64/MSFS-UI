@@ -16,7 +16,7 @@ import {
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { aircraftEdges, aircraftRowWidth, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
+import { aircraftEdges, aircraftRowWidth, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns, stockFiltersFit } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
@@ -329,6 +329,14 @@ describe('gallery bar and rows', () => {
     assert.deepEqual(aircraftEdges({ columns: 3, width: 322 }, 8, 1016), { left: 8, right: 1006, rowRight: 1006 });
     // A short list whose tiles take the scroll bar's room: the rows stop before it.
     assert.deepEqual(aircraftEdges({ columns: 3, width: 328 }, 8, 1016), { left: 8, right: 1024, rowRight: 1016 });
+  });
+
+  it('shows Hidden and Favorites in the Default view only when they fit beside the sim search', () => {
+    // Measured at 3440 x 1440: the sim's search ends at 1925, the views start at 2463; the filters 256 units, gap 12.
+    const unit = 1440 / 1080;
+    assert.equal(stockFiltersFit(1925, 2463, 256 * unit, 12 * unit), true);
+    // 357 pixels of room for 357.3 needed: not shown.
+    assert.equal(stockFiltersFit(1925, 2282, 256 * unit, 12 * unit), false);
   });
 
   it('gives the aircraft rows the same width whether the list scrolls or not', () => {

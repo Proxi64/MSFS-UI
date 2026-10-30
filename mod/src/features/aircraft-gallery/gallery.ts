@@ -26,7 +26,7 @@ import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layou
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
-import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
+import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, stockFiltersFit, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
 import {
   accumulateKept,
   emptyMessage,
@@ -52,6 +52,8 @@ interface GalleryMemory {
   favoritesOnly: boolean;
   /** The Hidden filter: only the hidden aircraft (absent before 2.0.0). */
   hiddenOnly?: boolean;
+  /** The last of the mod's views, shown when a filter is clicked in the Default view (absent before 2.0.1). */
+  lastView?: 'gallery' | 'list';
   /** Sort: the id of one of SORTS; absent: the sim's order, unchanged. */
   sort?: { option: string; reversed: boolean } | null;
 }
@@ -127,6 +129,8 @@ const TILE_RATIO = 250 / 360;
 const IMAGE_SHARE = 1.4 / 2.6;
 /** Height of the tile's text banner for its three lines of text (21 units each) and 6 units above and below. */
 const BANNER_HEIGHT = 75;
+/** Hidden and Favorites with their margins, in layout units (aircraft-gallery.css: 114 + 130, 6 before each). */
+const STOCK_FILTERS_WIDTH = 114 + 130 + 2 * 6;
 /** Components are created for the tiles within this distance of the visible part, and kept within the second, in layout units. */
 const CREATE_MARGIN = 300;
 const KEEP_MARGIN = 600;
@@ -368,11 +372,16 @@ export class Gallery {
     this.body.appendChild(this.list);
   }
 
-  /** Favorites or Hidden clicked: that filter on and the other off, or off again; a new list starts from its top. */
+  /**
+   * Favorites or Hidden clicked: that filter on and the other off, or off again; a new list starts from its top. In the
+   * Default view (the sim's grid, which the mod does not filter), the filter turns on in the mod's last view.
+   */
   private setFilter(clicked: 'favorites' | 'hidden'): void {
-    const filter = toggleFilter(readFilter(this.memory), clicked);
+    const stock = this.memory.view === 'stock';
+    const filter = stock ? clicked : toggleFilter(readFilter(this.memory), clicked);
     this.memory.favoritesOnly = filter === 'favorites';
     this.memory.hiddenOnly = filter === 'hidden';
+    if (stock) this.memory.view = this.memory.lastView === 'list' ? 'list' : 'gallery';
     this.saveMemory();
     this.resetOrder();
     this.render();
@@ -381,6 +390,7 @@ export class Gallery {
 
   private setView(view: View): void {
     this.memory.view = view;
+    if (view !== 'stock') this.memory.lastView = view;
     this.saveMemory();
     // The sim's grid, hidden while choosing elsewhere, keeps a stale selection: it is refreshed.
     if (view === 'stock') this.refreshStockGrid();
@@ -497,6 +507,12 @@ export class Gallery {
     style.width = `${rect.width}px`;
     style.top = `${rect.top - origin.top}px`;
     style.height = stock && header ? `${header.getBoundingClientRect().height}px` : `${rect.height}px`;
+    if (stock) {
+      // Hidden and Favorites only when they fit between the sim's search and the views (a narrower screen: not shown).
+      const search = header ? header.querySelector('[name="Search"]') : null;
+      const fits = !!search && stockFiltersFit(search.getBoundingClientRect().right, this.barEnd.getBoundingClientRect().left, STOCK_FILTERS_WIDTH * unit, 12 * unit);
+      if (this.root.classList.contains('is-cramped') === fits) toggleClass(this.root, 'is-cramped', !fits);
+    }
     // Side by side: three aircraft and two liveries per row, all of the same width (livery-column.ts).
     const gap = Math.round(12 * unit);
     const halves = this.liveryColumn && !stock ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, 6 * unit) : null;
@@ -612,8 +628,9 @@ export class Gallery {
     const view = this.memory.view;
     const filter = readFilter(this.memory);
     this.viewTabs.forEach((tab, key) => tab.select(key === view));
-    if (this.hiddenButton) this.hiddenButton.select(filter === 'hidden');
-    if (this.favoritesButton) this.favoritesButton.select(filter === 'favorites');
+    // The Default view is never filtered: its filters show off (a click turns one on in the mod's view).
+    if (this.hiddenButton) this.hiddenButton.select(view !== 'stock' && filter === 'hidden');
+    if (this.favoritesButton) this.favoritesButton.select(view !== 'stock' && filter === 'favorites');
   }
 
   private render(): void {

@@ -88,6 +88,14 @@ export function aircraftEdges(tile: { columns: number; width: number }, margin: 
 }
 
 /**
+ * Whether Hidden and Favorites (`filters` wide with their margins) fit in the Default view, on the line of the sim's
+ * search: from its right edge to the views' left one, `gap` kept after the search.
+ */
+export function stockFiltersFit(searchRight: number, viewsLeft: number, filters: number, gap: number): boolean {
+  return viewsLeft - searchRight >= filters + gap;
+}
+
+/**
  * The tail number of a livery as the mod would apply it (features/tail-number.ts): the one chosen for it, the
  * `atc_id` of its livery.cfg, a registration in its name; '' when none fits the field.
  */

@@ -144,7 +144,7 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 - **No bookmark on the aircraft**: the bookmarks (a bookmark with a star, in the top right corner) are on the liveries (the setup panel's thumbnails, or the livery column in the side by side layout). The **Favorites** filter shows one tile per favourite livery, with its bookmark to remove it; a click loads the aircraft with that livery. Switching the **Hidden** or **Favorites** filter scrolls the list back to the top.
 - **Hiding aircraft**: every aircraft tile and row has a slashed eye in its top right corner (not the Favorites tiles, nor the liveries). A click hides the aircraft, with all its variants: it leaves the gallery and the list, but not the sim's *Default* grid. The **Hidden** filter shows the hidden aircraft; a click on the eye there brings one back, and the view says *No hidden aircraft: click the eye on an aircraft to hide it.* when none is hidden. An aircraft with a favourite livery stays among the favourites, darkened, with a large slashed eye on its image. The count shows the aircraft shown / those of the tab.
 - On opening, the gallery scrolls to the selected aircraft. The view, the Hidden and Favorites filters and the sort are remembered.
-- **Default** brings the sim's grid back, with its own search; the view buttons stay on its line.
+- **Default** brings the sim's grid back, with its own search; the view buttons stay on its line, with *Hidden* and *Favorites* when the screen leaves them room. The sim's grid is never filtered: a click on *Hidden* or *Favorites* there turns the filter on in the last of the mod's views (Gallery or List).
 
 **Layout** (option of the feature in MSFS-UI-GENERATOR):
 

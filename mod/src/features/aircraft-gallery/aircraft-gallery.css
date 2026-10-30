@@ -52,12 +52,15 @@
 .msfs-ui-gal__sort { width: calc(var(--u) * 240); }
 .msfs-ui-gal__reverse { width: calc(var(--u) * 30); }
 .msfs-ui-gal__view { width: calc(var(--u) * 100); }
-/* Default view: only the views stay, on the line of the sim's search, on the right. */
+/*
+ * Default view: Hidden, Favorites and the views, on the line of the sim's search, on the right; the filters only when
+ * they fit beside the sim's search (gallery.ts: is-cramped otherwise).
+ */
 .msfs-ui-gal.is-stock .msfs-ui-gal__bar { height: 100%; margin-bottom: 0; justify-content: flex-end; }
-.msfs-ui-gal.is-stock .msfs-ui-gal__bar-start,
+.msfs-ui-gal.is-stock .msfs-ui-gal__bar-start { flex-grow: 0; }
+.msfs-ui-gal.is-stock.is-cramped .msfs-ui-gal__bar-start,
 .msfs-ui-gal.is-stock .msfs-ui-gal__search,
 .msfs-ui-gal.is-stock .msfs-ui-gal__count,
-.msfs-ui-gal.is-stock .msfs-ui-gal__filter,
 .msfs-ui-gal.is-stock .msfs-ui-gal__sort,
 .msfs-ui-gal.is-stock .msfs-ui-gal__reverse,
 .msfs-ui-gal.is-stock .msfs-ui-gal__body { display: none; }
