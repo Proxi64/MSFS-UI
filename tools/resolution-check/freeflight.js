@@ -19,9 +19,12 @@
   var shown = block && getComputedStyle(block).display !== 'none';
   var search = shown ? R(block.querySelector('[name="Search"]')) : null;
 
-  // Right column: the gaps, from the widget to the map buttons.
+  // Right column: the gaps, from the widget to the map buttons. A sim card's tab row (Weather / Airport) belongs to the
+  // first group: the bar is GAP under it.
+  var tabs = document.querySelector('.msfs-ui-wx-tabs');
+  var tabsTop = tabs && getComputedStyle(tabs).display !== 'none' && R(tabs).height > 0 ? R(tabs).top : null;
   var edges = [widget.bottom];
-  sections.forEach(function (e) { edges.push(R(e).top, R(e).bottom); });
+  sections.forEach(function (e, at) { edges.push(at === 0 && tabsTop !== null ? tabsTop : R(e).top, R(e).bottom); });
   if (search) edges.push(search.top, search.bottom);
   edges.push(filters.top);
   var gaps = [];

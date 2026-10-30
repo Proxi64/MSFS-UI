@@ -37,6 +37,14 @@ export const COMPONENTS = {
 
 export type ComponentGuid = (typeof COMPONENTS)[keyof typeof COMPONENTS];
 
+/**
+ * The sim's dropdown list, in layout units (measured 2026-10-30): items of 30 with 3 between them (DROPDOWN_ITEM per
+ * item), DROPDOWN_EDGE of padding above and below, so `List_Size` = items x 33 + 9 (DROPDOWN_PADDING).
+ */
+export const DROPDOWN_ITEM = 33;
+export const DROPDOWN_EDGE = 6;
+export const DROPDOWN_PADDING = 9;
+
 /** An item of the sim's dropdown (its DropdownManipulator): `{ title, selectedCallback }`. */
 export interface DropdownItem {
   title: string;

@@ -38,9 +38,13 @@ export function variantsHeight(room: number, variants: Rows, liveries: Rows): nu
   return Math.max(0, Math.floor(height));
 }
 
-/** True when the rows need more than `height`: the list scrolls (half a pixel of rounding allowed). */
+/**
+ * True when the rows need more than `height`: the list scrolls. One pixel of rounding allowed, as variantsHeight rounds
+ * the height down (measured 2026-10-30 at 1164 lines: two rows of 90.55 pixels in a list of 90, with half a pixel,
+ * marked scrolling with no bar, its tiles 24 units short of the edge).
+ */
 export function overflows(rows: Rows, height: number): boolean {
-  return rows.count * rows.step > height + 0.5;
+  return rows.count * rows.step > height + 1;
 }
 
 /**

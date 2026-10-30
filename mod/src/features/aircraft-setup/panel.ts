@@ -315,6 +315,9 @@ export class SetupPanel {
     let variants = variantRows(perRow);
     let variantsHigh = variantsHeight(room, variants, liveryRows(wideThumbnail));
     const variantsScroll = overflows(variants, variantsHigh);
+    // The class first: it shows the bar's container that narrow() measures (aircraft-setup.css hides it while the list
+    // fits; measured after, a list starting to scroll got its tiles a pass late, 10 pixels too wide at 1440 lines).
+    toggleClass(this.variantsList, 'is-scrolling', variantsScroll);
     const variantsWidth = variantsScroll ? narrow(this.variantsList) : full;
     if (variantsScroll) {
       perRow = this.variantsPerRow(variantsWidth, gap);
@@ -322,11 +325,10 @@ export class SetupPanel {
       variantsHigh = variantsHeight(room, variants, liveryRows(wideThumbnail));
     }
     const liveriesScroll = overflows(liveryRows(wideThumbnail), room - variantsHigh);
+    toggleClass(this.liveriesList, 'is-scrolling', liveriesScroll);
     const thumbnail = liveriesScroll ? this.thumbnailSize(narrow(this.liveriesList), unit) : wideThumbnail;
 
     this.arrangeVariants(perRow, variantsWidth);
-    toggleClass(this.variantsList, 'is-scrolling', variantsScroll);
-    toggleClass(this.liveriesList, 'is-scrolling', liveriesScroll);
     // Each row counts the gap under it; the list's own margin is the gap under the last one: a list that does not
     // scroll ends on its last tile (measured at 1440 lines: 16 pixels under it, the other blocks 8).
     this.variantsList.style.height = `${variantsScroll ? variantsHigh : Math.max(0, variantsHigh - Math.round(gap))}px`;
@@ -381,7 +383,11 @@ export class SetupPanel {
     this.state = state;
     this.renderVariants(state.variants);
     this.renderLiveries(state.liveries);
-    const current = (await aircraft.CurrentAircraft()) as { details?: AircraftStatistic[] } | null;
+    // A failed read of the statistics shows none, and never stops the identification's refresh (the tail number).
+    const current = (await (aircraft.CurrentAircraft() as Promise<unknown>).catch((error: unknown) => {
+      logError('the statistics of the aircraft could not be read', error);
+      return null;
+    })) as { details?: AircraftStatistic[] } | null;
     if (this.scope.disposed || number !== this.reloadNumber) return;
     this.renderStatistics(current && Array.isArray(current.details) ? current.details.filter((statistic) => !!statistic && !!statistic.name) : []);
     await aircraft.UpdateCurrentAircraftIdentification.request();

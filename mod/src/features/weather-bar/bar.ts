@@ -9,7 +9,18 @@ import type { Scope } from '../../core/scope.ts';
 import { loadData, saveData } from '../../core/storage.ts';
 import { addPanelLayers, GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../core/theme.ts';
 import type { Settings } from '../../generated/catalog.ts';
-import { COMPONENTS, createComponent, type ComponentGuid, type DropdownItem, type DropdownManipulator, type SimComponent } from '../../sim/components.ts';
+import {
+  COMPONENTS,
+  createComponent,
+  DROPDOWN_EDGE,
+  DROPDOWN_ITEM,
+  DROPDOWN_PADDING,
+  type ComponentGuid,
+  type DropdownItem,
+  type DropdownManipulator,
+  type SimComponent,
+} from '../../sim/components.ts';
+import type { RealScroll } from '../../sim/real-scroll.ts';
 import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
 import { readArray, store, translate, watch, type StoreNode } from '../../sim/store.ts';
 import type { FlightConditions, FlightConfigurationButton, FlightLocation, TimeInfo, WeatherInfo, WeatherPreset } from './model.ts';
@@ -54,13 +65,9 @@ const SEARCH_HEIGHT = 36;
 const LIVE_PRESET = 'TT:MENU.WEATHERTYPE_0DYNAMIC';
 const PRESETS_PER_ROW = 6;
 /**
- * The presets added by other packages, in the sim's dropdown under the grid (the owner's choice, 2026-10-30): its list,
- * in layout units, has items of 30 with 3 between them and 6 of padding above and below (LIST_EDGE; measured
- * 2026-10-30), and opens downwards when at least LIST_LEAST items fit there (bar.ts, sizePresetList).
+ * The presets added by other packages, in the sim's dropdown under the grid (the owner's choice, 2026-10-30): its list
+ * (sizes in sim/components.ts) opens downwards when at least LIST_LEAST items fit there (sizePresetList).
  */
-const LIST_ITEM = 33;
-const LIST_PADDING = 9;
-const LIST_EDGE = 6;
 const LIST_LEAST = 3;
 /** Longest wait for a weather request; past it, the line says so. */
 const WEATHER_TIMEOUT_MS = 4000;
@@ -123,12 +130,6 @@ function answerOrNull<T>(promise: Promise<T>, ms: number, what: string): Promise
   });
 }
 
-/** The sim's scrolling list (see the gallery), in the presets dropdown. */
-interface RealScroll extends HTMLElement {
-  readonly maxScroll: number;
-  scrollToPosition(position: number): void;
-}
-
 interface Section {
   section: HTMLElement;
   value: HTMLElement;
@@ -153,8 +154,9 @@ export class WeatherBar {
   private presetList: SimComponent | null = null;
   private readonly presetItems = new Map<number, DropdownItem>();
   private presetListShown: number | null = null;
-  /** The block of the sim's search field marked SEARCH_CLASS. */
+  /** The block of the sim's search field the bar places, and whether its release with the scope is registered. */
   private searchBlock: HTMLElement | null = null;
+  private searchReleased = false;
   private readonly timeButtons = new Map<TimeMode, SimComponent>();
   private readonly conditionButtons = new Map<string, SimComponent>();
   private readonly tabButtons = new Map<Tab, SimComponent>();
@@ -397,7 +399,7 @@ export class WeatherBar {
       this.panel.style.display = 'none';
       this.tabs.style.display = 'none';
       this.releaseCard();
-      this.placeSearch(null);
+      this.placeSearch('hidden');
       return;
     }
     // At start-up the sim activates Free Flight behind the scenes, then resets the flight conditions: the last choice
@@ -420,23 +422,6 @@ export class WeatherBar {
     style.left = `${rect.left - origin.left}px`;
     style.width = `${rect.width}px`;
     this.layoutPresets(Math.floor(rect.width), unit);
-    // The same gap under the widget, between the sections, above and under the search field (the owner's wish,
-    // 2026-10-30), given to the page's other column.
-    const gap = this.groupGap(rect.bottom, unit);
-    this.spaceSections(gap);
-    if (this.page.elt.getAttribute(GROUP_GAP_ATTRIBUTE) !== String(gap)) this.page.elt.setAttribute(GROUP_GAP_ATTRIBUTE, String(gap));
-    let top = rect.bottom - origin.top + gap;
-    const left = rect.left - origin.left;
-    // The search field under the last block of the column (the bar or the sim's card), when it fits above the map
-    // buttons with at least the smallest gap (GROUP_GAP) under it.
-    const searchUnder = (bottom: number) => {
-      const buttons = this.page.elt.querySelector(MAP_BUTTONS);
-      const least = Math.floor(GROUP_GAP * unit);
-      const limit = isShown(buttons) ? buttons.getBoundingClientRect().top - origin.top - least : origin.height;
-      const searchTop = bottom + gap;
-      this.placeSearch(searchTop + Math.floor(SEARCH_HEIGHT * unit) <= limit ? { top: searchTop, left, width: rect.width } : null);
-    };
-    const panelBottom = () => top + this.panel.getBoundingClientRect().height;
 
     let card: HTMLElement | null = null;
     let cardTab = '';
@@ -448,6 +433,26 @@ export class WeatherBar {
         break;
       }
     }
+    // Without both tabs (a component that failed to load), the sim's card keeps the place: it cannot be hidden for good.
+    const tab: Tab = !card ? 'weather' : this.tabButtons.size === 2 ? this.tab : 'airport';
+
+    // The same gap under the widget, between the blocks, above and under the search field (the owner's wish,
+    // 2026-10-30), given to the page's other column.
+    const gap = this.groupGap(rect.bottom, unit, card, tab);
+    this.spaceSections(gap);
+    if (this.page.elt.getAttribute(GROUP_GAP_ATTRIBUTE) !== String(gap)) this.page.elt.setAttribute(GROUP_GAP_ATTRIBUTE, String(gap));
+    let top = rect.bottom - origin.top + gap;
+    const left = rect.left - origin.left;
+    // The search field under the last block of the column (the bar or the sim's card) when it fits above the map
+    // buttons with at least GAP under it; otherwise back in the sim's own place, under the aircraft button.
+    const searchUnder = (bottom: number) => {
+      const buttons = this.page.elt.querySelector(MAP_BUTTONS);
+      const limit = isShown(buttons) ? buttons.getBoundingClientRect().top - origin.top - Math.floor(GAP * unit) : origin.height;
+      const searchTop = bottom + gap;
+      this.placeSearch(searchTop + Math.floor(SEARCH_HEIGHT * unit) <= limit ? { top: searchTop, left, width: rect.width } : 'home');
+    };
+    const panelBottom = () => top + this.panel.getBoundingClientRect().height;
+
     if (!card) {
       this.tabs.style.display = 'none';
       this.releaseCard();
@@ -467,8 +472,6 @@ export class WeatherBar {
     tabs.top = `${top}px`;
     top += (TAB_ROW + GAP) * unit;
     this.holdCard(card, top + origin.top);
-    // Without both tabs (a component that failed to load), the sim's card keeps the place: it cannot be hidden for good.
-    const tab: Tab = this.tabButtons.size === 2 ? this.tab : 'airport';
     card.style.visibility = tab === 'airport' ? '' : 'hidden';
     style.display = tab === 'weather' ? '' : 'none';
     style.top = `${top}px`;
@@ -491,7 +494,7 @@ export class WeatherBar {
       .filter((box: DOMRect) => box.height > 0)
       .map((box: DOMRect) => box.top)
       .sort((a: number, b: number) => a - b);
-    const step = tops.length > 1 ? tops[1]! - tops[0]! : LIST_ITEM * uiUnit();
+    const step = tops.length > 1 ? tops[1]! - tops[0]! : DROPDOWN_ITEM * uiUnit();
     const chosen = Array.from(this.presetItems.keys()).indexOf(this.weatherIndex);
     scroll.scrollToPosition(Math.min(scroll.maxScroll, Math.max(0, chosen) * step));
   }
@@ -510,19 +513,19 @@ export class WeatherBar {
     const box = host.getBoundingClientRect();
     const below = (this.panel.getBoundingClientRect().bottom - box.bottom) / unit;
     const count = this.presetItems.size;
-    const fitBelow = Math.floor((below - LIST_PADDING) / LIST_ITEM);
+    const fitBelow = Math.floor((below - DROPDOWN_PADDING) / DROPDOWN_ITEM);
     const up = fitBelow < LIST_LEAST;
     toggleClass(host, 'is-up', up);
     let size: number;
-    let padding = LIST_EDGE;
+    let padding = DROPDOWN_EDGE;
     if (up) {
-      size = Math.max(1, Math.min(count, Math.floor(((box.top - columnTop) / unit - LIST_PADDING) / LIST_ITEM))) * LIST_ITEM + LIST_PADDING;
+      size = Math.max(1, Math.min(count, Math.floor(((box.top - columnTop) / unit - DROPDOWN_PADDING) / DROPDOWN_ITEM))) * DROPDOWN_ITEM + DROPDOWN_PADDING;
     } else if (count <= fitBelow) {
-      size = count * LIST_ITEM + LIST_PADDING;
+      size = count * DROPDOWN_ITEM + DROPDOWN_PADDING;
     } else {
       // Half a pixel more: the engine rounds the height down, the list must reach the buttons' edge.
       size = below + 0.5 / unit;
-      padding += below - (fitBelow * LIST_ITEM + LIST_PADDING);
+      padding += below - (fitBelow * DROPDOWN_ITEM + DROPDOWN_PADDING);
     }
     list.set('List_Size', size.toFixed(2));
     setVariable(host.style, '--msfs-ui-presets-top', `${Math.floor(padding * unit)}px`);
@@ -551,25 +554,32 @@ export class WeatherBar {
 
   /**
    * In pixels, the gap between the groups of the column: its free room down to the map buttons shared evenly, under
-   * the widget, between the sections, above and under the search field (the owner's choice, 2026-10-30); GROUP_GAP at
-   * least. The METAR, shown at times, is not counted: it takes from the room under the search field, which hides when
-   * it no longer fits.
+   * the widget, between the blocks shown, above and under the search field (the owner's choice, 2026-10-30). Every
+   * block shown counts: the tab row of a sim's card (with the GAP under it), the sections (the METAR when a departure
+   * shows it) or, on the Airport tab, the card. A fuller column narrows the gap, down to GAP, rather than push the
+   * search field out (code review of 2026-10-30: the METAR, not counted, hid it whenever a departure was set).
    */
-  private groupGap(widgetBottom: number, unit: number): number {
-    const least = Math.floor(GROUP_GAP * unit);
+  private groupGap(widgetBottom: number, unit: number, card: HTMLElement | null, tab: Tab): number {
     const buttons = this.page.elt.querySelector(MAP_BUTTONS);
-    if (!isShown(buttons)) return least;
+    if (!isShown(buttons)) return Math.floor(GROUP_GAP * unit);
     let blocks = Math.floor(SEARCH_HEIGHT * unit);
     let gaps = 2;
-    const sections = this.panel.querySelectorAll<HTMLElement>('.msfs-ui-wx__section');
-    for (let at = 0; at < sections.length; at++) {
-      if (this.metar && sections[at] === this.metar.section) continue;
-      blocks += sections[at]!.getBoundingClientRect().height;
+    if (card) blocks += (TAB_ROW + GAP) * unit;
+    if (card && tab === 'airport') {
+      blocks += card.getBoundingClientRect().height;
       gaps++;
+    } else {
+      const sections = this.panel.querySelectorAll<HTMLElement>('.msfs-ui-wx__section');
+      for (let at = 0; at < sections.length; at++) {
+        const high = sections[at]!.getBoundingClientRect().height;
+        if (high === 0) continue;
+        blocks += high;
+        gaps++;
+      }
     }
     // Rounded to the nearest pixel: the gap under the search field differs from the others by a few pixels at most
     // (rounded down, the room left over all went there: 48 pixels under it, 43 between the others at 1440 lines).
-    return Math.max(least, Math.round((buttons.getBoundingClientRect().top - widgetBottom - blocks) / gaps));
+    return Math.max(Math.floor(GAP * unit), Math.round((buttons.getBoundingClientRect().top - widgetBottom - blocks) / gaps));
   }
 
   /** `gap` pixels above every section but the first (a hidden one, the METAR, takes no room). */
@@ -579,34 +589,41 @@ export class WeatherBar {
   }
 
   /**
-   * The sim's search field at `place` (pixels in the page), or hidden (null): its block marked SEARCH_CLASS and given
-   * the place in variables (written only on change: weather-bar.css); the sim's own place back with the scope.
+   * The sim's search field at a place (pixels in the page), hidden (a map panel fills the column, as the bar), or
+   * `home`, in its own place under the aircraft button (no room left in the column; the favourites then go under it):
+   * its block marked SEARCH_CLASS and given the place in variables (written only on change: weather-bar.css). The
+   * sim's own place back with the scope.
    */
-  private placeSearch(place: { top: number; left: number; width: number } | null): void {
+  private placeSearch(where: { top: number; left: number; width: number } | 'hidden' | 'home'): void {
     const block = this.page.elt.querySelector<HTMLElement>(SEARCH_BLOCK);
     if (!block) return;
-    if (block !== this.searchBlock) {
-      // Only that block (the sim may draw it again).
-      if (this.searchBlock) this.releaseSearch();
-      else this.scope.add(() => this.releaseSearch());
-      this.searchBlock = block;
+    if (!this.searchReleased) {
+      this.searchReleased = true;
+      this.scope.add(() => this.unmarkSearch());
+    }
+    // Only that block (the sim may draw it again).
+    if (block !== this.searchBlock) this.unmarkSearch();
+    this.searchBlock = block;
+    if (where === 'home') {
+      this.unmarkSearch();
+      return;
     }
     const style = block.style;
-    if (place) {
-      setVariable(style, '--msfs-ui-search-top', `${Math.round(place.top)}px`);
-      setVariable(style, '--msfs-ui-search-left', `${Math.round(place.left)}px`);
-      setVariable(style, '--msfs-ui-search-width', `${Math.round(place.width)}px`);
+    if (where !== 'hidden') {
+      setVariable(style, '--msfs-ui-search-top', `${Math.round(where.top)}px`);
+      setVariable(style, '--msfs-ui-search-left', `${Math.round(where.left)}px`);
+      setVariable(style, '--msfs-ui-search-width', `${Math.round(where.width)}px`);
     }
-    block.classList.add(SEARCH_CLASS);
-    toggleClass(block, 'is-hidden', !place);
+    if (!block.classList.contains(SEARCH_CLASS)) block.classList.add(SEARCH_CLASS);
+    toggleClass(block, 'is-hidden', where === 'hidden');
   }
 
-  private releaseSearch(): void {
+  /** The search field's block back as the sim made it: no class, no variable of the mod. */
+  private unmarkSearch(): void {
     const block = this.searchBlock;
-    if (!block) return;
+    if (!block || !block.classList.contains(SEARCH_CLASS)) return;
     block.classList.remove(SEARCH_CLASS, 'is-hidden');
     for (const name of ['--msfs-ui-search-top', '--msfs-ui-search-left', '--msfs-ui-search-width']) block.style.removeProperty(name);
-    this.searchBlock = null;
   }
 
   /**

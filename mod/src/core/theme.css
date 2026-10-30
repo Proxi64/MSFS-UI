@@ -89,20 +89,6 @@
 .msfs-ui-icon svg,
 .msfs-ui-icon svg * { pointer-events: none; }
 .msfs-ui-icon svg { display: block; width: 100%; height: 100%; }
-/*
- * Over a thumbnail (a tile of the gallery, of the Default view or of the livery column; a livery of the setup panel):
- * a small dark translucent disc under the icon, tight (its host 4 units larger; a larger one looked heavy to the
- * owner), so that it reads over a light sky. Not on a list row, whose blue is dark enough.
- */
-.msfs-ui-gal__tile .msfs-ui-gal__icon,
-.msfs-ui-setup__icon { border-radius: 50%; background-color: rgba(10, 16, 26, 0.55); }
-.msfs-ui-gal__tile .msfs-ui-gal__icon .msfs-ui-icon,
-.msfs-ui-setup__icon .msfs-ui-icon {
-  left: calc(var(--u) * 2);
-  top: calc(var(--u) * 2);
-  right: calc(var(--u) * 2);
-  bottom: calc(var(--u) * 2);
-}
 .msfs-ui-gal__row:hover .msfs-ui-icon,
 .msfs-ui-fav__row:hover .msfs-ui-icon { color: rgba(31, 37, 48, 0.85); }
 .msfs-ui-gal__row:hover .msfs-ui-icon:hover,

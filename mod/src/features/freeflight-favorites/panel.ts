@@ -119,9 +119,10 @@ export class FavoritesPanel {
       }
     }
     const origin = this.page.elt.getBoundingClientRect();
-    // The weather bar's gap when it runs (it fills its column), so that both columns match.
+    // Under the search field, the sim's own gap above it; otherwise the weather bar's gap when it runs (it fills its
+    // column), so that both columns match.
     const shared = Number(this.page.elt.getAttribute(GROUP_GAP_ATTRIBUTE));
-    const gap = shared > 0 ? shared : Math.floor(GROUP_GAP * unit);
+    const gap = under ? under.top - rect.bottom : shared > 0 ? shared : Math.floor(GROUP_GAP * unit);
     const top = Math.round((under ? under.bottom : rect.bottom) - origin.top + gap);
     const available = Math.floor(origin.height - BOTTOM_ROOM * unit - top);
     // As high as its rows, up to the whole rows that fit in the room left: the sim's list then scrolls, and the block

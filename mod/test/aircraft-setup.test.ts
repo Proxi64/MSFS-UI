@@ -82,10 +82,19 @@ describe('setup panel layout', () => {
     assert.equal(variantsHeight(-20, { count: 10, step: variant }, { count: 5, step: liveryStep }), 0);
   });
 
-  it('tells when a list scrolls, with half a pixel of rounding', () => {
+  it('tells when a list scrolls, with the pixel its height loses when rounded down', () => {
     assert.equal(overflows({ count: 3, step: variant }, 126), false);
     assert.equal(overflows({ count: 3, step: variant }, 125.6), false);
-    assert.equal(overflows({ count: 3, step: variant }, 125), true);
+    assert.equal(overflows({ count: 3, step: variant }, 125), false);
+    assert.equal(overflows({ count: 3, step: variant }, 124.9), true);
+  });
+
+  it('does not scroll a list given its whole rows rounded down (measured 2026-10-30, 1164 lines)', () => {
+    // Two rows of 42 units at 1.078 pixels per unit: 90.55 pixels, the list 90 high (variantsHeight rounds down).
+    const rows = { count: 2, step: 42 * 1.078 };
+    const height = variantsHeight(500, rows, { count: 0, step: liveryStep });
+    assert.equal(height, 90);
+    assert.equal(overflows(rows, height), false);
   });
 
   it('scrolls to show the selected variant, centred, within the list', () => {

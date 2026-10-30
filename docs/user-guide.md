@@ -78,7 +78,7 @@ Everything the mod shows is made of the sim's own components (tiles, buttons, ta
 
 ### Weather and time bar
 
-**Where:** Free Flight, right column, under the sim's *Flight Conditions* widget, then the sim's *Search location* field, which the bar moves under its last section (its results open upwards, over the bar). The gap between the widget and the bar, between the sections and around the search field is the same, and fills the column down to the map buttons; the favourites on the left start at the same height, with the same gap.
+**Where:** Free Flight, right column, under the sim's *Flight Conditions* widget, then the sim's *Search location* field, which the bar moves under its last section (its results open upwards, over the bar). The gap between the widget and the bar, between the sections and around the search field is the same, and fills the column down to the map buttons (it narrows when the METAR or an airport card's tabs show); the favourites on the left start at the same height, with the same gap.
 
 When an airport (or an aircraft of the traffic) is selected on the map, the sim shows its card in the same column. Two tabs then appear under the widget, **Weather** and **Airport** (or **Traffic**): only the chosen one shows, and the search field goes under it. Without such a card, the tabs disappear.
 
@@ -207,7 +207,8 @@ A number is remembered for the current livery as soon as you change the tail num
 | The left column of the aircraft selection is empty | The current aircraft became invalid (a choice sent to a released configurator) | Click an aircraft in the gallery; otherwise leave and reopen the screen |
 | A favourite does not load (*not in the list*) | The aircraft is not in the category tab chosen in the aircraft selection | Choose the *All* tab |
 | The Favorites block disappears on Free Flight (weather bar turned off) | *Search location*, under the aircraft button, shows its results | Normal: it comes back when the results close |
-| *Search location* is not shown on Free Flight | A map panel (*Legend*, *Map Layers*, *World Map display*) fills the right column, or the airport card leaves no room above the map buttons | Close the panel, or choose the **Weather** tab |
+| *Search location* is not shown on Free Flight | A map panel (*Legend*, *Map Layers*, *World Map display*) fills the right column | Close the panel with its button |
+| *Search location* is back under the aircraft, on the left | An airport card on the **Airport** tab leaves no room for it in the right column | Normal: it goes back under the bar on the **Weather** tab |
 | Hundreds of arrow buttons in the weather bar (before 2.0.2) | A package adds weather presets whose icons the sim does not have | Update: the added presets are in the **Presets** dropdown |
 | METAR shows *No METAR* | No answer from the sim within 4 s, or no station | Choose the departure again |
 | *Ceiling 400 ft* instead of a cloud cover | Out of Live weather, the sim's METAR keeps the ceiling but not the cover | Normal |

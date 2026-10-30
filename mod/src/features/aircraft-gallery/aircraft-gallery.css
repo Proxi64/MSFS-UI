@@ -188,6 +188,18 @@
   width: calc(var(--u) * 22);
   height: calc(var(--u) * 22);
 }
+/*
+ * Over a thumbnail (a tile of the gallery, of the Default view or of the livery column): a small dark translucent disc
+ * under the icon, tight (its host 4 units larger; a larger one looked heavy to the owner), so that it reads over a
+ * light sky. Not on a list row, whose blue is dark enough. The same in aircraft-setup.css for its liveries.
+ */
+.msfs-ui-gal__tile .msfs-ui-gal__icon { border-radius: 50%; background-color: rgba(10, 16, 26, 0.55); }
+.msfs-ui-gal__tile .msfs-ui-gal__icon .msfs-ui-icon {
+  left: calc(var(--u) * 2);
+  top: calc(var(--u) * 2);
+  right: calc(var(--u) * 2);
+  bottom: calc(var(--u) * 2);
+}
 
 /*
  * A hidden aircraft kept for its favourite liveries: a dark veil (35 % black) over the whole tile or row, under the

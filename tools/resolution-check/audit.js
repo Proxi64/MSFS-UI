@@ -63,9 +63,24 @@
   var title = document.querySelector('[name="Fleet_Details"] [name="Header"]');
   if (visible(setup) && title) {
     var tr = rect(title);
-    Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__variants, .msfs-ui-setup__variant, .msfs-ui-setup__livery-header, .msfs-ui-setup__liveries, .msfs-ui-setup__stats, .msfs-ui-setup__tail, .msfs-ui-setup__actions')).filter(visible).forEach(function (blk) {
+    Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__variants, .msfs-ui-setup__livery-header, .msfs-ui-setup__liveries, .msfs-ui-setup__stats, .msfs-ui-setup__tail, .msfs-ui-setup__actions')).filter(visible).forEach(function (blk) {
       var r = rect(blk);
-      if (Math.abs(r.l - tr.l) > 1 || (Math.abs(r.r - tr.r) > 1 && blk.className.indexOf('setup__variant ') < 0 && blk.className !== 'msfs-ui-setup__variant msfs-ui-compact-tile')) problems.push('setup block off the title block: ' + name(blk) + ' ' + px(r.l) + '-' + px(r.r) + ' title ' + px(tr.l) + '-' + px(tr.r));
+      if (Math.abs(r.l - tr.l) > 1 || Math.abs(r.r - tr.r) > 1) problems.push('setup block off the title block: ' + name(blk) + ' ' + px(r.l) + '-' + px(r.r) + ' title ' + px(tr.l) + '-' + px(tr.r));
+    });
+    // The variant tiles, by row: the first on the title block's left edge, the last on its right one unless the list
+    // scrolls (the bar's room is then kept).
+    var variants = setup.querySelector('.msfs-ui-setup__variants');
+    var rowsByTop = {};
+    Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__variant')).filter(visible).forEach(function (t) {
+      var r = rect(t);
+      var k = Math.round(r.t);
+      (rowsByTop[k] = rowsByTop[k] || []).push(r);
+    });
+    Object.keys(rowsByTop).forEach(function (k) {
+      var row = rowsByTop[k].sort(function (a, b) { return a.l - b.l; });
+      var first = row[0], last = row[row.length - 1];
+      if (Math.abs(first.l - tr.l) > 1) problems.push('variant row off the title block on the left: ' + px(first.l) + ' title ' + px(tr.l));
+      if (variants && !variants.classList.contains('is-scrolling') && row.length > 1 && Math.abs(last.r - tr.r) > 1.5) problems.push('variant row off the title block on the right: ' + px(last.r) + ' title ' + px(tr.r));
     });
     if (rect(setup).b > rect(document.querySelector('[name="Fleet_Details"] [name="ButtonBlock"]') || setup).t + 1) problems.push('setup panel runs over the Configure tile');
   }

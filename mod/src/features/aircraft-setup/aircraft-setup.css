@@ -83,6 +83,14 @@
 }
 .msfs-ui-setup__livery:hover .msfs-ui-setup__icon,
 .msfs-ui-setup__livery.is-favorite .msfs-ui-setup__icon { opacity: 1; }
+/* Over the thumbnail, the gallery's small dark disc under the heart (aircraft-gallery.css). */
+.msfs-ui-setup__icon { border-radius: 50%; background-color: rgba(10, 16, 26, 0.55); }
+.msfs-ui-setup__icon .msfs-ui-icon {
+  left: calc(var(--u) * 2);
+  top: calc(var(--u) * 2);
+  right: calc(var(--u) * 2);
+  bottom: calc(var(--u) * 2);
+}
 
 /*
  * The aircraft's statistics, when panel.ts gives them room (has-statistics): the sim's rows (36 units, as on its own
@@ -126,9 +134,11 @@
 /*
  * The sim's "Configure your aircraft" tile under the panel, as wide as the sim's title block like the panel's blocks
  * (the owner's wish, 2026-10-30): its 6-unit side margins in its block go (measured on 1.9.21: 555 to 1070 for a block
- * from 547 to 1078 at 1440 lines); its top margin stays, the gap under the panel's buttons.
+ * from 547 to 1078 at 1440 lines); its top margin stays, the gap under the panel's buttons. On the aircraft selection
+ * only: the career's fleet, the companies' fleet and the Manufacture screens use the same Fleet_Details (code review of
+ * 2026-10-30), and this style stays for the feature's life.
  */
-[name="Fleet_Details"] [name="TileButton_Watermark_Small_Cockpit"] { left: 0 !important; right: 0 !important; }
+[name="PlaneSelection_Content"] [name="Fleet_Details"] [name="TileButton_Watermark_Small_Cockpit"] { left: 0 !important; right: 0 !important; }
 /*
  * Two buttons in whole pixels (panel.ts: --action-w, --action-gap): the first half of the width, rounded down, the
  * second the rest; shared by the engine, the second ended a pixel past the title block (measured at 1440 lines).

@@ -18,7 +18,16 @@ import { loadData, saveData } from '../../core/storage.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
-import { COMPONENTS, createComponent, type ComponentGuid, type DropdownItem, type DropdownManipulator, type SimComponent } from '../../sim/components.ts';
+import {
+  COMPONENTS,
+  createComponent,
+  DROPDOWN_ITEM,
+  DROPDOWN_PADDING,
+  type ComponentGuid,
+  type DropdownItem,
+  type DropdownManipulator,
+  type SimComponent,
+} from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
@@ -564,8 +573,8 @@ export class Gallery {
       const choice = this.sortChoice();
       const current = choice ? items[this.sorts.indexOf(choice)] : undefined;
       if (manipulator) manipulator.setData(items, current);
-      // The list's height, in layout units: items of 30 with 3 between them, 6 of padding above and below (measured).
-      dropdown.set('List_Size', String(Math.max(1, items.length) * 33 + 9));
+      // The list's height, in layout units (sim/components.ts).
+      dropdown.set('List_Size', String(Math.max(1, items.length) * DROPDOWN_ITEM + DROPDOWN_PADDING));
     }
     if (this.reverseButton) {
       this.reverseButton.select(!!sort && sort.reversed);
