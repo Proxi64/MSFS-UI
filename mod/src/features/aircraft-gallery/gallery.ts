@@ -644,7 +644,6 @@ export class Gallery {
       this.layoutGrid(rect, unit);
       return;
     }
-    setStyle(this.bar.style, 'width', '');
     // Side by side: three aircraft and two liveries per row, all of the same width (livery-column.ts).
     const gap = Math.round(12 * unit);
     const halves = this.liveryColumn ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, 6 * unit) : null;
@@ -684,6 +683,10 @@ export class Gallery {
     setVariable(style, '--tile-w', `${tile.width}px`);
     setVariable(style, '--tile-image-h', `${tile.image}px`);
     setVariable(style, '--tile-h', `${tile.height}px`);
+    // Classic: the bar on one line from the first tile's left edge to the last one's right edge, as the rows (measured on
+    // 1.9.21, 2026-10-30 at 1920 x 1080: it ran from the list's edge over the scroll bar's room, 6 and 40 pixels off).
+    setStyle(this.bar.style, 'marginLeft', halves ? '' : `${edges.left}px`);
+    setStyle(this.bar.style, 'width', halves ? '' : `${edges.right - edges.left}px`);
     // Side by side, the bar's first part on the aircraft tiles' edges (Hidden and Favorites over the last column), its
     // second on the livery column.
     this.layoutBar(halves ? { start: edges, filters: lastColumnSpan(tile, 6 * unit), end: { left: halves.left + gap, width: halves.right } } : null, unit);
@@ -714,6 +717,7 @@ export class Gallery {
     setVariable(style, '--grid-gap', `${grid.gap}px`);
     if (this.body.classList.contains('is-side-by-side')) toggleClass(this.body, 'is-side-by-side', false);
     setStyle(this.body.style, 'width', `${grid.gridWidth}px`);
+    setStyle(this.bar.style, 'marginLeft', '');
     setStyle(this.bar.style, 'width', `${grid.gridWidth}px`);
     // Once the list has its new width: its last scroll position depends on it.
     if (previous && previous.tileWidth + previous.gap !== this.columnStep() && this.listAxis === 'x') {
