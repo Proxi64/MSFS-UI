@@ -1,7 +1,7 @@
 // The mod's memory. By default in the sim's persistent storage (`datastorage`, where the menu keeps its `LAYOUT_*` keys):
 // the sim keeps it in memory and writes it to the disk only when it saves its profile, so every write asks for that save
 // (onStorageWrite). When the vault module answers (sim/vault.ts), the data lives there instead (setStorageBackend),
-// with the changes made on `datastorage` before a late answer (moveSessionWrites).
+// with the changes made on `datastorage` before a late answer, unless the vault's values are newer (moveSessionWrites).
 // `localStorage` is emptied at every start of the sim: never used. Keys are those of 0.3.0, so the user's data
 // (favourites, tail numbers…) carries over; their content is documented in mod/README.md (Data stored in the sim).
 
@@ -44,8 +44,16 @@ function storage(): DataStorage | undefined {
 /** Without a `datastorage` (one user's sim, next-steps.md 1.5): the data of this session only, so that a click still works. */
 const memory = new Map<string, string>();
 let memoryLogged = false;
-/** The keys written to the default backend since the start: moved into a vault that answers late (moveSessionWrites). */
-const written = new Set<string>();
+/**
+ * The keys written to the default backend since the start, each with the value it had before the session's first write
+ * to it (undefined: absent): moved into a vault that answers late (moveSessionWrites).
+ */
+const written = new Map<string, string | undefined>();
+
+/** Remembers the value `key` had before the session's first write to it. */
+function noteWrite(key: string): void {
+  if (!written.has(key)) written.set(key, datastorageBackend.get(key));
+}
 
 /** The sim's `datastorage`: the default backend. */
 const datastorageBackend: StorageBackend = {
@@ -56,7 +64,7 @@ const datastorageBackend: StorageBackend = {
     return store.getData(key) || undefined;
   },
   set(key, value) {
-    written.add(key);
+    noteWrite(key);
     const store = storage();
     if (!store) {
       if (!memoryLogged) logError(`no datastorage: the mod's data is kept for this session only (${key})`);
@@ -68,7 +76,7 @@ const datastorageBackend: StorageBackend = {
     if (afterWrite) afterWrite();
   },
   remove(key) {
-    written.add(key);
+    noteWrite(key);
     const store = storage();
     if (!store) {
       memory.delete(key);
@@ -104,21 +112,39 @@ export function copyFromDatastorage(target: StorageBackend): string[] {
   return copied;
 }
 
+/** What moveSessionWrites did; keys without the prefix, sorted. */
+export interface SessionMove {
+  /** The session's value (or removal) written into the target. */
+  moved: string[];
+  /** The target's value kept: it changed since the value the session started from. */
+  kept: string[];
+}
+
 /**
- * Writes into `target` every key written to the default backend since the start (its current value, or its removal),
- * newer than what `target` holds: the changes of a session that began on `datastorage` before the vault answered.
- * Returns the keys moved (without the prefix).
+ * Moves into `target` the keys written to the default backend since the start: the changes of a session that began
+ * on `datastorage` before the vault answered. Since 2.0 `datastorage` may hold stale data (that of 1.x, or of an
+ * earlier session that fell back), and the session computed its values from it: a key's value (or its removal) goes
+ * into `target` only when `target` still holds what `datastorage` had before the session's first write to that key
+ * (or already holds the session's value); otherwise `target`'s newer value is kept.
  */
-export function moveSessionWrites(target: StorageBackend): string[] {
-  const moved: string[] = [];
-  written.forEach((key) => {
+export function moveSessionWrites(target: StorageBackend): SessionMove {
+  const result: SessionMove = { moved: [], kept: [] };
+  written.forEach((base, key) => {
     const value = datastorageBackend.get(key);
+    const current = target.get(key);
+    const name = key.indexOf(STORAGE_PREFIX) === 0 ? key.slice(STORAGE_PREFIX.length) : key;
+    if (current !== base && current !== value) {
+      result.kept.push(name);
+      return;
+    }
     if (value === undefined) target.remove(key);
     else target.set(key, value);
-    moved.push(key.indexOf(STORAGE_PREFIX) === 0 ? key.slice(STORAGE_PREFIX.length) : key);
+    result.moved.push(name);
   });
   written.clear();
-  return moved.sort();
+  result.moved.sort();
+  result.kept.sort();
+  return result;
 }
 
 /** Forgets the session's memory and written keys (the tests: each starts as a new session). */

@@ -78,7 +78,8 @@ function moduleNote(): string {
 
 /**
  * The data in the vault from now on: into a vault that never saved anything (the first start of 2.0) the data of 1.x
- * comes over from the sim storage, then the changes this session made there before a late answer. Returns those keys.
+ * comes over from the sim storage, then the changes this session made there before a late answer, except where the
+ * vault's value is newer than the one they were made from (logged). Returns the keys moved.
  */
 function useVault(vault: Vault, lateMs?: number): string[] {
   const backend = vault.backend();
@@ -86,7 +87,8 @@ function useVault(vault: Vault, lateMs?: number): string[] {
     const copied = copyFromDatastorage(backend);
     if (copied.length > 0) log(`data of an earlier version copied into the vault: ${copied.join(', ')}`);
   }
-  const moved = moveSessionWrites(backend);
+  const { moved, kept } = moveSessionWrites(backend);
+  if (kept.length > 0) log(`the vault's newer values kept over this session's changes made on the sim storage: ${kept.join(', ')}`);
   setStorageBackend(backend);
   // Live: each read of the app's probe gives the current seq, size and keys (last, read by the app's check).
   runtime.storage = {

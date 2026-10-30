@@ -157,23 +157,88 @@ describe('storage', () => {
     assert.equal(loadData('X', 'fallback'), 'fallback');
   });
 
-  it("moves the session's writes into a vault that answers late, then forgets them", () => {
+  /** A vault backend over a map. */
+  function vaultOf(copy: Map<string, string>): StorageBackend {
+    return { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
+  }
+
+  it("moves the session's writes into a vault that answers late when the vault still holds their base, then forgets them", () => {
     const data = fakePage();
     data.set('MSFS_UI_OLD', '"untouched"');
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]');
+    data.set('MSFS_UI_GONE', '"in the vault"');
+    saveData('FAVORITE_LIVERIES', [{ dir: 'a' }, { dir: 'b' }]);
     saveData('FAVORITE_LIVERIES', [{ dir: 'b' }]);
     saveData('GONE', 1);
     deleteData('GONE');
+    saveData('NEW', 2);
     const copy = new Map<string, string>([
       ['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]'],
       ['MSFS_UI_GONE', '"in the vault"'],
       ['MSFS_UI_KEPT', '"kept"'],
     ]);
-    const backend: StorageBackend = { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
-    assert.deepEqual(moveSessionWrites(backend), ['FAVORITE_LIVERIES', 'GONE']);
-    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"b"}]', "the session's change wins");
+    const backend = vaultOf(copy);
+    assert.deepEqual(moveSessionWrites(backend), { moved: ['FAVORITE_LIVERIES', 'GONE', 'NEW'], kept: [] });
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"b"}]', "the vault held the base of the session's first write: its change applies");
     assert.equal(copy.has('MSFS_UI_GONE'), false, 'a removal is moved too');
+    assert.equal(copy.get('MSFS_UI_NEW'), '2', 'absent before and in the vault: written');
     assert.equal(copy.get('MSFS_UI_KEPT'), '"kept"');
     assert.equal(copy.has('MSFS_UI_OLD'), false, 'only what the session wrote');
-    assert.deepEqual(moveSessionWrites(backend), [], 'moved once');
+    assert.deepEqual(moveSessionWrites(backend), { moved: [], kept: [] }, 'moved once');
+  });
+
+  it("keeps the vault's value when it differs from the stale value the session started from", () => {
+    const data = fakePage();
+    // The 1.x data left in datastorage; the vault has moved on since.
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"old"}]');
+    saveData('FAVORITE_LIVERIES', [{ dir: 'old' }, { dir: 'clicked' }]);
+    saveData('AIRCRAFT_USES', { x: 1 });
+    const copy = new Map<string, string>([
+      ['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"newer"}]'],
+      ['MSFS_UI_AIRCRAFT_USES', '{"x":5,"y":2}'],
+    ]);
+    assert.deepEqual(moveSessionWrites(vaultOf(copy)), { moved: [], kept: ['AIRCRAFT_USES', 'FAVORITE_LIVERIES'] });
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"newer"}]');
+    assert.equal(copy.get('MSFS_UI_AIRCRAFT_USES'), '{"x":5,"y":2}', 'a key absent from datastorage: the vault value is newer than nothing');
+  });
+
+  it('counts a vault that already holds the session value as moved', () => {
+    const data = fakePage();
+    data.set('MSFS_UI_BASE_TAIL', '"OLD"');
+    saveData('BASE_TAIL', 'SAME');
+    const copy = new Map<string, string>([['MSFS_UI_BASE_TAIL', '"SAME"']]);
+    assert.deepEqual(moveSessionWrites(vaultOf(copy)), { moved: ['BASE_TAIL'], kept: [] });
+    assert.equal(copy.get('MSFS_UI_BASE_TAIL'), '"SAME"');
+  });
+
+  it("keeps the vault's value over a removal made from a stale base", () => {
+    const data = fakePage();
+    data.set('MSFS_UI_WEATHER_BAR_TAB', '"old"');
+    deleteData('WEATHER_BAR_TAB');
+    const copy = new Map<string, string>([['MSFS_UI_WEATHER_BAR_TAB', '"newer"']]);
+    assert.deepEqual(moveSessionWrites(vaultOf(copy)), { moved: [], kept: ['WEATHER_BAR_TAB'] });
+    assert.equal(copy.get('MSFS_UI_WEATHER_BAR_TAB'), '"newer"');
+    assert.equal(data.has('MSFS_UI_WEATHER_BAR_TAB'), false, 'datastorage keeps the removal');
+  });
+
+  it("keeps a new vault's 1.x copy and the session's changes together (main.ts on a vault at seq 0)", () => {
+    const data = fakePage();
+    data.set('MSFS_UI_LIVERY_TAILS', '{"a":"F-ABCD"}');
+    saveData('LIVERY_TAILS', { a: 'F-ABCD', b: 'F-WXYZ' });
+    const copy = new Map<string, string>();
+    const backend = vaultOf(copy);
+    assert.deepEqual(copyFromDatastorage(backend), ['LIVERY_TAILS']);
+    assert.deepEqual(moveSessionWrites(backend), { moved: ['LIVERY_TAILS'], kept: [] });
+    assert.equal(copy.get('MSFS_UI_LIVERY_TAILS'), '{"a":"F-ABCD","b":"F-WXYZ"}');
+  });
+
+  it('records the base of the session without a datastorage too (absent)', () => {
+    (globalThis as { window?: unknown }).window = { top: null };
+    saveData('FAVORITE_LIVERIES', [{ dir: 'clicked' }]);
+    saveData('X', 1);
+    const copy = new Map<string, string>([['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]']]);
+    assert.deepEqual(moveSessionWrites(vaultOf(copy)), { moved: ['X'], kept: ['FAVORITE_LIVERIES'] });
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"a"}]');
+    assert.equal(copy.get('MSFS_UI_X'), '1');
   });
 });
