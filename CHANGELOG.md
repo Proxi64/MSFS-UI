@@ -6,7 +6,7 @@
 - **A click is never lost**: on a sim without the sim's storage, the mod keeps the data for the session when the module does not answer.
 - **Compatibility**: the Storage group shows the module's own state (whether it is ready, how many times it read its files).
 - **The search stays put** when switching between Gallery and List: the List rows now start and end where the gallery tiles do.
-- **Hidden and Favorites in the Default view**, beside the view buttons when the screen leaves them room: a click turns the filter on in the last of the mod's views (Gallery or List); the sim's grid itself is not filtered.
+- **The Default view is made by the mod**: the same bar, filters (Hidden, Favorites) and sorts as Gallery and List, the sim's large tiles in two rows scrolling sideways, and whole columns aligned on the scroll bar; one wheel notch moves one column.
 - **Favourites stand out**: the bookmark of a favourite livery is in the sim's own yellow.
 
 ## 2.0.0 (2026-10-30)

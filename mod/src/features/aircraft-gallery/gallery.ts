@@ -145,8 +145,8 @@ const SCROLL_BAR_WIDTH = 7.5;
  */
 const GRID_SCROLL_ROOM = 24;
 /**
- * Lowest height given to the Default view's two rows, in layout units: each row keeps room for an image and the
- * banner's three lines (75 units), so that a short block never makes the grid add columns down to 1-pixel tiles.
+ * Lowest height given to the Default view's two rows, in layout units. It guards `defaultGrid`'s column loop, which
+ * would add columns down to 1-pixel tiles on a tiny height; it is not a rule of the design.
  */
 const MIN_GRID_HEIGHT = 2 * (75 + 75) + 24;
 /** The bar above the tiles, in layout units: its height and the gap under it (aircraft-gallery.css). */
@@ -155,6 +155,8 @@ const BAR_GAP = 12;
 /** Narrowest search before the count drops its total, in layout units (its placeholder's first words stay readable). */
 const MIN_SEARCH = 240;
 const RELOAD_DELAY_MS = 100;
+/** Quiet time after the last scroll of the Default view before it settles on a whole column. */
+const SETTLE_DELAY_MS = 150;
 /** View tabs (the sim has no keys for Gallery and Default). */
 const VIEWS: { view: View; label: string }[] = [
   { view: 'gallery', label: 'Gallery' },
@@ -412,6 +414,72 @@ export class Gallery {
     scope.listen(list, 'ui-scroll', () => this.materialize());
     this.list = list;
     this.listAxis = axis;
+    if (axis === 'x') this.keepWholeColumns(scope, list);
+  }
+
+  /**
+   * Default only: the list rests on whole columns. One wheel notch moves one column (the sim's own wheel step is a
+   * third of a column: 187 pixels of 548 at 1440 lines, measured on 1.9.21, 2026-10-30), and a scroll that ends
+   * between columns (the bar dragged) settles on the nearest one: 150 ms after the last `ui-scroll`, or when the mouse
+   * button goes up, unless the button is still held on the bar.
+   */
+  private keepWholeColumns(scope: Scope, list: RealScroll): void {
+    let pressed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    scope.add(() => clearTimeout(timer));
+    scope.listen(
+      this.body,
+      'wheel',
+      (event) => {
+        const wheel = event as WheelEvent;
+        event.preventDefault();
+        event.stopPropagation();
+        const direction = Math.sign(wheel.deltaY || wheel.deltaX);
+        const step = this.columnStep();
+        if (!direction || !step) return;
+        if (list.updateSizes) list.updateSizes();
+        const column = Math.round(settleColumn(list.currentScroll || 0, step, list.maxScroll || 0) / step);
+        this.scrollToColumn(column + direction);
+      },
+      true,
+    );
+    scope.listen(list, 'mousedown', () => {
+      pressed = true;
+    });
+    scope.listen(document, 'mouseup', () => {
+      if (!pressed) return;
+      pressed = false;
+      this.settle(list);
+    });
+    scope.listen(list, 'ui-scroll', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!pressed) this.settle(list);
+      }, SETTLE_DELAY_MS);
+    });
+  }
+
+  /** The list on the whole column nearest to where it is (or at its end), when it is not on one. */
+  private settle(list: RealScroll): void {
+    const step = this.columnStep();
+    if (!step || this.list !== list) return;
+    if (list.updateSizes) list.updateSizes();
+    const at = list.currentScroll || 0;
+    const to = settleColumn(at, step, list.maxScroll || 0);
+    if (to !== at) this.scrollTo(to);
+  }
+
+  /** A column's step in the Default view: the tile's width and the gap, in pixels (0 before the grid is laid out). */
+  private columnStep(): number {
+    return this.grid ? this.grid.tileWidth + this.grid.gap : 0;
+  }
+
+  /** Scrolls the Default view to column `column` (the list's end when that is nearer), measuring its sizes again first. */
+  private scrollToColumn(column: number): void {
+    const step = this.columnStep();
+    if (!step) return;
+    if (this.list.updateSizes) this.list.updateSizes();
+    this.scrollTo(settleColumn(Math.max(0, column) * step, step, this.list.maxScroll || 0));
   }
 
   /** Favorites or Hidden clicked, in any view: that filter on and the other off, or off again; a new list starts from its start. */
@@ -616,11 +684,8 @@ export class Gallery {
     setStyle(this.body.style, 'width', `${grid.gridWidth}px`);
     setStyle(this.bar.style, 'width', `${grid.gridWidth}px`);
     // Once the list has its new width: its last scroll position depends on it.
-    const step = grid.tileWidth + grid.gap;
-    if (previous && previous.tileWidth + previous.gap !== step && this.listAxis === 'x') {
-      const column = Math.round((this.list.currentScroll || 0) / (previous.tileWidth + previous.gap));
-      if (this.list.updateSizes) this.list.updateSizes();
-      this.scrollTo(settleColumn(column * step, step, this.list.maxScroll || 0));
+    if (previous && previous.tileWidth + previous.gap !== this.columnStep() && this.listAxis === 'x') {
+      this.scrollToColumn(Math.round((this.list.currentScroll || 0) / (previous.tileWidth + previous.gap)));
     }
     this.layoutBar(null, unit);
     this.placeLiveries(null);
@@ -984,12 +1049,7 @@ export class Gallery {
       const body = this.list.getBoundingClientRect();
       const rect = selected.host.getBoundingClientRect();
       if (this.listAxis === 'x') {
-        const grid = this.grid;
-        if (grid && (rect.left < body.left || rect.right > body.right)) {
-          if (this.list.updateSizes) this.list.updateSizes();
-          const step = grid.tileWidth + grid.gap;
-          this.scrollTo(settleColumn(columnOf(at).column * step, step, this.list.maxScroll || 0));
-        }
+        if (this.grid && (rect.left < body.left || rect.right > body.right)) this.scrollToColumn(columnOf(at).column);
       } else if (rect.top < body.top || rect.bottom > body.bottom) {
         this.scrollTo(this.list.currentScroll + rect.top - body.top - 8 * uiUnit());
       }
