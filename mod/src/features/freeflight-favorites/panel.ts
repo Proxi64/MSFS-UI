@@ -189,6 +189,8 @@ export class FavoritesPanel {
       (card) => {
         if (scope.disposed) return;
         row.card = card;
+        // Inside the card: the pointer on the icon keeps the row hovered.
+        card.element.appendChild(iconHost);
         const horizontal = card.manipulator<HorizontalTileManipulator>();
         if (horizontal) horizontal.item = { isOwned: true, isOwnedBySubscription: false, isFavorite: false };
         card.onClick(scope, () => this.load(row.entry));

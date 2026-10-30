@@ -71,8 +71,17 @@ export class ComponentPool<T> {
     slot.item = item;
     slot.host = host;
     host.appendChild(slot.cardHost);
-    host.appendChild(slot.iconHost);
+    this.placeIcon(slot, host);
     return slot;
+  }
+
+  /**
+   * The icon host follows the card: once made, the card's element holds it, so that the pointer on the
+   * icon is still on the card (its Hover state stays) and the icon moves with the card; before, `parent` holds it.
+   */
+  private placeIcon(slot: PoolSlot<T>, parent: HTMLElement): void {
+    if (slot.card && slot.iconHost.parentNode === slot.card.element) return;
+    parent.appendChild(slot.iconHost);
   }
 
   /** The slot's components are made: it may move from now on (and goes to the parking if released meanwhile). */
@@ -84,7 +93,7 @@ export class ComponentPool<T> {
       this.release(slot);
     } else if (slot.host) {
       slot.host.appendChild(slot.cardHost);
-      slot.host.appendChild(slot.iconHost);
+      this.placeIcon(slot, slot.host);
     }
   }
 
@@ -97,7 +106,7 @@ export class ComponentPool<T> {
       return;
     }
     this.parking.appendChild(slot.cardHost);
-    this.parking.appendChild(slot.iconHost);
+    this.placeIcon(slot, this.parking);
     this.free.push(slot);
   }
 

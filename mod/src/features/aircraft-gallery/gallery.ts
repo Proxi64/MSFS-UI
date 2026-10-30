@@ -658,6 +658,8 @@ export class Gallery {
       (card) => {
         if (scope.disposed) return;
         slot.card = card;
+        // The icon goes inside the card: the pointer on it keeps the card hovered (the sim does the same with its heart).
+        card.element.appendChild(slot.iconHost);
         if (this.pool) this.pool.markReady(slot);
         if (!gallery) {
           const horizontal = card.manipulator<HorizontalTileManipulator>();

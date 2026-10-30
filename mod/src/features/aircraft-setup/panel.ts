@@ -488,6 +488,8 @@ export class SetupPanel {
           if (scope.disposed) return;
           const thumbnail = button.manipulator<LiveryButtonManipulator>();
           if (thumbnail) thumbnail.setData(livery.imageUrl, () => this.chooseLivery(livery.id));
+          // Inside the thumbnail's component: the pointer on the icon keeps it hovered.
+          if (iconHost) button.element.appendChild(iconHost);
           const tile = { button, icon, host };
           this.liveryTiles.set(livery.id, tile);
           const current = this.liveries.filter((candidate) => candidate.id === livery.id)[0];
