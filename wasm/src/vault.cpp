@@ -521,7 +521,7 @@ static void onStatus(const char* buf, unsigned int size, void* ctx) {
   used += length;
   used += snprintf(line + used, sizeof line - (size_t)used,
                    "\nready %d phase %d pending %d deferred %d attempts %d\nregistered %d %d %d\nreads %d %d\nheads %d %d data %d %d\n"
-                   "received %d %d\nseq %u",
+                   "received %d %d\naccepted %u",
                    g_ready ? 1 : 0, g_startupPhase, g_startupPending, g_deferredCount, g_startupAttempts, g_registered[0] ? 1 : 0,
                    g_registered[1] ? 1 : 0,
                    g_registered[2] ? 1 : 0, g_readsLaunched, g_readsEnded, g_slots[0].headValid ? 1 : 0, g_slots[1].headValid ? 1 : 0,

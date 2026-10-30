@@ -129,29 +129,82 @@ describe('vault', () => {
     assert.equal(fake.listenerCount(), 0);
   });
 
-  it('keeps a passive listener after the time-out and reports a late module without switching to it', async () => {
+  it('gives a late module its vault after the time-out, which then saves and flushes with the scope', async () => {
     fake.answers = false;
     const log = mock.method(console, 'log', () => {});
     const scope = new Scope();
-    const late: number[] = [];
-    const pending = openVault(scope, 3000, (afterMs) => late.push(afterMs));
+    const late: { vault: unknown; afterMs: number }[] = [];
+    const pending = openVault(scope, { onLate: (vault, afterMs) => late.push({ vault, afterMs }) });
     const id = fake.sent[0]!.text;
     mock.timers.tick(3000);
     assert.equal((await pending).vault, null);
     assert.equal(fake.listenerCount(), 1, 'still listening');
     // Another request id is ignored.
     fake.emit(VAULT_EVENTS.loaded, '123\n7\n{}');
-    assert.deepEqual(late, []);
+    assert.equal(late.length, 0);
     mock.timers.tick(200);
     fake.emit(VAULT_EVENTS.loaded, `${id}\n7\n{"MSFS_UI_A":"1"}`);
-    assert.deepEqual(late, [3200]);
-    assert.equal(fake.listenerCount(), 0, 'the late answer is seen once');
+    fake.emit(VAULT_EVENTS.loaded, `${id}\n7\n{"MSFS_UI_A":"2"}`);
+    assert.equal(late.length, 1, 'the late answer is taken once');
+    assert.equal(late[0]!.afterMs, 3200);
+    const vault = late[0]!.vault as NonNullable<Awaited<typeof pending>['vault']>;
+    assert.equal(vault.seq, 7);
+    assert.equal(vault.backend().get('MSFS_UI_A'), '1');
+    assert.equal(fake.listenerCount(), 1, 'kept for the SAVED answers');
+    fake.answers = true;
+    vault.backend().set('MSFS_UI_B', '2');
+    scope.dispose();
+    await tick();
+    assert.deepEqual(fake.saves().map((save) => save.text), ['8\n{"MSFS_UI_A":"1","MSFS_UI_B":"2"}'], 'flushed with the scope');
+    assert.equal(fake.listenerCount(), 0);
     const lines = log.mock.calls.map((call) => String(call.arguments[0]));
     assert.deepEqual(
       lines.filter((line) => line.indexOf('answered after') >= 0),
-      ["[msfs-ui] the vault module answered after 3200 ms; this session's data stays in the sim storage"],
+      ['[msfs-ui] the vault module answered after 3200 ms'],
     );
     log.mock.restore();
+  });
+
+  it('only logs a late module without onLate, or with an unreadable snapshot', async () => {
+    fake.answers = false;
+    const log = mock.method(console, 'log', () => {});
+    const scope = new Scope();
+    const pending = openVault(scope);
+    const id = fake.sent[0]!.text;
+    mock.timers.tick(3000);
+    await pending;
+    fake.emit(VAULT_EVENTS.loaded, `${id}\n7\n{}`);
+    assert.equal(fake.listenerCount(), 0);
+    const other = new Scope();
+    const late: unknown[] = [];
+    const second = openVault(other, { onLate: (vault) => late.push(vault) });
+    const secondId = fake.sent.filter((message) => message.event === VAULT_EVENTS.load).pop()!.text;
+    mock.timers.tick(3000);
+    await second;
+    fake.emit(VAULT_EVENTS.loaded, `${secondId}\n7\nnot json`);
+    assert.deepEqual(late, [null]);
+    assert.equal(fake.listenerCount(), 0);
+    const lines = log.mock.calls.map((call) => String(call.arguments[0])).filter((line) => line.indexOf('answered after') >= 0);
+    assert.equal(lines.length, 2);
+    assert.ok(lines.every((line) => line.endsWith("this session's data stays in the sim storage")), lines.join('\n'));
+    log.mock.restore();
+    scope.dispose();
+    other.dispose();
+  });
+
+  it("asks the module's state once the wait ends, and reports its answer on one line", async () => {
+    fake.answers = false;
+    const scope = new Scope();
+    const states: string[] = [];
+    const pending = openVault(scope, { onState: (state) => states.push(state) });
+    const id = fake.sent[0]!.text;
+    mock.timers.tick(3000);
+    await pending;
+    const status = fake.sent.filter((message) => message.event === VAULT_EVENTS.status);
+    assert.deepEqual(status, [{ event: VAULT_EVENTS.status, text: id }]);
+    fake.emit(VAULT_EVENTS.state, `999\nready 1`);
+    fake.emit(VAULT_EVENTS.state, `${id}\nready 0 phase 1 pending 1 deferred 6 attempts 1\nreads 2 1\n`);
+    assert.deepEqual(states, ['ready 0 phase 1 pending 1 deferred 6 attempts 1; reads 2 1']);
     scope.dispose();
   });
 

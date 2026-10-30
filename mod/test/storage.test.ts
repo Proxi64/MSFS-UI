@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
-import { copyFromDatastorage, deleteData, loadData, onStorageWrite, saveData, setStorageBackend, type StorageBackend } from '../src/core/storage.ts';
+import {
+  copyFromDatastorage,
+  deleteData,
+  loadData,
+  moveSessionWrites,
+  onStorageWrite,
+  resetSessionStorage,
+  saveData,
+  setStorageBackend,
+  type StorageBackend,
+} from '../src/core/storage.ts';
 
 /** The sim's `datastorage`, on a fake `window`. */
 function fakePage(onTop = false): Map<string, string> {
@@ -18,6 +28,7 @@ describe('storage', () => {
   let error: ReturnType<typeof mock.method>;
   beforeEach(() => {
     error = mock.method(console, 'error', () => {});
+    resetSessionStorage();
   });
   afterEach(() => {
     error.mock.restore();
@@ -136,10 +147,33 @@ describe('storage', () => {
     assert.equal(copy.size, 0);
   });
 
-  it('logs instead of failing without a datastorage', () => {
+  it('keeps the data of the session without a datastorage, and logs it once', () => {
     (globalThis as { window?: unknown }).window = { top: null };
     saveData('X', 1);
+    saveData('Y', 2);
     assert.equal(error.mock.callCount(), 1);
+    assert.equal(loadData('X', 'fallback'), 1, 'a click still works for the session');
+    deleteData('X');
     assert.equal(loadData('X', 'fallback'), 'fallback');
+  });
+
+  it("moves the session's writes into a vault that answers late, then forgets them", () => {
+    const data = fakePage();
+    data.set('MSFS_UI_OLD', '"untouched"');
+    saveData('FAVORITE_LIVERIES', [{ dir: 'b' }]);
+    saveData('GONE', 1);
+    deleteData('GONE');
+    const copy = new Map<string, string>([
+      ['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]'],
+      ['MSFS_UI_GONE', '"in the vault"'],
+      ['MSFS_UI_KEPT', '"kept"'],
+    ]);
+    const backend: StorageBackend = { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
+    assert.deepEqual(moveSessionWrites(backend), ['FAVORITE_LIVERIES', 'GONE']);
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"b"}]', "the session's change wins");
+    assert.equal(copy.has('MSFS_UI_GONE'), false, 'a removal is moved too');
+    assert.equal(copy.get('MSFS_UI_KEPT'), '"kept"');
+    assert.equal(copy.has('MSFS_UI_OLD'), false, 'only what the session wrote');
+    assert.deepEqual(moveSessionWrites(backend), [], 'moved once');
   });
 });

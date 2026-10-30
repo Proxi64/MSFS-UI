@@ -1,13 +1,14 @@
 // The mod's data in the vault module (wasm/): the whole key/value copy travels over the sim's CommBus as one JSON text,
 // the module writes it to its own `work` folder, which survives a restart without any profile save. The menu has no
 // `Coherent` global: `engine.on` / `engine.off` / `engine.trigger` / `engine.call` (see .claude/skills/msfs-wasm).
-// The messages are in core/vault-protocol.ts. If the module does not answer in time, the mod keeps `datastorage`.
+// The messages are in core/vault-protocol.ts. If the module does not answer in time, the mod starts on `datastorage`
+// and moves to the vault when it answers (main.ts).
 
 import { debounced } from '../core/async.ts';
 import { describeError, log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import { STORAGE_PREFIX, type StorageBackend } from '../core/storage.ts';
-import { VAULT_EVENTS, VAULT_MAX_BYTES, decodeLoaded, decodeSaved, encodeSave, toAscii } from '../core/vault-protocol.ts';
+import { VAULT_EVENTS, VAULT_MAX_BYTES, decodeLoaded, decodeSaved, decodeState, encodeSave, toAscii } from '../core/vault-protocol.ts';
 
 const LISTENER = 'JS_LISTENER_COMM_BUS';
 const DEFAULT_TIMEOUT_MS = 3000;
@@ -37,13 +38,28 @@ export interface OpenResult {
   reason: string;
 }
 
+export interface OpenOptions {
+  /** How long the start waits for the module; 3000 ms by default. */
+  timeoutMs?: number;
+  /**
+   * A module that answers after the time-out: its vault (null when its snapshot is unreadable) and the delay. Without
+   * it, a late answer is only logged.
+   */
+  onLate?: (vault: Vault | null, afterMs: number) => void;
+  /** The module's own state, asked once the wait ends (STATUS), on one line; a module before 2.0.1 does not answer. */
+  onState?: (state: string) => void;
+}
+
 /**
- * Connects to the vault module and reads its snapshot. No vault when it does not answer within `timeoutMs`, when its
+ * Connects to the vault module and reads its snapshot. No vault when it does not answer within the time-out, when its
  * snapshot is unreadable or when the CommBus fails. The listener and the timers go with `scope`, which also flushes
  * the pending snapshot. Never rejects. After a time-out the listener stays until the scope ends: a module that
- * answers late is logged and reported to `onLate` (with the delay), but the session is not switched to it.
+ * answers late is logged and its vault given to `onLate`, which moves the session to it.
  */
-export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS, onLate?: (afterMs: number) => void): Promise<OpenResult> {
+export function openVault(scope: Scope, options: OpenOptions = {}): Promise<OpenResult> {
+  const timeoutMs = options.timeoutMs === undefined ? DEFAULT_TIMEOUT_MS : options.timeoutMs;
+  const onLate = options.onLate;
+  const onState = options.onState;
   return new Promise<OpenResult>((resolve) => {
     const requestId = 1 + Math.floor(Math.random() * 1000000000);
     const startedAt = Date.now();
@@ -79,6 +95,7 @@ export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS, onLate?:
       if (!result && keepListening && registered) watchingLate = true;
       else if (!result) unregister();
       resolve({ vault: result, reason });
+      if (registered && onState) sendToModule(VAULT_EVENTS.status, String(requestId));
     };
 
     const onEvent: Handler = (listener, eventName, payload) => {
@@ -90,14 +107,21 @@ export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS, onLate?:
         const loaded = decodeLoaded(text);
         if (!loaded || loaded.requestId !== requestId) return;
         if (settled) {
-          if (watchingLate) {
-            // Too late: the features already read the sim storage, so this session stays on it.
-            watchingLate = false;
+          if (!watchingLate) return;
+          // Late: the features already read the sim storage; `onLate` moves the session to the vault.
+          watchingLate = false;
+          const afterMs = Date.now() - startedAt;
+          const late = onLate ? parseSnapshot(loaded.text) : null;
+          if (!onLate || !late) {
             unregister();
-            const afterMs = Date.now() - startedAt;
             log(`the vault module answered after ${afterMs} ms; this session's data stays in the sim storage`);
-            if (onLate) onLate(afterMs);
+            if (onLate) onLate(null, afterMs);
+            return;
           }
+          // Kept listening: its SAVED answers.
+          vault = new VaultImpl(late, loaded.seq);
+          log(`the vault module answered after ${afterMs} ms`);
+          onLate(vault, afterMs);
           return;
         }
         const copy = parseSnapshot(loaded.text);
@@ -110,6 +134,9 @@ export function openVault(scope: Scope, timeoutMs = DEFAULT_TIMEOUT_MS, onLate?:
       } else if (eventName === VAULT_EVENTS.saved) {
         const saved = decodeSaved(text);
         if (saved && vault) vault.saved(saved.seq, saved.status);
+      } else if (eventName === VAULT_EVENTS.state) {
+        const state = decodeState(text);
+        if (state && state.requestId === requestId && onState) onState(state.state);
       }
     };
 

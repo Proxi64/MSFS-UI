@@ -237,7 +237,7 @@ public sealed partial class CompatibilityChecker
           });
           if (typeof ds.getData === 'function') {
             const stored = [];
-            ['WEATHER_BAR', 'WEATHER_BAR_TAB', 'FAVORITE_AIRCRAFT', 'FAVORITE_LIVERIES', 'AIRCRAFT_GALLERY', 'AIRCRAFT_USES', 'LIVERY_TAILS', 'BASE_TAIL'].forEach((key) => {
+            ['WEATHER_BAR', 'WEATHER_BAR_TAB', 'FAVORITE_AIRCRAFT', 'FAVORITE_LIVERIES', 'AIRCRAFT_GALLERY', 'AIRCRAFT_USES', 'LIVERY_TAILS', 'BASE_TAIL', 'HIDDEN_AIRCRAFT'].forEach((key) => {
               try { if (ds.getData('MSFS_UI_' + key)) stored.push(key); } catch (e) { /* counted as absent */ }
             });
             results.push({ label: 'mod data (MSFS_UI_ keys)', ok: true, detail: stored.length ? 'stored: ' + stored.join(', ') : 'none stored yet' });

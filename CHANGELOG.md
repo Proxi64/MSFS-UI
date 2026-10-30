@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 (in progress)
+
+- **Favourites kept at every start.** At some starts, the sim never finished a file read of the `msfs-ui.wasm` module: the module stayed silent, and the mod fell back to the sim's storage for the whole session (favourites not saved, or gone at the next start). The module now reads its files again when that happens, and the mod moves to the module as soon as it answers, with the changes made meanwhile.
+- **A click is never lost**: on a sim without the sim's storage, the mod keeps the data for the session when the module does not answer.
+- **Compatibility**: the Storage group shows the module's own state (whether it is ready, how many times it read its files).
+
 ## 2.0.0 (2026-10-30)
 
 - **Your data is kept for good.** Favourites, tail numbers and last choices are now kept by a small module of the `msfs-ui` package, `msfs-ui.wasm`, which writes them to files of its own folder (`%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui\work`) at once. They are no longer lost when the sim quits or crashes, and no longer depend on the sim saving its profile.

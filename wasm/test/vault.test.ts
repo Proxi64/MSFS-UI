@@ -59,8 +59,8 @@ test('answers STATUS at once, before and after the start-up read', { skip }, asy
   vault.send('MSFS_UI_VAULT_STATUS', 's2');
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_STATE'), [
     // Only slot a was written: one head read waits (pending 1), the LOAD is deferred.
-    's1\nready 0 phase 1 pending 1 deferred 1 attempts 1\nregistered 1 1 1\nreads 1 0\nheads 0 0 data 0 0\nreceived 1 0\nseq 0',
-    's2\nready 1 phase 2 pending 0 deferred 0 attempts 1\nregistered 1 1 1\nreads 2 2\nheads 1 0 data 1 0\nreceived 1 0\nseq 1',
+    's1\nready 0 phase 1 pending 1 deferred 1 attempts 1\nregistered 1 1 1\nreads 1 0\nheads 0 0 data 0 0\nreceived 1 0\naccepted 0',
+    's2\nready 1 phase 2 pending 0 deferred 0 attempts 1\nregistered 1 1 1\nreads 2 2\nheads 1 0 data 1 0\nreceived 1 0\naccepted 1',
   ]);
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n1\n{"a":"1"}']);
 });

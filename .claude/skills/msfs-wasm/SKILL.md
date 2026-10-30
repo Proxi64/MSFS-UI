@@ -52,6 +52,7 @@ Details, signatures and the build command: [reference.md](reference.md).
 | Passing `/O2`, `/GS-`, `/imsvc` to `clang-cl` for a wasm target | They are ignored ("argument unused"): run it with `--driver-mode=g++` and gcc flags (`-O2`, `-fno-stack-protector`) |
 | Leaving the stack protector on | `-fno-stack-protector` (the `/GS-` of the reports): otherwise the module imports `__stack_chk_fail`, which the sim does not provide (reported by another mod's author; the SDK's projects set `BufferSecurityCheck` false) |
 | Reading a file with a larger count than its size | `fsIOOpenRead` then fails: the reader must know the size (verified) |
+| Waiting for good on an I/O callback | At some starts of the sim a read launched in `module_init` never calls back (verified, 1.9.21: 2 starts out of 5): never let a module depend on one callback; give a way to start again (the vault reads again at the menu's second LOAD) and a status event answered at once to see it |
 | A SimConnect message above 32 KB | `SimConnect_CallCommBusEvent` crashes the app between 40 and 50 KB (verified): send in chunks |
 | Using `Microsoft.FlightSimulator.SimConnect.dll` from .NET 10 | It is .NET Framework C++/CLI and does not load: P/Invoke the native `SimConnect.dll` |
 | C++ exceptions, RTTI-dependent code, threads | The SDK's projects build with `ExceptionHandling` false and `_LIBCPP_HAS_NO_THREADS`; return error codes |

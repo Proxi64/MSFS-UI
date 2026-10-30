@@ -1,11 +1,25 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { VAULT_EVENTS, VAULT_MAX_BYTES, decodeLoaded, decodeSaved, encodeSave, toAscii } from '../src/core/vault-protocol.ts';
+import { VAULT_EVENTS, VAULT_MAX_BYTES, decodeLoaded, decodeSaved, decodeState, encodeSave, toAscii } from '../src/core/vault-protocol.ts';
 
 describe('vault protocol', () => {
   it('names the events and the size limit', () => {
-    assert.deepEqual(VAULT_EVENTS, { load: 'MSFS_UI_VAULT_LOAD', loaded: 'MSFS_UI_VAULT_LOADED', save: 'MSFS_UI_VAULT_SAVE', saved: 'MSFS_UI_VAULT_SAVED' });
+    assert.deepEqual(VAULT_EVENTS, {
+      load: 'MSFS_UI_VAULT_LOAD',
+      loaded: 'MSFS_UI_VAULT_LOADED',
+      save: 'MSFS_UI_VAULT_SAVE',
+      saved: 'MSFS_UI_VAULT_SAVED',
+      status: 'MSFS_UI_VAULT_STATUS',
+      state: 'MSFS_UI_VAULT_STATE',
+    });
     assert.equal(VAULT_MAX_BYTES, 524288);
+  });
+
+  it('decodes a STATE answer on one line, without its NUL', () => {
+    assert.deepEqual(decodeState('12\nready 1 phase 2\nreads 4 4\n\0'), { requestId: 12, state: 'ready 1 phase 2; reads 4 4' });
+    assert.equal(decodeState('12'), null);
+    assert.equal(decodeState('x\nready 1'), null);
+    assert.equal(decodeState('12\n'), null);
   });
 
   it('toAscii keeps only characters up to 0x7F and JSON.parse gives the original back', () => {

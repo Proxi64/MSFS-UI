@@ -4,12 +4,16 @@
 //   LOADED <requestId> \n <seq> \n <text>   (seq 0 and an empty text when nothing is stored; the text may hold newlines)
 //   SAVE   <seq> \n <text>
 //   SAVED  <seq> \n <status>                (ok, stale, too-big, or "error <code>")
+//   STATUS <requestId>
+//   STATE  <requestId> \n <lines>           (answered at once: ready, start-up read, attempts…; from 2.0.1)
 
 export const VAULT_EVENTS = {
   load: 'MSFS_UI_VAULT_LOAD',
   loaded: 'MSFS_UI_VAULT_LOADED',
   save: 'MSFS_UI_VAULT_SAVE',
   saved: 'MSFS_UI_VAULT_SAVED',
+  status: 'MSFS_UI_VAULT_STATUS',
+  state: 'MSFS_UI_VAULT_STATE',
 } as const;
 
 /** The largest snapshot the module accepts. */
@@ -44,6 +48,21 @@ export function decodeLoaded(payload: string): { requestId: number; seq: number;
   const seq = text.slice(first + 1, second);
   if (!COUNT.test(requestId) || !COUNT.test(seq)) return null;
   return { requestId: Number(requestId), seq: Number(seq), text: text.slice(second + 1) };
+}
+
+/** A STATE answer: its request id and its lines joined with `; ` (one line for the Compatibility page). */
+export function decodeState(payload: string): { requestId: number; state: string } | null {
+  const text = withoutNul(payload);
+  const at = text.indexOf('\n');
+  if (at < 0) return null;
+  const requestId = text.slice(0, at);
+  const state = text
+    .slice(at + 1)
+    .split('\n')
+    .filter((line) => !!line)
+    .join('; ');
+  if (!COUNT.test(requestId) || !state) return null;
+  return { requestId: Number(requestId), state };
 }
 
 export function decodeSaved(payload: string): { seq: number; status: string } | null {

@@ -1,6 +1,7 @@
 // The mod's memory. By default in the sim's persistent storage (`datastorage`, where the menu keeps its `LAYOUT_*` keys):
 // the sim keeps it in memory and writes it to the disk only when it saves its profile, so every write asks for that save
-// (onStorageWrite). When the vault module answers (sim/vault.ts), the data lives there instead (setStorageBackend).
+// (onStorageWrite). When the vault module answers (sim/vault.ts), the data lives there instead (setStorageBackend),
+// with the changes made on `datastorage` before a late answer (moveSessionWrites).
 // `localStorage` is emptied at every start of the sim: never used. Keys are those of 0.3.0, so the user's data
 // (favourites, tail numbers…) carries over; their content is documented in mod/README.md (Data stored in the sim).
 
@@ -40,26 +41,39 @@ function storage(): DataStorage | undefined {
   return page.datastorage || (page.top ? page.top.datastorage : undefined);
 }
 
+/** Without a `datastorage` (one user's sim, next-steps.md 1.5): the data of this session only, so that a click still works. */
+const memory = new Map<string, string>();
+let memoryLogged = false;
+/** The keys written to the default backend since the start: moved into a vault that answers late (moveSessionWrites). */
+const written = new Set<string>();
+
 /** The sim's `datastorage`: the default backend. */
 const datastorageBackend: StorageBackend = {
   kind: 'datastorage',
   get(key) {
     const store = storage();
-    if (!store) return undefined;
+    if (!store) return memory.get(key);
     return store.getData(key) || undefined;
   },
   set(key, value) {
+    written.add(key);
     const store = storage();
     if (!store) {
-      logError(`no datastorage: ${key} not saved`);
+      if (!memoryLogged) logError(`no datastorage: the mod's data is kept for this session only (${key})`);
+      memoryLogged = true;
+      memory.set(key, value);
       return;
     }
     store.setData(key, value);
     if (afterWrite) afterWrite();
   },
   remove(key) {
+    written.add(key);
     const store = storage();
-    if (!store) return;
+    if (!store) {
+      memory.delete(key);
+      return;
+    }
     store.deleteData(key);
     if (afterWrite) afterWrite();
   },
@@ -88,6 +102,30 @@ export function copyFromDatastorage(target: StorageBackend): string[] {
     copied.push(key);
   }
   return copied;
+}
+
+/**
+ * Writes into `target` every key written to the default backend since the start (its current value, or its removal),
+ * newer than what `target` holds: the changes of a session that began on `datastorage` before the vault answered.
+ * Returns the keys moved (without the prefix).
+ */
+export function moveSessionWrites(target: StorageBackend): string[] {
+  const moved: string[] = [];
+  written.forEach((key) => {
+    const value = datastorageBackend.get(key);
+    if (value === undefined) target.remove(key);
+    else target.set(key, value);
+    moved.push(key.indexOf(STORAGE_PREFIX) === 0 ? key.slice(STORAGE_PREFIX.length) : key);
+  });
+  written.clear();
+  return moved.sort();
+}
+
+/** Forgets the session's memory and written keys (the tests: each starts as a new session). */
+export function resetSessionStorage(): void {
+  memory.clear();
+  written.clear();
+  memoryLogged = false;
 }
 
 /** The value stored under `MSFS_UI_<key>`, or `fallback` when absent or unreadable. */

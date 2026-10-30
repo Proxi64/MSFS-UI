@@ -13,7 +13,7 @@ CommBus events, payloads in ASCII, fields separated by `\n`. Answers are broadca
 | `MSFS_UI_VAULT_SAVE` | to the module | `<seq>\n<text>` |
 | `MSFS_UI_VAULT_SAVED` | from the module | `<seq>\nok`, `<seq>\nstale`, `<seq>\ntoo-big`, or `<seq>\nerror <FsIOErr>` |
 | `MSFS_UI_VAULT_STATUS` | to the module | `<requestId>` (32 characters at most) |
-| `MSFS_UI_VAULT_STATE` | from the module, at once | `<requestId>\nready <0\|1> phase <1\|2> pending <n> deferred <n> attempts <n>\nregistered <load> <save> <status>\nreads <launched> <ended>\nheads <a> <b> data <a> <b>\nreceived <loads> <saves>\nseq <accepted>` |
+| `MSFS_UI_VAULT_STATE` | from the module, at once | `<requestId>\nready <0\|1> phase <1\|2> pending <n> deferred <n> attempts <n>\nregistered <load> <save> <status>\nreads <launched> <ended>\nheads <a> <b> data <a> <b>\nreceived <loads> <saves>\naccepted <seq>` |
 
 - A LOAD answers with the newest accepted text, even one still being written (a SAVE then a LOAD in the same turn gives the saved text). A LOAD or SAVE received before the start-up read ends is answered when it ends.
 - The sim sometimes never calls back a read launched at its start (measured on 2026-10-30: one of the two head reads; the module then waited for good and the menu fell back to `datastorage`). At the second LOAD received during the start-up read, the module closes the reads in flight, ignores their callbacks if they ever come, and reads again from the heads (`attempts` counts the reads). A file opened once is never taken as absent afterwards: when it cannot be opened again, the module waits for the next attempt rather than load an older snapshot.
