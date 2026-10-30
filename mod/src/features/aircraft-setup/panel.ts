@@ -327,7 +327,9 @@ export class SetupPanel {
     this.arrangeVariants(perRow, variantsWidth);
     toggleClass(this.variantsList, 'is-scrolling', variantsScroll);
     toggleClass(this.liveriesList, 'is-scrolling', liveriesScroll);
-    this.variantsList.style.height = `${variantsHigh}px`;
+    // Each row counts the gap under it; the list's own margin is the gap under the last one: a list that does not
+    // scroll ends on its last tile (measured at 1440 lines: 16 pixels under it, the other blocks 8).
+    this.variantsList.style.height = `${variantsScroll ? variantsHigh : Math.max(0, variantsHigh - Math.round(gap))}px`;
     // Whole pixels: the third thumbnail of a row takes the rest (aircraft-setup.css), so the row ends at the edge.
     setVariable(this.root.style, '--livery-w', `${thumbnail.width}px`);
     setVariable(this.root.style, '--livery-h', `${thumbnail.height}px`);

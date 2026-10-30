@@ -43,6 +43,13 @@
 }
 .msfs-ui-setup__variants.is-scrolling .scroll__content,
 .msfs-ui-setup__liveries.is-scrolling .scroll__content { padding-right: calc(var(--u) * 24) !important; }
+/*
+ * A list that does not scroll has no bar beside it: the sim's list keeps its bar's 10 pixels (at 1440 lines) beside its
+ * content even then, so the tiles stopped short of the panel's edge, their selection corner with them (measured on
+ * 1.9.21, 2026-10-30).
+ */
+.msfs-ui-setup__variants:not(.is-scrolling) .scroll__bar-container,
+.msfs-ui-setup__liveries:not(.is-scrolling) .scroll__bar-container { display: none !important; }
 
 /* Variants: up to three tiles per row sharing the width (widths and the last margin of each row: panel.ts). */
 .msfs-ui-setup__variant {
