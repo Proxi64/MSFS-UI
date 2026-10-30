@@ -117,7 +117,7 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 **Where:** Free Flight, left column, under *Search location*, as wide as the aircraft button. The block hides while the search shows its results.
 
-- One row per **favourite livery** (the bookmark of the liveries in the aircraft selection).
+- One row per **favourite livery** (the bookmark of the liveries in the aircraft selection). No favourite: no block.
 - Each row shows the livery's thumbnail, the aircraft's name, then its variant, livery and tail number. A text too long for the row scrolls when the mouse is over it.
 - **Click**: loads the variant, then the livery; the sim's aircraft button follows. The row of the current aircraft is selected.
 - **Bookmark**: clicking it removes the favourite livery.

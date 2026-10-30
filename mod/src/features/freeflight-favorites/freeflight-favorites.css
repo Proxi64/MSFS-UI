@@ -11,7 +11,6 @@
 /* 6 units around the rows; on the right, room for the scroll bar when the list scrolls. */
 .msfs-ui-fav__list .scroll__content { box-sizing: border-box; padding: calc(var(--u) * 6) !important; }
 .msfs-ui-fav.is-scrolling .scroll__content { padding-right: calc(var(--u) * 24) !important; }
-.msfs-ui-fav__empty { padding: calc(var(--u) * 6); opacity: 0.75; }
 
 /* A row: the sim's horizontal tile, full width (its content is absolute). */
 .msfs-ui-fav__row { position: relative; width: 100%; height: calc(var(--u) * 77); margin-bottom: calc(var(--u) * 6); }

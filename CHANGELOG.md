@@ -9,6 +9,7 @@
 - **The Default view is made by the mod**: the same bar, filters (Hidden, Favorites) and sorts as Gallery and List, the sim's large tiles in two rows scrolling sideways, and whole columns aligned on the scroll bar; one wheel notch moves one column (a touchpad's small moves add up), and a bar held still while dragging stays where it is until released.
 - **The sim's own grid no longer shows** in the aircraft selection: *Default* is the mod's view in its layout. Gamepad users navigate the mod's views with the mouse.
 - **Favourites stand out**: the bookmark of a favourite livery is in the sim's own yellow.
+- **No empty Favorites block on Free Flight**: without any favourite livery, the block is not shown (its message took room for nothing, and was cut).
 
 ## 2.0.0 (2026-10-30)
 

@@ -46,11 +46,8 @@ const HEADER = 36;
 const ROW = 77;
 const ROW_GAP = 6;
 const LIST_PADDING = 6;
-/** The message shown without favourites: one line of text (21 units) and 6 units of padding around it. */
-const EMPTY_HEIGHT = 33;
 /** The use is recorded 1.5 s after a change of aircraft (sim/aircraft-loading.ts): the block is redrawn after it. */
 const REDRAW_AFTER_USE_MS = 1700;
-const EMPTY = 'Add favorites with the bookmark in aircraft selection.';
 
 const aircraft = store.Game.Aircraft;
 
@@ -98,11 +95,14 @@ export class FavoritesPanel {
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, () => this.render());
   }
 
-  /** Under the search field, as wide as the aircraft button; hidden while the search shows its results. */
+  /**
+   * Under the search field, as wide as the aircraft button; hidden while the search shows its results, and without
+   * favourites (the owner's choice, 2026-10-30: no block taking room for nothing).
+   */
   private layout(): void {
     const button = this.page.elt.querySelector(AIRCRAFT_BUTTON);
     const search = this.page.elt.querySelector(SEARCH);
-    if (!isShown(button) || !isShown(search)) {
+    if (this.rows.length === 0 || !isShown(button) || !isShown(search)) {
       this.root.style.display = 'none';
       return;
     }
@@ -119,7 +119,7 @@ export class FavoritesPanel {
     const available = Math.floor(origin.height - BOTTOM_ROOM * unit - top);
     // As high as its rows, up to the room left: the sim's list then scrolls.
     const rows = this.rows.length;
-    const content = rows > 0 ? rows * ROW + (rows - 1) * ROW_GAP : EMPTY_HEIGHT;
+    const content = rows * ROW + (rows - 1) * ROW_GAP;
     const wanted = Math.ceil((HEADER + 2 * LIST_PADDING + content) * unit);
     const style = this.root.style;
     style.display = available > HEADER * unit ? '' : 'none';
@@ -148,15 +148,8 @@ export class FavoritesPanel {
     }
     this.rowKey = key;
     this.clearRows();
-    if (entries.length === 0) {
-      const message = el('div', 'msfs-ui-fav__empty');
-      message.textContent = EMPTY;
-      this.list.appendChild(message);
-      this.listItems.push(message);
-    } else {
-      const scope = (this.rowScope = this.scope.child());
-      for (const entry of entries) this.createRow(entry, scope);
-    }
+    const scope = (this.rowScope = this.scope.child());
+    for (const entry of entries) this.createRow(entry, scope);
     this.layout();
     if (this.list.updateSizes) this.list.updateSizes();
     this.list.scrollToPosition(0);
