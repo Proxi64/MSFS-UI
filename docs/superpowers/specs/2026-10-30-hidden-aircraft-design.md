@@ -49,6 +49,7 @@ Many aircraft are never flown (the owner's example: "Archer Midnight") and make 
 
 - **On a darkened (hidden but favourite) aircraft**: the corner eye is the "on" eye and a click brings the aircraft back (as in the Hidden view); the large eye over the thumbnail is only a marker, not clickable.
 - **Such an aircraft also appears in the Hidden view** (it is hidden).
+- **When a livery of a hidden aircraft becomes a favourite** (the aircraft selected in the Hidden view, or hidden while selected): the aircraft appears at once in the normal view, veiled (the owner's decision of 2026-10-30: favourites come first, without exception).
 - **When its last favourite livery goes while the screen stays open**: it stays where it is, darkened, until the order is set again (a new sort, search, filter, category tab, or the screen opened again), as the favourites first of 1.10 do; then it leaves.
 - **Counts**: normal view, `shown / total` = the tiles shown (darkened ones included) / the aircraft of the category tab; Hidden view, `shown / total` = the hidden aircraft shown / the aircraft of the tab; Favorites view unchanged.
 - **The Favorites tiles** stay one tile per favourite livery; the tile of a livery whose aircraft is hidden is darkened with the large eye marker; its corner icon is the bookmark (a click removes the favourite, as today). No eye in the corner of a Favorites tile.

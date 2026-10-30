@@ -90,7 +90,14 @@
   - the empty Hidden view: "No hidden aircraft: click the eye on an aircraft to hide it."; the counts of the spec.
 - [ ] **Step 4: Run** `cd mod; npm run check` → PASS. **Step 5: In the sim**: hide the Archer Midnight from a scrolled list (it leaves, no jump), Hidden view, bring it back, a hidden aircraft with a favourite livery (veiled, in both views), measured; screenshot. **Step 6: Commit** "Gallery: hide aircraft, the Hidden filter".
 
-### Task 4: The bar split, and no row overflow
+### Task 4: The bar split, no row overflow, and two follow-ups of Task 3
+
+**Added on 2026-10-30 after Task 3 (the owner's decisions):**
+- **A hidden aircraft with a favourite livery is always shown, veiled, even when the favourite was just added** ("favourites come first", without exception). `keepIds` becomes the union of the frozen favourite ids (1.10) and `favoriteAircraftIds(items, favoriteLiveries)` of now; test in `aircraft-gallery.test.ts`: `keeps a hidden aircraft veiled when its favourite was added after the order was set` (frozen ids empty, current favourites hold its livery → `veiled === true`). The owner accepted that a tile then appears in the list when a livery of a hidden but selected aircraft gets its bookmark.
+- **The left column's header** goes back to the selected aircraft when the hovered aircraft is hidden (the review of Task 3: call the gallery's `hover(null)` when the hovered aircraft leaves).
+- **Kept as is** (the owner): clicking Favorites scrolls the list to the top, as search and sort do.
+
+**State when this was written:** Tasks 1 to 3 done and approved by the owner in the sim (commits up to b963bce on branch `hidden-aircraft`); Task 4 and Task 5 to do. The ledger is `.superpowers/sdd/2026-10-30-hidden-aircraft/progress.md` (not in Git).
 
 **Files:**
 - Modify: `mod/src/features/aircraft-gallery/gallery.ts` (bar), `liveries.ts` / `livery-column.ts` / `mod/src/sim/selection-layout.ts` as needed, `aircraft-gallery.css`
