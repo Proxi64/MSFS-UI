@@ -91,6 +91,41 @@ test('starts the read again when a start-up read never calls back', { skip }, as
   assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0], /^s\nready 1 phase 2 pending 0 deferred 0 attempts 2\n/);
 });
 
+/** A start whose head reads wait, then end after the first LOAD while slot b's data read waits in turn. */
+async function slowStart(): Promise<Harness> {
+  const vault = await loadVault(await twoSnapshots(), { loseReads: ['/work/vault-a.head', '/work/vault-b.head'] });
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_LOAD', 'q1');
+  vault.loseReads.add('/work/vault-b.data');
+  vault.releaseLost();
+  await vault.settle(); // both heads and slot a's data ended: the start-up read progressed since q1
+  return vault;
+}
+
+test('keeps a slow start-up read that progressed since the previous LOAD', { skip }, async () => {
+  const vault = await slowStart();
+  vault.send('MSFS_UI_VAULT_LOAD', 'q2');
+  vault.send('MSFS_UI_VAULT_STATUS', 's1');
+  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0], /^s1\nready 0 phase 2 pending 1 deferred 2 attempts 1\n/, 'not restarted at the second LOAD');
+  vault.releaseLost();
+  await vault.settle();
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q1\n2\nnewest', 'q2\n2\nnewest']);
+  vault.send('MSFS_UI_VAULT_STATUS', 's2');
+  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[1], /^s2\nready 1 phase 2 pending 0 deferred 0 attempts 1\nregistered 1 1 1\nreads 4 4\n/);
+});
+
+test('restarts a start-up read that progressed, then stopped', { skip }, async () => {
+  const vault = await slowStart();
+  vault.send('MSFS_UI_VAULT_LOAD', 'q2');
+  await vault.settle();
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), [], 'q2: progressing, kept waiting');
+  vault.send('MSFS_UI_VAULT_LOAD', 'q3'); // nothing ended since q2: slot b's data read is lost
+  await vault.settle();
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q1\n2\nnewest', 'q2\n2\nnewest', 'q3\n2\nnewest']);
+  vault.send('MSFS_UI_VAULT_STATUS', 's');
+  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0], /^s\nready 1 phase 2 pending 0 deferred 0 attempts 2\n/);
+});
+
 test('waits for a file read before rather than leaving out its snapshot', { skip }, async () => {
   // The newest slot's head was opened once, then lost; at the restart it cannot be opened: the module must not take
   // it as absent (it would load seq 1, then write over the newest snapshot).

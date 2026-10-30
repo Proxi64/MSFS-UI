@@ -21,7 +21,7 @@ static const int HEAD_SIZE = 64;
 static const char* const DATA_PATH[2] = {"/work/vault-a.data", "/work/vault-b.data"};
 static const char* const HEAD_PATH[2] = {"/work/vault-a.head", "/work/vault-b.head"};
 static const FsCommBusBroadcastFlags TO_JS = FsCommBusBroadcast_JS;
-static const int STALLED_AFTER_LOADS = 2; // LOADs received during the start-up read before it starts again
+static const int STALLED_AFTER_LOADS = 2; // LOADs received during the start-up read before it may start again
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Helpers
@@ -292,7 +292,8 @@ static int g_deferredCount = 0;
 static int g_deferredCapacity = 0;
 
 static void restartStartup();
-static int g_loadsWhileStarting = 0; // LOADs received since the start-up read last (re)started
+static int g_loadsWhileStarting = 0;   // LOADs received since the start-up read last (re)started
+static int g_readsEndedAtLastLoad = 0; // g_readsEnded when the previous of those LOADs arrived
 
 static void dispatch(bool isSave, const char* buf, unsigned int size) {
   int length = trimmedSize(buf, size);
@@ -310,8 +311,13 @@ static void dispatch(bool isSave, const char* buf, unsigned int size) {
     if (copy == nullptr) return;
     g_deferred[g_deferredCount++] = Deferred{isSave, copy, length};
     // The sim sometimes never calls back a read launched at its start (measured: 1 of 2 head reads, the module then
-    // waited for good). The menu asks again every 500 ms: at its second LOAD, the start-up read starts again.
-    if (!isSave && ++g_loadsWhileStarting >= STALLED_AFTER_LOADS) restartStartup();
+    // waited for good). The menu asks again every 500 ms: from its second LOAD on, the start-up read starts again when
+    // no read ended since the previous LOAD (a slow start that is progressing keeps its reads).
+    if (!isSave) {
+      bool progressed = g_loadsWhileStarting > 0 && g_readsEnded != g_readsEndedAtLastLoad;
+      g_readsEndedAtLastLoad = g_readsEnded;
+      if (++g_loadsWhileStarting >= STALLED_AFTER_LOADS && !progressed) restartStartup();
+    }
     return;
   }
   if (isSave) handleSave(buf, length);
