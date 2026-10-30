@@ -18,7 +18,7 @@ import { loadData, saveData } from '../../core/storage.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
-import { COMPONENTS, createComponent, type ComponentGuid, type SimComponent } from '../../sim/components.ts';
+import { COMPONENTS, createComponent, type ComponentGuid, type DropdownItem, type DropdownManipulator, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
@@ -79,19 +79,6 @@ const SORTS: SortChoice[] = [
   { id: 'studio', label: () => 'Studio', local: 'studio' },
   { id: 'maxRange', label: () => translate('TT:MENU.ACPROPUI_MAX_RANGE'), sim: 'TT:MENU.ACPROPUI_MAX_RANGE' },
 ];
-
-/** The sim's dropdown (DropdownManipulator): items are `{ title, selectedCallback }`. */
-interface DropdownItem {
-  title: string;
-  subtitle: string;
-  coma: string;
-  selectedCallback: (item: DropdownItem) => void;
-}
-interface DropdownManipulator {
-  setData(items: DropdownItem[], current?: DropdownItem): void;
-  /** Title shown without a current item (the template has a placeholder text). */
-  setEmptyTitle(title: string): void;
-}
 
 /** The sim's horizontal marketplace tile (MarketplaceTileHorizontalManipulator). */
 interface HorizontalTileManipulator {

@@ -37,6 +37,19 @@ export const COMPONENTS = {
 
 export type ComponentGuid = (typeof COMPONENTS)[keyof typeof COMPONENTS];
 
+/** An item of the sim's dropdown (its DropdownManipulator): `{ title, selectedCallback }`. */
+export interface DropdownItem {
+  title: string;
+  subtitle: string;
+  coma: string;
+  selectedCallback: (item: DropdownItem) => void;
+}
+export interface DropdownManipulator {
+  setData(items: DropdownItem[], current?: DropdownItem): void;
+  /** Title shown without a current item (the template has a placeholder text). */
+  setEmptyTitle(title: string): void;
+}
+
 /** Time allowed for a component to load before its creation is given up. */
 const LOAD_TIMEOUT_MS = 5000;
 

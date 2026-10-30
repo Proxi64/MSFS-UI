@@ -12,7 +12,7 @@
     { "label": "Aircraft selection", "guid": "{7822664D-7F34-4A46-904A-F82929865103}", "className": "PlaneSelectionFreeflightPageManipulator" }
   ],
   "components": [
-    { "label": "Choice tile", "guid": "{68CB981E-3551-4AB9-8C2C-54470940600B}", "name": "TileButton", "attributes": ["Title"], "states": ["Selected", "Disabled", "Hover"], "children": ["Content", "CornerWhite", "Title"] },
+    { "label": "Choice tile", "guid": "{68CB981E-3551-4AB9-8C2C-54470940600B}", "name": "TileButton", "attributes": ["Title"], "states": ["Selected", "Disabled", "Hover"], "children": ["Content", "CornerWhite", "Title", "Background"] },
     { "label": "Icon button", "guid": "{4DA5F24F-8B9F-4157-8700-19F5E06B68E9}", "name": "IconButton_Squared", "attributes": ["Icon"], "states": ["Selected", "Disabled", "Hover"] },
     { "label": "Tab", "guid": "{B3646052-B1D6-44DA-854F-F3C6301FE03C}", "name": "TextTab", "attributes": ["Text"], "states": ["Selected", "Hover"] },
     { "label": "Flight category", "guid": "{6C8546B4-5DC2-4565-8344-02BEC2D16F6B}", "name": "FreeFlight_IFR", "attributes": ["Status", "StatusColor"], "values": ["Color_VFR", "Color_MVFR", "Color_IFR", "Color_LIFR"] },
@@ -21,8 +21,8 @@
     { "label": "Text field", "guid": "{996A0E75-BA4D-4EB4-BD27-683B1013B42C}", "name": "Search_Input", "attributes": ["Placeholder"], "states": ["State_Input"], "children": ["Content"] },
     { "label": "Statistic row", "guid": "{E43EDD70-0B52-48D1-BC1D-2E3764CA00BF}", "name": "Fleet_Details_Listitem", "attributes": ["Title", "ValueText", "ValueIcon"], "states": ["State_Background_Dark", "State_Background_Light", "State_Value_Text", "State_Value_Icon", "State_Arrow"], "children": ["Title", "ValueText", "ValueIcon", "Background"] },
     { "label": "Aircraft tile", "guid": "{4624E83D-9CA8-48D6-B42C-FE4E2810951F}", "name": "TileButton_Fleet", "attributes": ["AircraftImage", "AircraftName", "Subtitle", "Distance"], "states": ["Selected", "Disabled", "Hover"], "children": ["ImageBlock", "Distance", "Content", "Background"] },
-    { "label": "Horizontal tile", "guid": "{35A4F244-E2BB-4DF1-984E-BCBE663FC209}", "name": "Marketplace_Tile_Horizontal", "attributes": ["Image", "Title", "Creator"], "states": ["Selected", "Disabled", "Hover"], "children": ["Title", "Details", "Rating_Overview", "Separator", "Banner", "WishlistBlock", "TitleBlock", "ImageBlock", "Image"] },
-    { "label": "Dropdown", "guid": "{3321B59E-EA1D-4C72-8D69-3F1BB530437C}", "name": "Dropdown", "attributes": ["Title", "List_Size"], "states": ["State_Unwrapped", "Disabled"] }
+    { "label": "Horizontal tile", "guid": "{35A4F244-E2BB-4DF1-984E-BCBE663FC209}", "name": "Marketplace_Tile_Horizontal", "attributes": ["Image", "Title", "Creator"], "states": ["Selected", "Disabled", "Hover"], "children": ["Title", "Creator", "Details", "Rating_Overview", "Separator", "Banner", "WishlistBlock", "TitleBlock", "ImageBlock", "Image"] },
+    { "label": "Dropdown", "guid": "{3321B59E-EA1D-4C72-8D69-3F1BB530437C}", "name": "Dropdown", "attributes": ["Title", "List_Size"], "states": ["State_Unwrapped", "Disabled"], "children": ["Content", "List"] }
   ],
   "options": [
     { "label": "Show the white dot cursor in freelook (re-validated to save the profile)", "section": "MENU_OPTIONS_FLIGHT_INTERFACE", "id": "OptionsGeneralItemGUID_{666BFED5-26A0-4C7D-BF27-D717AFCAF33D}" }
@@ -30,6 +30,10 @@
   "anchors": [
     "FreeFlight_AircraftButton",
     "Search",
+    "Searchblock",
+    "Search_Input",
+    "Results",
+    "Worldmap_Filters",
     "Flight_Conditions_History_Widget",
     "FreeFlight_Runways",
     "FreeFlight_Traffic",
@@ -40,11 +44,9 @@
     "TileButton_Watermark_Small_Cockpit",
     "Scroll",
     "Header",
-    "Worldmap_Filters",
     "Worldmap_Filters_Legend",
     "Worldmap_Filters_Layers",
-    "Worldmap_Filters_Display",
-    "TextButton_Large_EFB"
+    "Worldmap_Filters_Display"
   ],
   "componentPatterns": [
     {
@@ -136,7 +138,10 @@
     "TT:GENERIC.AIRPORT",
     "TT:WEATHER.AIR_TRAFFIC_TITLE",
     "TT:WEATHER.MULTIPLAYER_TITLE",
+    "TT:WEATHER.TODAY",
     "TT:GENERIC.LIVE",
+    "TT:MENU.WEATHERTYPE_0DYNAMIC",
+    "TT:MENU.FLIGHTCONDITION.PRESETS",
     "TT:MENU.FLIGHTCONDITION.AI",
     "TT:MENU.WEATHERLAYER_OFF",
     "TT:MENU.FLIGHTCONDITION.ALL_PLAYERS",

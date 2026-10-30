@@ -1,5 +1,6 @@
-// The Favorites block on Free Flight, under the sim's "Search location" field, as wide as the sim's aircraft button:
-// a card like the sim's (background layers, header), its rows in the sim's scrolling list, each row the sim's
+// The Favorites block on Free Flight, under the sim's aircraft button (or its "Search location" field while that one
+// is still under it), as wide as the button:
+// a card like the sim's (background layers, no header), its rows in the sim's scrolling list, each row the sim's
 // horizontal tile (as the gallery's list view) with the mod's heart at its end. One row per favourite livery: a click
 // loads the aircraft with it; the heart removes the favourite.
 
@@ -7,7 +8,7 @@ import { el, uiUnit } from '../../core/dom.ts';
 import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
-import { panel } from '../../core/theme.ts';
+import { GROUP_GAP, GROUP_GAP_ATTRIBUTE, panel } from '../../core/theme.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
@@ -38,14 +39,11 @@ interface Row {
 
 const AIRCRAFT_BUTTON = '[name="FreeFlight_AircraftButton"]';
 const SEARCH = '[name="Search"]';
-/** Layout units: gap under the search field, room kept at the bottom of the screen (the sim's buttons). */
-const GAP = 12;
+/** Layout units: room kept at the bottom of the screen (the sim's buttons). The gap above the block: see GROUP_GAP. */
 const BOTTOM_ROOM = 110;
-/** Layout units: header, row and gap between rows, padding of the list (as in the CSS). */
-const HEADER = 36;
+/** Layout units: row and gap between rows (as in the CSS); no header (the owner's choice, 2026-10-30). */
 const ROW = 77;
 const ROW_GAP = 6;
-const LIST_PADDING = 6;
 /** The use is recorded 1.5 s after a change of aircraft (sim/aircraft-loading.ts): the block is redrawn after it. */
 const REDRAW_AFTER_USE_MS = 1700;
 
@@ -75,8 +73,6 @@ export class FavoritesPanel {
 
   mount(): void {
     const scope = this.scope;
-    const header = el('div', 'msfs-ui-header', this.root);
-    el('span', 'msfs-ui-title', header).textContent = 'Favorites';
     this.list.setAttribute('direction', 'y');
     this.list.className = 'msfs-ui-fav__list';
     this.root.appendChild(this.list);
@@ -96,40 +92,51 @@ export class FavoritesPanel {
   }
 
   /**
-   * Under the search field, as wide as the aircraft button; hidden while the search shows its results, and without
+   * Under the aircraft button, as wide as it; hidden while a search field under it shows its results, and without
    * favourites (the owner's choice, 2026-10-30: no block taking room for nothing).
    */
   private layout(): void {
     const button = this.page.elt.querySelector(AIRCRAFT_BUTTON);
-    const search = this.page.elt.querySelector(SEARCH);
-    if (this.rows.length === 0 || !isShown(button) || !isShown(search)) {
+    if (this.rows.length === 0 || !isShown(button)) {
       this.root.style.display = 'none';
       return;
     }
-    const searchRect = search.getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
     const unit = uiUnit();
-    // In layout units: a change of resolution in the session (window, full screen) changes the pixels, not the units
-    // (measured 2026-10-30: from 1080 to 2160 lines, the closed search was twice the remembered height, the block hidden).
-    const searchHigh = searchRect.height / unit;
-    if (!this.searchHeight || searchHigh < this.searchHeight) this.searchHeight = searchHigh;
-    if (searchHigh > this.searchHeight * 1.5) {
-      this.root.style.display = 'none';
-      return;
+    // Under the aircraft button (the weather bar moves the search field to the right column: the owner's wish,
+    // 2026-10-30), or under the search field while it is still there, under the button (the weather bar turned off).
+    const search = this.page.elt.querySelector(SEARCH);
+    const searchRect = isShown(search) ? search.getBoundingClientRect() : null;
+    const under = searchRect && searchRect.left < rect.right && searchRect.right > rect.left && searchRect.top >= rect.bottom ? searchRect : null;
+    if (under) {
+      // In layout units: a change of resolution in the session (window, full screen) changes the pixels, not the units
+      // (measured 2026-10-30: from 1080 to 2160 lines, the closed search was twice the remembered height, the block hidden).
+      const searchHigh = under.height / unit;
+      if (!this.searchHeight || searchHigh < this.searchHeight) this.searchHeight = searchHigh;
+      if (searchHigh > this.searchHeight * 1.5) {
+        this.root.style.display = 'none';
+        return;
+      }
     }
     const origin = this.page.elt.getBoundingClientRect();
-    const rect = button.getBoundingClientRect();
-    const top = Math.round(searchRect.bottom - origin.top + GAP * unit);
+    // The weather bar's gap when it runs (it fills its column), so that both columns match.
+    const shared = Number(this.page.elt.getAttribute(GROUP_GAP_ATTRIBUTE));
+    const gap = shared > 0 ? shared : Math.floor(GROUP_GAP * unit);
+    const top = Math.round((under ? under.bottom : rect.bottom) - origin.top + gap);
     const available = Math.floor(origin.height - BOTTOM_ROOM * unit - top);
-    // As high as its rows, up to the room left: the sim's list then scrolls.
-    const rows = this.rows.length;
-    const content = rows * ROW + (rows - 1) * ROW_GAP;
-    const wanted = Math.ceil((HEADER + 2 * LIST_PADDING + content) * unit);
+    // As high as its rows, up to the whole rows that fit in the room left: the sim's list then scrolls, and the block
+    // still ends on the edge of a row (the owner's choice, 2026-10-30: a cut row showed under the last one). In whole
+    // pixels as the engine lays them out (each height rounded down; measured 2026-10-30: in exact units the block ended
+    // 8 units below its last row with four rows).
+    const px = (units: number) => Math.floor(units * unit);
+    const step = px(ROW) + px(ROW_GAP);
+    const shown = Math.min(this.rows.length, Math.floor((available + px(ROW_GAP)) / step));
     const style = this.root.style;
-    style.display = available > HEADER * unit ? '' : 'none';
+    style.display = shown > 0 ? '' : 'none';
     style.left = `${Math.round(rect.left - origin.left)}px`;
     style.top = `${top}px`;
     style.width = `${Math.round(rect.width)}px`;
-    style.height = `${Math.max(0, Math.min(wanted, available))}px`;
+    style.height = `${Math.max(0, shown * step - px(ROW_GAP))}px`;
     // Room for the scroll bar only when the list scrolls.
     if (this.list.maxScroll > 0) this.root.classList.add('is-scrolling');
     else this.root.classList.remove('is-scrolling');

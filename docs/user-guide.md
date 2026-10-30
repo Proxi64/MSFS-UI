@@ -78,17 +78,17 @@ Everything the mod shows is made of the sim's own components (tiles, buttons, ta
 
 ### Weather and time bar
 
-**Where:** Free Flight, right column, just under the sim's *Flight Conditions* widget.
+**Where:** Free Flight, right column, under the sim's *Flight Conditions* widget, then the sim's *Search location* field, which the bar moves under its last section (its results open upwards, over the bar). The gap between the widget and the bar, between the sections and around the search field is the same, and fills the column down to the map buttons; the favourites on the left start at the same height, with the same gap.
 
-When an airport (or an aircraft of the traffic) is selected on the map, the sim shows its card in the same column. Two tabs then appear under the widget, **Weather** and **Airport** (or **Traffic**): only the chosen one shows. Without such a card, the tabs disappear.
+When an airport (or an aircraft of the traffic) is selected on the map, the sim shows its card in the same column. Two tabs then appear under the widget, **Weather** and **Airport** (or **Traffic**): only the chosen one shows, and the search field goes under it. Without such a card, the tabs disappear.
 
-The map buttons under the column (*Legend*, *Map Layers*, *World Map display*) open their panel in the same place: the bar steps aside while it is open, and comes back when it is closed with its button.
+The map buttons under the column (*Legend*, *Map Layers*, *World Map display*) open their panel in the same place: the bar and the search field step aside while it is open, and come back when it is closed with its button.
 
 | Section | Content |
 |---|---|
-| **Weather** | One icon per weather preset of the sim (Live, clear skies… thunderstorm, the last custom weather). A click applies it, as in the sim's panel; the preset's name shows on hover |
+| **Today** | **Now**, **Dawn**, **Day**, **Dusk**, **Night** (the time itself shows in the sim's widget above) |
+| **Weather** | The sim's weather presets: **Live**, then one icon per preset (clear skies… thunderstorm, the last custom weather). A click applies it, as in the sim's panel; the preset's name shows on hover and in the header. **Presets**: the presets added by other packages, by name, in the sim's dropdown under the icons (only when there are some); it opens downwards over the traffic sections and scrolls, and shows the one chosen |
 | **METAR** (option *METAR section*) | The real weather at the departure airport: its flight category in colour (VFR, MVFR, IFR, LIFR), then wind, visibility, clouds and temperature. Out of Live weather, a second line gives the **simulated** weather at the departure, to compare. Shown only with a departure airport |
-| **Time** | The local time of the departure, and **Now**, **Dawn**, **Day**, **Dusk**, **Night** |
 | **Air traffic**, **Multiplayer** (option *Traffic section*) | The sim's buttons (Live / AI / Off, Live / All Players / Off), without opening its panel. A button the sim makes unavailable (multiplayer offline) is inactive |
 
 The time buttons follow the widget's mode:
@@ -100,7 +100,7 @@ The time buttons follow the widget's mode:
 
 The sun times are computed for the departure airport and its date. Without a departure (or during polar day or night), the bar uses 6:00, 12:00, 18:00 and 0:00. When the departure airport changes while a moment is selected, the time follows the new place.
 
-**Last choice remembered** (option *Remember the last choice*): the last preset, time button and traffic choices clicked in the bar are applied again the first time the bar shows after the sim starts. (At start-up the sim activates Free Flight behind the scenes, then resets the flight conditions: a choice applied earlier would be lost.)
+**Last choice remembered** (option *Remember the last choice*): the last preset, time button and traffic choices clicked in the bar are applied again the first time the bar shows after the sim starts. (At start-up the sim activates Free Flight behind the scenes, then resets the flight conditions: a choice applied earlier would be lost.) The preset is found again by its name: adding or removing a pack of presets changes their numbers. A preset no longer there is not applied.
 
 ### Mouse wheel on the time
 
@@ -115,9 +115,10 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 ### Favourites on Free Flight
 
-**Where:** Free Flight, left column, under *Search location*, as wide as the aircraft button. The block hides while the search shows its results.
+**Where:** Free Flight, left column, under the aircraft button, as wide as it (the weather bar moves *Search location* to the right column; with the bar turned off, the block stays under the search field and hides while it shows its results).
 
 - One row per **favourite livery** (the heart of the liveries in the aircraft selection). No favourite: no block.
+- As many whole rows as fit above the screen's bottom buttons; the others scroll.
 - Each row shows the livery's thumbnail, the aircraft's name, then its variant, livery and tail number. A text too long for the row scrolls when the mouse is over it.
 - **Click**: loads the variant, then the livery; the sim's aircraft button follows. The row of the current aircraft is selected.
 - **Heart**: clicking it removes the favourite livery.
@@ -205,7 +206,9 @@ A number is remembered for the current livery as soon as you change the tail num
 | Home: *Sim not found* | Neither Steam nor the Microsoft Store installation was found | **Choose folders…** |
 | The left column of the aircraft selection is empty | The current aircraft became invalid (a choice sent to a released configurator) | Click an aircraft in the gallery; otherwise leave and reopen the screen |
 | A favourite does not load (*not in the list*) | The aircraft is not in the category tab chosen in the aircraft selection | Choose the *All* tab |
-| The Favorites block disappears on Free Flight | *Search location* shows its results | Normal: it comes back when the results close |
+| The Favorites block disappears on Free Flight (weather bar turned off) | *Search location*, under the aircraft button, shows its results | Normal: it comes back when the results close |
+| *Search location* is not shown on Free Flight | A map panel (*Legend*, *Map Layers*, *World Map display*) fills the right column, or the airport card leaves no room above the map buttons | Close the panel, or choose the **Weather** tab |
+| Hundreds of arrow buttons in the weather bar (before 2.0.2) | A package adds weather presets whose icons the sim does not have | Update: the added presets are in the **Presets** dropdown |
 | METAR shows *No METAR* | No answer from the sim within 4 s, or no station | Choose the departure again |
 | *Ceiling 400 ft* instead of a cloud cover | Out of Live weather, the sim's METAR keeps the ceiling but not the cover | Normal |
 | Favourites, tail numbers or the last weather choice lost after a restart (2.0) | The module did not answer, so the mod fell back on the sim's own storage, which reaches the disk less reliably (the module is read only when the sim starts; or the package was installed without it) | Restart the sim after installing. **Compatibility**, group *Storage*, says which storage is in use and why the module did not answer (for example *the vault module did not answer within 3000 ms*) |

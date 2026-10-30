@@ -3,16 +3,17 @@
 // multiplayer, tabs and the flight category of the METAR.
 
 import { withTimeout } from '../../core/async.ts';
-import { el, uiUnit } from '../../core/dom.ts';
+import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { log, logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { loadData, saveData } from '../../core/storage.ts';
-import { addPanelLayers } from '../../core/theme.ts';
+import { addPanelLayers, GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../core/theme.ts';
 import type { Settings } from '../../generated/catalog.ts';
-import { COMPONENTS, createComponent, type ComponentGuid, type SimComponent } from '../../sim/components.ts';
+import { COMPONENTS, createComponent, type ComponentGuid, type DropdownItem, type DropdownManipulator, type SimComponent } from '../../sim/components.ts';
 import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
 import { readArray, store, translate, watch, type StoreNode } from '../../sim/store.ts';
 import type { FlightConditions, FlightConfigurationButton, FlightLocation, TimeInfo, WeatherInfo, WeatherPreset } from './model.ts';
+import { isSimPreset, rememberedPreset } from './presets.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, TIME_MODES, type SentTime, type TimeMode } from './time-of-day.ts';
 import { flightRules, weatherSummary } from './weather-text.ts';
 
@@ -26,6 +27,8 @@ type Tab = 'weather' | 'airport';
 /** The last choice, remembered when `remember` is on (mod/README.md, Data stored in the sim). */
 interface Memory {
   weather: number | null;
+  /** Title of the weather preset, which finds it again when the indexes move (presets.ts, rememberedPreset). */
+  weatherTitle?: string | null;
   time: TimeMode | null;
   /** Id of the button chosen (`AIRTRAFFICAI`…), per group. */
   airtraffic?: string | null;
@@ -38,8 +41,27 @@ const TAB_KEY = 'WEATHER_BAR_TAB';
 /** Height of the tab row, in layout units (as the tabs of the sim's runway card), and the gap under it. */
 const TAB_ROW = 36;
 const GAP = 6;
-/** Gap between the sim's widget and the bar, in layout units. */
-const WIDGET_GAP = 10;
+/**
+ * The block of the sim's "Search location" field, moved under the bar (the owner's wish, 2026-10-30), its class, placed
+ * and sized in weather-bar.css, and the sim's map buttons, the bottom of the room it may take.
+ */
+const SEARCH_BLOCK = '[name="Searchblock"]';
+const SEARCH_CLASS = 'msfs-ui-wx-search';
+const MAP_BUTTONS = '[name="Worldmap_Filters"]';
+/** Height of the search field, in layout units (as in weather-bar.css: the times of day's). */
+const SEARCH_HEIGHT = 36;
+/** The live weather preset (its title in the sim's list), and the cells of the preset grid per row (as in the CSS). */
+const LIVE_PRESET = 'TT:MENU.WEATHERTYPE_0DYNAMIC';
+const PRESETS_PER_ROW = 6;
+/**
+ * The presets added by other packages, in the sim's dropdown under the grid (the owner's choice, 2026-10-30): its list,
+ * in layout units, has items of 30 with 3 between them and 6 of padding above and below (LIST_EDGE; measured
+ * 2026-10-30), and opens downwards when at least LIST_LEAST items fit there (bar.ts, sizePresetList).
+ */
+const LIST_ITEM = 33;
+const LIST_PADDING = 9;
+const LIST_EDGE = 6;
+const LIST_LEAST = 3;
 /** Longest wait for a weather request; past it, the line says so. */
 const WEATHER_TIMEOUT_MS = 4000;
 /** Close changes (departure, preset, live mode) are grouped into one weather request. */
@@ -70,11 +92,8 @@ const SIM_CARDS: { selector: string; tab: string }[] = [
   { selector: '[name="FreeFlight_Traffic"]', tab: 'TT:GENERIC.TRAFFIC' },
 ];
 const WIDGET = '[name="Flight_Conditions_History_Widget"]';
-/** The map buttons (info, layers, filters) under the column, and the EFB button under them. */
-const MAP_BUTTONS = '[name="Worldmap_Filters"]';
-/** The panels those buttons open (legend, map layers, map display): the sim draws them where the bar is. */
+/** The panels the map buttons open (legend, map layers, map display): the sim draws them where the bar is. */
 const MAP_PANELS = ['[name="Worldmap_Filters_Legend"]', '[name="Worldmap_Filters_Layers"]', '[name="Worldmap_Filters_Display"]'];
-const EFB_BUTTON = '[name="TextButton_Large_EFB"]';
 
 const flight = store.Game.CurrentFlight;
 const gameFlight = flight.GameFlight;
@@ -104,6 +123,12 @@ function answerOrNull<T>(promise: Promise<T>, ms: number, what: string): Promise
   });
 }
 
+/** The sim's scrolling list (see the gallery), in the presets dropdown. */
+interface RealScroll extends HTMLElement {
+  readonly maxScroll: number;
+  scrollToPosition(position: number): void;
+}
+
 interface Section {
   section: HTMLElement;
   value: HTMLElement;
@@ -119,13 +144,23 @@ export class WeatherBar {
 
   private presets: WeatherPreset[] = [];
   private readonly presetButtons = new Map<number, SimComponent>();
+  /** The hosts of the preset grid: first cell and number of cells of each (laid out by `layoutPresets`). */
+  private readonly presetCells: { host: HTMLElement; start: number; span: number }[] = [];
+  /**
+   * The dropdown of the added presets (none without them), its items by preset index, the index it shows (-1: its
+   * title, no added preset chosen; null: not drawn yet).
+   */
+  private presetList: SimComponent | null = null;
+  private readonly presetItems = new Map<number, DropdownItem>();
+  private presetListShown: number | null = null;
+  /** The block of the sim's search field marked SEARCH_CLASS. */
+  private searchBlock: HTMLElement | null = null;
   private readonly timeButtons = new Map<TimeMode, SimComponent>();
   private readonly conditionButtons = new Map<string, SimComponent>();
   private readonly tabButtons = new Map<Tab, SimComponent>();
   private rulesBadge: SimComponent | null = null;
 
   private weatherName: HTMLElement | null = null;
-  private timeValue: HTMLElement | null = null;
   private metar: { section: HTMLElement; icao: HTMLElement; rules: HTMLElement; real: HTMLElement; simulated: HTMLElement } | null = null;
 
   private weatherIndex = -1;
@@ -162,6 +197,7 @@ export class WeatherBar {
     this.scope.append(this.page.elt, this.panel);
     this.scope.append(this.page.elt, this.tabs);
     this.scope.add(() => this.releaseCard());
+    this.scope.add(() => this.page.elt.removeAttribute(GROUP_GAP_ATTRIBUTE));
     // The model is followed at once, so that clicks and the restore never act on default values; the components
     // load in parallel and each one is drawn from the model as soon as it is ready.
     this.watchModel();
@@ -194,7 +230,6 @@ export class WeatherBar {
     }
     watch<TimeInfo>(scope, gameFlight.timeData, (time) => {
       this.time = time;
-      if (this.timeValue) this.timeValue.textContent = time.localTime.valueStr;
       this.refreshTimeMode();
     });
     watch<boolean>(scope, gameFlight.isUsingLiveTimeBuffer, (value) => {
@@ -242,18 +277,56 @@ export class WeatherBar {
       });
     }
 
+    // Times of day first, titled "Today" (the owner's choice, 2026-10-30): the sim's widget above shows the time.
+    const row = el('div', 'msfs-ui-wx__row', this.section(translate('TT:WEATHER.TODAY')).body);
+    for (const mode of TIME_MODES) {
+      const host = el('div', 'msfs-ui-wx__choice msfs-ui-compact-tile', row);
+      component(COMPONENTS.tileButton, host, { Title: TIME_LABELS[mode] }, (created) => {
+        this.timeButtons.set(mode, created);
+        created.onClick(this.scope, () => this.run('the time could not be changed', this.chooseTime(mode)));
+      });
+    }
+
     const weather = this.section('Weather');
     this.weatherName = weather.value;
     const grid = el('div', 'msfs-ui-wx__grid', weather.body);
-    for (const preset of this.presets) {
-      const host = el('div', 'msfs-ui-wx__icon', grid);
+    let cell = 0;
+    // The sim's presets in the grid; the added ones (often hundreds, without their icons) in the dropdown under it.
+    for (const preset of this.presets.filter(isSimPreset)) {
+      // Live: the tile of the traffic buttons, "Live" written on it, two cells wide (the owner's choice, 2026-10-30).
+      const live = preset.title === LIVE_PRESET;
+      const span = live ? 2 : 1;
+      const host = el('div', live ? 'msfs-ui-wx__icon msfs-ui-compact-tile' : 'msfs-ui-wx__icon', grid);
+      this.presetCells.push({ host, start: cell, span });
+      cell += span;
       this.scope.listen(host, 'mouseenter', () => {
         if (this.weatherName) this.weatherName.textContent = translate(preset.title);
       });
       this.scope.listen(host, 'mouseleave', () => this.renderWeather());
-      component(COMPONENTS.iconButtonSquared, host, { Icon: preset.iconUrl }, (created) => {
+      const onReady = (created: SimComponent) => {
         this.presetButtons.set(preset.index, created);
-        created.onClick(this.scope, () => this.run('the weather could not be changed', this.chooseWeather(preset.index)));
+        created.onClick(this.scope, () => this.run('the weather could not be changed', this.chooseWeather(preset)));
+      };
+      if (live) component(COMPONENTS.tileButton, host, { Title: shortLabel('TT:GENERIC.LIVE') }, onReady);
+      else component(COMPONENTS.iconButtonSquared, host, { Icon: preset.iconUrl }, onReady);
+    }
+    const added = this.presets.filter((preset) => !isSimPreset(preset));
+    if (added.length > 0) {
+      for (const preset of added) {
+        this.presetItems.set(preset.index, {
+          title: preset.title,
+          subtitle: '',
+          coma: '',
+          selectedCallback: () => this.run('the weather could not be changed', this.chooseWeather(preset)),
+        });
+      }
+      const host = el('div', 'msfs-ui-wx__presets', weather.body);
+      component(COMPONENTS.dropdown, host, {}, (created) => {
+        this.presetList = created;
+        const manipulator = created.manipulator<DropdownManipulator>();
+        if (manipulator) manipulator.setEmptyTitle(translate('TT:MENU.FLIGHTCONDITION.PRESETS'));
+        // Once the click has opened the list (the sim's handler runs first).
+        created.onClick(this.scope, () => this.scope.timeout(() => this.scrollPresetList(), 0));
       });
     }
 
@@ -270,17 +343,6 @@ export class WeatherBar {
         simulated: el('div', 'msfs-ui-wx__line msfs-ui-wx__line--sim', metar.body),
       };
       metar.section.style.display = 'none';
-    }
-
-    const time = this.section('Time');
-    this.timeValue = time.value;
-    const row = el('div', 'msfs-ui-wx__row', time.body);
-    for (const mode of TIME_MODES) {
-      const host = el('div', 'msfs-ui-wx__choice msfs-ui-compact-tile', row);
-      component(COMPONENTS.tileButton, host, { Title: TIME_LABELS[mode] }, (created) => {
-        this.timeButtons.set(mode, created);
-        created.onClick(this.scope, () => this.run('the time could not be changed', this.chooseTime(mode)));
-      });
     }
 
     if (this.settings.traffic) {
@@ -335,6 +397,7 @@ export class WeatherBar {
       this.panel.style.display = 'none';
       this.tabs.style.display = 'none';
       this.releaseCard();
+      this.placeSearch(null);
       return;
     }
     // At start-up the sim activates Free Flight behind the scenes, then resets the flight conditions: the last choice
@@ -356,7 +419,24 @@ export class WeatherBar {
     style.display = '';
     style.left = `${rect.left - origin.left}px`;
     style.width = `${rect.width}px`;
-    let top = rect.bottom - origin.top + WIDGET_GAP * unit;
+    this.layoutPresets(Math.floor(rect.width), unit);
+    // The same gap under the widget, between the sections, above and under the search field (the owner's wish,
+    // 2026-10-30), given to the page's other column.
+    const gap = this.groupGap(rect.bottom, unit);
+    this.spaceSections(gap);
+    if (this.page.elt.getAttribute(GROUP_GAP_ATTRIBUTE) !== String(gap)) this.page.elt.setAttribute(GROUP_GAP_ATTRIBUTE, String(gap));
+    let top = rect.bottom - origin.top + gap;
+    const left = rect.left - origin.left;
+    // The search field under the last block of the column (the bar or the sim's card), when it fits above the map
+    // buttons with at least the smallest gap (GROUP_GAP) under it.
+    const searchUnder = (bottom: number) => {
+      const buttons = this.page.elt.querySelector(MAP_BUTTONS);
+      const least = Math.floor(GROUP_GAP * unit);
+      const limit = isShown(buttons) ? buttons.getBoundingClientRect().top - origin.top - least : origin.height;
+      const searchTop = bottom + gap;
+      this.placeSearch(searchTop + Math.floor(SEARCH_HEIGHT * unit) <= limit ? { top: searchTop, left, width: rect.width } : null);
+    };
+    const panelBottom = () => top + this.panel.getBoundingClientRect().height;
 
     let card: HTMLElement | null = null;
     let cardTab = '';
@@ -372,7 +452,8 @@ export class WeatherBar {
       this.tabs.style.display = 'none';
       this.releaseCard();
       style.top = `${top}px`;
-      this.alignBottom(top + origin.top);
+      searchUnder(panelBottom());
+      this.sizePresetList(rect.top, unit);
       return;
     }
     const cardButton = this.tabButtons.get('airport');
@@ -391,47 +472,141 @@ export class WeatherBar {
     card.style.visibility = tab === 'airport' ? '' : 'hidden';
     style.display = tab === 'weather' ? '' : 'none';
     style.top = `${top}px`;
-    this.alignBottom(top + origin.top);
+    searchUnder(tab === 'weather' ? panelBottom() : card.getBoundingClientRect().bottom - origin.top);
+    this.sizePresetList(rect.top, unit);
   }
 
   /**
-   * The panel ends above the map buttons with the same gap as between the map buttons and the EFB button, whatever
-   * its content: its height is fixed and the sections share the free space (weather-bar.css). When the content does
-   * not fit (another screen or interface scale), the panel takes its natural height. `top` is in window coordinates.
+   * Opened, the list of the added presets shows its first items, or the chosen one at its top: the sim kept the
+   * position of an earlier opening, in the middle of an item after a change of resolution (measured 2026-10-30). The
+   * position is a whole number of items, by the items' spacing on the screen, so that they stay whole.
    */
-  private alignBottom(top: number): void {
-    const buttons = this.page.elt.querySelector(MAP_BUTTONS);
-    const efb = this.page.elt.querySelector(EFB_BUTTON);
-    let height = '';
-    if (isShown(buttons) && isShown(efb)) {
-      const below = buttons.getBoundingClientRect();
-      const bottom = below.top - (efb.getBoundingClientRect().top - below.bottom);
-      if (bottom > top && this.naturalHeight() <= bottom - top) height = `${Math.round(bottom - top)}px`;
-    }
-    if (this.panel.style.height !== height) this.panel.style.height = height;
+  private scrollPresetList(): void {
+    const list = this.presetList ? this.presetList.element.querySelector<HTMLElement>('[name="List"]') : null;
+    const scroll = list ? list.querySelector<RealScroll>('real-scroll') : null;
+    if (!list || !scroll || window.getComputedStyle(list).display === 'none') return;
+    const tops = Array.prototype.slice
+      .call(list.querySelectorAll('virtual-list-wrapper'))
+      .map((slot: HTMLElement) => slot.getBoundingClientRect())
+      .filter((box: DOMRect) => box.height > 0)
+      .map((box: DOMRect) => box.top)
+      .sort((a: number, b: number) => a - b);
+    const step = tops.length > 1 ? tops[1]! - tops[0]! : LIST_ITEM * uiUnit();
+    const chosen = Array.from(this.presetItems.keys()).indexOf(this.weatherIndex);
+    scroll.scrollToPosition(Math.min(scroll.maxScroll, Math.max(0, chosen) * step));
   }
 
-  /** Height of the content without the shared free space: headers plus the content of each section's body. */
-  private naturalHeight(): number {
-    let total = 0;
-    const sections = this.panel.querySelectorAll<HTMLElement>('.msfs-ui-wx__section');
-    for (let i = 0; i < sections.length; i++) {
-      const section = sections[i]!;
-      if (section.style.display === 'none') continue;
-      const header = section.querySelector('.msfs-ui-header');
-      const body = section.querySelector<HTMLElement>('.msfs-ui-wx__body');
-      if (header) total += header.getBoundingClientRect().height;
-      if (!body) continue;
-      const style = window.getComputedStyle(body);
-      total += parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-      for (let j = 0; j < body.children.length; j++) {
-        const child = body.children[j] as HTMLElement;
-        if (child.style.display === 'none') continue;
-        const childStyle = window.getComputedStyle(child);
-        total += child.getBoundingClientRect().height + parseFloat(childStyle.marginTop) + parseFloat(childStyle.marginBottom);
-      }
+  /**
+   * The list of the added presets (the owner's choice, 2026-10-30) opens downwards, exactly to the bottom of the
+   * panel's last buttons (multiplayer's), inside the panel (lower, it would pass under the search field), the sim's own
+   * scroll for the items that do not fit. Whole items at rest: the room they leave goes into the list's top padding
+   * (--msfs-ui-presets-top). With fewer than LIST_LEAST items there (traffic sections turned off), it opens upwards,
+   * to the top of the column (`columnTop`, in the window).
+   */
+  private sizePresetList(columnTop: number, unit: number): void {
+    const list = this.presetList;
+    const host = list ? list.element.parentElement : null;
+    if (!list || !host || this.panel.style.display === 'none') return;
+    const box = host.getBoundingClientRect();
+    const below = (this.panel.getBoundingClientRect().bottom - box.bottom) / unit;
+    const count = this.presetItems.size;
+    const fitBelow = Math.floor((below - LIST_PADDING) / LIST_ITEM);
+    const up = fitBelow < LIST_LEAST;
+    toggleClass(host, 'is-up', up);
+    let size: number;
+    let padding = LIST_EDGE;
+    if (up) {
+      size = Math.max(1, Math.min(count, Math.floor(((box.top - columnTop) / unit - LIST_PADDING) / LIST_ITEM))) * LIST_ITEM + LIST_PADDING;
+    } else if (count <= fitBelow) {
+      size = count * LIST_ITEM + LIST_PADDING;
+    } else {
+      // Half a pixel more: the engine rounds the height down, the list must reach the buttons' edge.
+      size = below + 0.5 / unit;
+      padding += below - (fitBelow * LIST_ITEM + LIST_PADDING);
     }
-    return total;
+    list.set('List_Size', size.toFixed(2));
+    setVariable(host.style, '--msfs-ui-presets-top', `${Math.floor(padding * unit)}px`);
+  }
+
+  /**
+   * The preset grid in whole pixels, `width` wide: PRESETS_PER_ROW cells per row, GAP units between them (rounded down,
+   * as the engine does for the other gaps), the pixels left over given one each to the first cells of the rows. In
+   * units, the engine rounded each cell down and the rows ended 5 pixels short (measured 2026-10-30).
+   */
+  private layoutPresets(width: number, unit: number): void {
+    const gap = Math.floor(GAP * unit);
+    const free = width - (PRESETS_PER_ROW - 1) * gap;
+    const base = Math.floor(free / PRESETS_PER_ROW);
+    const extra = free - base * PRESETS_PER_ROW;
+    for (const { host, start, span } of this.presetCells) {
+      const column = start % PRESETS_PER_ROW;
+      let cells = (span - 1) * gap;
+      for (let at = column; at < column + span; at++) cells += base + (at < extra ? 1 : 0);
+      const style = host.style;
+      style.width = `${cells}px`;
+      style.marginRight = column + span >= PRESETS_PER_ROW ? '0px' : `${gap}px`;
+      style.marginTop = start >= PRESETS_PER_ROW ? `${gap}px` : '0px';
+    }
+  }
+
+  /**
+   * In pixels, the gap between the groups of the column: its free room down to the map buttons shared evenly, under
+   * the widget, between the sections, above and under the search field (the owner's choice, 2026-10-30); GROUP_GAP at
+   * least. The METAR, shown at times, is not counted: it takes from the room under the search field, which hides when
+   * it no longer fits.
+   */
+  private groupGap(widgetBottom: number, unit: number): number {
+    const least = Math.floor(GROUP_GAP * unit);
+    const buttons = this.page.elt.querySelector(MAP_BUTTONS);
+    if (!isShown(buttons)) return least;
+    let blocks = Math.floor(SEARCH_HEIGHT * unit);
+    let gaps = 2;
+    const sections = this.panel.querySelectorAll<HTMLElement>('.msfs-ui-wx__section');
+    for (let at = 0; at < sections.length; at++) {
+      if (this.metar && sections[at] === this.metar.section) continue;
+      blocks += sections[at]!.getBoundingClientRect().height;
+      gaps++;
+    }
+    // Rounded to the nearest pixel: the gap under the search field differs from the others by a few pixels at most
+    // (rounded down, the room left over all went there: 48 pixels under it, 43 between the others at 1440 lines).
+    return Math.max(least, Math.round((buttons.getBoundingClientRect().top - widgetBottom - blocks) / gaps));
+  }
+
+  /** `gap` pixels above every section but the first (a hidden one, the METAR, takes no room). */
+  private spaceSections(gap: number): void {
+    const sections = this.panel.querySelectorAll<HTMLElement>('.msfs-ui-wx__section');
+    for (let at = 1; at < sections.length; at++) sections[at]!.style.marginTop = `${gap}px`;
+  }
+
+  /**
+   * The sim's search field at `place` (pixels in the page), or hidden (null): its block marked SEARCH_CLASS and given
+   * the place in variables (written only on change: weather-bar.css); the sim's own place back with the scope.
+   */
+  private placeSearch(place: { top: number; left: number; width: number } | null): void {
+    const block = this.page.elt.querySelector<HTMLElement>(SEARCH_BLOCK);
+    if (!block) return;
+    if (block !== this.searchBlock) {
+      // Only that block (the sim may draw it again).
+      if (this.searchBlock) this.releaseSearch();
+      else this.scope.add(() => this.releaseSearch());
+      this.searchBlock = block;
+    }
+    const style = block.style;
+    if (place) {
+      setVariable(style, '--msfs-ui-search-top', `${Math.round(place.top)}px`);
+      setVariable(style, '--msfs-ui-search-left', `${Math.round(place.left)}px`);
+      setVariable(style, '--msfs-ui-search-width', `${Math.round(place.width)}px`);
+    }
+    block.classList.add(SEARCH_CLASS);
+    toggleClass(block, 'is-hidden', !place);
+  }
+
+  private releaseSearch(): void {
+    const block = this.searchBlock;
+    if (!block) return;
+    block.classList.remove(SEARCH_CLASS, 'is-hidden');
+    for (const name of ['--msfs-ui-search-top', '--msfs-ui-search-left', '--msfs-ui-search-width']) block.style.removeProperty(name);
+    this.searchBlock = null;
   }
 
   /**
@@ -478,11 +653,20 @@ export class WeatherBar {
     this.presetButtons.forEach((button, index) => button.select(index === this.weatherIndex));
     const preset = this.presets.find((candidate) => candidate.index === this.weatherIndex);
     if (this.weatherName) this.weatherName.textContent = preset ? translate(preset.title) : '';
+    // The dropdown shows the added preset chosen, else its title; its items are given again only when that changes.
+    const list = this.presetList;
+    const manipulator = list ? list.manipulator<DropdownManipulator>() : null;
+    const item = this.presetItems.get(this.weatherIndex);
+    const shown = item ? this.weatherIndex : -1;
+    if (manipulator && shown !== this.presetListShown) {
+      this.presetListShown = shown;
+      manipulator.setData(Array.from(this.presetItems.values()), item);
+    }
   }
 
-  private async chooseWeather(index: number): Promise<void> {
-    await store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(index));
-    this.save({ weather: index });
+  private async chooseWeather(preset: WeatherPreset): Promise<void> {
+    await store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(preset.index));
+    this.save({ weather: preset.index, weatherTitle: preset.title });
   }
 
   // ----- Time -----
@@ -635,8 +819,9 @@ export class WeatherBar {
     this.liveOffset = liveOffset || 0;
     this.departureDms = (departure && departure.worldLocation && departure.worldLocation.dms) || '';
     this.weatherIndex = weatherIndex;
-    if (memory.weather !== null && memory.weather !== this.weatherIndex && this.presets.some((preset) => preset.index === memory.weather)) {
-      await within(store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(memory.weather)), 'the weather preset');
+    const weather = rememberedPreset(this.presets, memory.weather, memory.weatherTitle);
+    if (weather && weather.index !== this.weatherIndex) {
+      await within(store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(weather.index)), 'the weather preset');
     }
     if (memory.time) await within(this.applyTime(memory.time), 'the time');
     const restored: string[] = [];
@@ -653,7 +838,8 @@ export class WeatherBar {
         restored.push(target.id);
       }
     }
-    log(`weather bar: last choice applied (weather ${memory.weather}, time ${memory.time}${restored.length > 0 ? `, ${restored.join(', ')}` : ''})`);
+    const weatherText = weather ? `${weather.index} ${translate(weather.title)}` : 'none';
+    log(`weather bar: last choice applied (weather ${weatherText}, time ${memory.time}${restored.length > 0 ? `, ${restored.join(', ')}` : ''})`);
     return true;
   }
 }

@@ -12,7 +12,7 @@ Version 2.0.0, tested on MSFS 2024 1.9.21 (Steam), base package `fs-base-ui` 0.1
 
 ## Screenshots
 
-Free Flight: favourite liveries on the left, the weather and time bar on the right.
+Free Flight: favourite liveries on the left; on the right the weather and time bar (the sim's presets, those of other packages in *Presets*, the traffic), with *Search location* under it.
 
 ![Free Flight with the favourites and the weather and time bar](docs/images/free-flight.png)
 

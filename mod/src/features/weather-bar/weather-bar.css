@@ -8,21 +8,38 @@
    (core/theme.ts): with pointer-events: none on the panel, a click or the wheel would reach the map under it. */
 .msfs-ui-wx.is-blocked { opacity: 0.4; }
 .msfs-ui-wx.is-blocked .msfs-ui-wx__section { pointer-events: none; }
-/* Compact: the bar must end above the map buttons (Worldmap_Filters) with the tabs and the full METAR. */
-.msfs-ui-wx__body { padding: calc(var(--u) * 8) calc(var(--u) * 12); }
+/*
+ * As the blocks of the mod's other pages (the owner's wish, 2026-10-30): each section's content as wide as its header,
+ * 6 units under it; between the sections, the gap of the left column under the aircraft button (bar.ts,
+ * spaceSections); the panel as high as its content, ending on its last buttons (it was stretched down to the map
+ * buttons, the sections sharing the free space: 28 units around each content).
+ */
+.msfs-ui-wx__body { padding: calc(var(--u) * 6) 0 0 0; }
 /* align-items: a one-line flex-wrap container stretches its items in Coherent (align-content does not apply). */
 .msfs-ui-wx__grid,
 .msfs-ui-wx__row { display: flex; flex-wrap: wrap; align-items: flex-start; }
 .msfs-ui-wx__value { display: flex; align-items: center; }
 
-/* Weather presets: six icon buttons per row, 40 units high. */
-.msfs-ui-wx__icon {
-  position: relative;
-  width: calc((100% - var(--u) * 30) / 6);
-  height: calc(var(--u) * 40);
-  margin: 0 calc(var(--u) * 6) calc(var(--u) * 6) 0;
-}
-.msfs-ui-wx__icon:nth-child(6n) { margin-right: 0; }
+/*
+ * Weather presets: 40 units high; widths and gaps in whole pixels set by bar.ts (layoutPresets: six cells per row,
+ * Live on two, the traffic buttons' tile); no gap under the last row (the body's padding).
+ */
+.msfs-ui-wx__icon { position: relative; height: calc(var(--u) * 40); }
+
+/*
+ * The presets added by other packages: the sim's dropdown under the grid, 6 units below it, as high as the tiles
+ * (bar.ts). Above the sections after it, which its list passes over.
+ */
+.msfs-ui-wx__presets { position: relative; z-index: 1; height: calc(var(--u) * 36); margin-top: calc(var(--u) * 6); }
+/*
+ * Its text 12 units in, as the headers' (the sim's template: 6). Its list opens right under it (the template: 30 units
+ * down, the dropdown being 36 high here), or above it (is-up); its top padding takes the room its whole items leave
+ * (bar.ts, sizePresetList).
+ */
+.msfs-ui-wx__presets [name="Content"] { left: calc(var(--u) * 12) !important; }
+.msfs-ui-wx__presets [name="List"] { top: 100% !important; }
+.msfs-ui-wx__presets.is-up [name="List"] { top: auto !important; bottom: 100% !important; }
+.msfs-ui-wx__presets [name="List"] .scroll__content { padding-top: var(--msfs-ui-presets-top) !important; }
 
 /* Times of day, traffic, multiplayer: tiles sharing the width, 36 units high (msfs-ui-compact-tile, core/theme.css). */
 .msfs-ui-wx__choice {
@@ -33,6 +50,33 @@
   margin-right: calc(var(--u) * 6);
 }
 .msfs-ui-wx__choice:last-child { margin-right: 0; }
+/*
+ * The bar's tiles (times of day, Live, traffic, multiplayer) in the colours of its icon buttons, the sim's
+ * IconButton_Squared (the owner's choice, 2026-10-30): its blue gradient instead of the tile's dark glass, the tile's
+ * own opacities kept (0.8, dimmed when disabled). Selected, both draw the same solid --colorPrimary with the white
+ * corner.
+ */
+.msfs-ui-wx .msfs-ui-compact-tile [name="Background"] {
+  background-image: linear-gradient(165deg, var(--colorPrimary) 0%, var(--colorGradient) 100%) !important;
+}
+
+/*
+ * The sim's "Search location" field, moved under the bar (the owner's wish, 2026-10-30): its block is marked and placed
+ * by bar.ts (placeSearch). As high as the times of day, 36 units (SEARCH_HEIGHT; the sim draws
+ * it 30 high), in the sim's unit (--u is the mod's own, not defined on the sim's elements). Its results list, 400 units
+ * high, opens upwards over the bar: downwards it would leave the screen.
+ */
+.msfs-ui-wx-search {
+  top: var(--msfs-ui-search-top) !important;
+  left: var(--msfs-ui-search-left) !important;
+  width: var(--msfs-ui-search-width) !important;
+  /* Above the mod's panels (50, core/theme.css): its results open over the bar. */
+  z-index: 51;
+}
+.msfs-ui-wx-search.is-hidden { display: none !important; }
+.msfs-ui-wx-search,
+.msfs-ui-wx-search [name="Search_Input"] { height: calc(var(--unscaledScreenHeight) * 36px / 1080) !important; }
+.msfs-ui-wx-search [name="Results"] { top: auto !important; bottom: 100% !important; }
 
 /* Tabs Weather / Airport, as the tab row of the sim's runway card (gradient from black at 20 %); its height is set by
    bar.ts (TAB_ROW), which also places the panel and the sim's card under it. */
@@ -48,13 +92,11 @@
 /* METAR: airport and flight category in the header, weather lines in the body. */
 .msfs-ui-wx__icao { font-weight: 700; }
 .msfs-ui-wx__rules { position: relative; width: calc(var(--u) * 60); height: calc(var(--u) * 24); margin-left: calc(var(--u) * 8); }
-.msfs-ui-wx__line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Its lines 12 units in, as the headers' texts. */
+.msfs-ui-wx__line { padding: 0 calc(var(--u) * 12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .msfs-ui-wx__line--sim { margin-top: calc(var(--u) * 6); opacity: 0.7; }
 
-/*
- * The panel has a fixed height (bar.ts, alignBottom): the space the content leaves is shared equally between
- * the sections, each one centring its content, instead of a band at the bottom.
- */
+/* The panel as high as its sections. */
 .msfs-ui-wx { display: flex; flex-direction: column; }
-.msfs-ui-wx__section { display: flex; flex-direction: column; flex-grow: 1; flex-shrink: 0; }
-.msfs-ui-wx__body { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; }
+.msfs-ui-wx__section { display: flex; flex-direction: column; flex-shrink: 0; }
+.msfs-ui-wx__body { display: flex; flex-direction: column; }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { TimeInfo, WeatherInfo } from '../src/features/weather-bar/model.ts';
+import type { TimeInfo, WeatherInfo, WeatherPreset } from '../src/features/weather-bar/model.ts';
+import { isSimPreset, rememberedPreset } from '../src/features/weather-bar/presets.ts';
 import { parseDms, sunTimes } from '../src/features/weather-bar/sun.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, SETTLE_MS } from '../src/features/weather-bar/time-of-day.ts';
 import { cloudText, flightRules, visibilityText, weatherSummary, windText } from '../src/features/weather-bar/weather-text.ts';
@@ -139,6 +140,39 @@ const weather = (fields: Partial<WeatherInfo>): WeatherInfo =>
     },
     fields,
   );
+
+describe('weather presets', () => {
+  const preset = (index: number, title: string): WeatherPreset => ({ index, title, iconUrl: '', enabled: true, isSelected: false });
+  // As measured with a package of 215 presets: the sim's first ten, the added ones, then the sim's "Last custom".
+  const presets = [
+    preset(0, 'TT:MENU.WEATHERTYPE_0DYNAMIC'),
+    preset(1, 'TT:MENU.WEATHERTYPE_9CLEAR_SKY'),
+    preset(10, 'WPPv2 - Altocumulus - Blue Skies'),
+    preset(11, 'WPPv2 - Hail Core Buildups'),
+    preset(225, 'TT:MENU.WEATHERTYPE_LASTCUSTOM'),
+  ];
+
+  it('tells the sim presets from the added ones by their title', () => {
+    assert.deepEqual(presets.filter(isSimPreset).map((p) => p.index), [0, 1, 225]);
+    assert.deepEqual(presets.filter((p) => !isSimPreset(p)).map((p) => p.index), [10, 11]);
+  });
+
+  it('finds the remembered preset by its title once the indexes have moved', () => {
+    assert.equal(rememberedPreset(presets, 10, 'TT:MENU.WEATHERTYPE_LASTCUSTOM')!.index, 225);
+    assert.equal(rememberedPreset(presets, 3, 'WPPv2 - Hail Core Buildups')!.index, 11);
+  });
+
+  it('gives nothing when the remembered preset is gone, rather than the one now at its index', () => {
+    assert.equal(rememberedPreset(presets, 11, 'WPPv2 - Removed Preset'), undefined);
+  });
+
+  it('finds a memory of earlier versions (no title) by its index', () => {
+    assert.equal(rememberedPreset(presets, 1, undefined)!.title, 'TT:MENU.WEATHERTYPE_9CLEAR_SKY');
+    assert.equal(rememberedPreset(presets, 1, null)!.index, 1);
+    assert.equal(rememberedPreset(presets, 7, undefined), undefined);
+    assert.equal(rememberedPreset(presets, null, undefined), undefined);
+  });
+});
 
 describe('weather text', () => {
   it('summarises a METAR', () => {

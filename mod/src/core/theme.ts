@@ -15,6 +15,15 @@ export function injectTheme(scope: Scope): void {
 export const PANEL_INPUT_GROUP = 'inputLocker';
 
 /**
+ * Smallest gap between the groups of blocks of a column on Free Flight, in layout units: the sim's own under its
+ * aircraft button (measured 2026-10-30 at 1080, 1440 and 2160 lines). The weather bar widens it to fill its column
+ * (the owner's choice, 2026-10-30) and gives the gap it uses, in pixels, to the page's other columns in
+ * GROUP_GAP_ATTRIBUTE. In pixels rounded down, as the engine draws the other gaps.
+ */
+export const GROUP_GAP = 24;
+export const GROUP_GAP_ATTRIBUTE = 'data-msfs-ui-group-gap';
+
+/**
  * A panel on the sim's background, built like the sim's cards: frosted glass (`blurredBackground`, an effect of
  * Coherent), the accessibility layer and a black veil at 20 %.
  */

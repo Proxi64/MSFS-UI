@@ -70,7 +70,10 @@ The menu is laid out in units of 1/1080 of the window's height (`--unscaledScree
 pwsh -File tools/resolution-check/sim-window.ps1 -Width 3840 -Height 2160   # the client area; larger than the screen works
 pwsh -File tools/resolution-check/sim-shot.ps1 -Out shot.png               # PrintWindow, even off screen or covered
 & $dev eval "@tools/resolution-check/audit.js"                              # the mod's parts out of the page, overlaps, cut texts, alignments
+& $dev eval "@tools/resolution-check/freeflight.js"                         # on Free Flight: equal gaps in both columns, edges, grid, favourites
 ```
+
+On Free Flight, also open the map's *Legend* (the weather bar and the search field step aside, the favourites stay), the *Presets* dropdown when a pack of presets is installed (whole items, the list down to the bottom of the bar; `freeflight.js` checks it while it is open) and the search's results (above the bar: check by hit testing, `document.elementFromPoint`, not only by position).
 
 Grow the window during one session too (1080, then 2160 lines): what the mod remembers between its layout passes must be in units, not pixels.
 

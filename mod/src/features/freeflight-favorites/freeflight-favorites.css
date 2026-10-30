@@ -1,16 +1,20 @@
 /*
- * Layout of the Favorites block only: its background and header are the sim's card layers (core/theme.ts), its rows
- * the sim's horizontal tile and the mod's heart, its list the sim's scrolling list. Sizes in units; the heights match
- * panel.ts (header 36, rows 77 with 6 between them, 6 of padding).
+ * Layout of the Favorites block only: its background is the sim's card layers (core/theme.ts), its rows the sim's
+ * horizontal tile and the mod's heart, its list the sim's scrolling list; no header (the owner's choice, 2026-10-30).
+ * Sizes in units; the heights match panel.ts (rows 77 with 6 between them). The rows as wide as the block, 6 units
+ * apart, as the blocks of the mod's other pages (the owner's wish, 2026-10-30).
  */
 
 .msfs-ui-fav { display: flex; flex-direction: column; }
 /* While an aircraft loads, only the list is dimmed and inactive: the block keeps the mouse lock (core/theme.ts). */
 .msfs-ui-fav.is-loading .msfs-ui-fav__list { opacity: 0.6; pointer-events: none; }
 .msfs-ui-fav__list { position: relative; flex-grow: 1; min-height: 0; }
-/* 6 units around the rows; on the right, room for the scroll bar when the list scrolls. */
-.msfs-ui-fav__list .scroll__content { box-sizing: border-box; padding: calc(var(--u) * 6) !important; }
-.msfs-ui-fav.is-scrolling .scroll__content { padding-right: calc(var(--u) * 24) !important; }
+/*
+ * The rows from the block's top. When the list scrolls, the sim's scroll bar takes its own room on the right, 6 units
+ * from the rows (as between all the blocks: the owner's choice, 2026-10-30; it was 24).
+ */
+.msfs-ui-fav__list .scroll__content { box-sizing: border-box; padding: 0 !important; }
+.msfs-ui-fav.is-scrolling .scroll__content { padding-right: calc(var(--u) * 6) !important; }
 
 /* A row: the sim's horizontal tile, full width (its content is absolute). */
 .msfs-ui-fav__row { position: relative; width: 100%; height: calc(var(--u) * 77); margin-bottom: calc(var(--u) * 6); }
@@ -33,6 +37,13 @@
   height: 100% !important;
   justify-content: center !important;
 }
+/*
+ * Smaller than the tile's 18 units (the owner's choice, 2026-10-30): the name a little, the livery line a lot (12, the
+ * smallest size of the sim's components; 14 looked as big as the name).
+ */
+.msfs-ui-fav__row [name="Title"] { font-size: calc(var(--u) * 16) !important; }
+/* 6 units between the two lines, centred together in the row: the name goes up, the livery down (the owner's wish). */
+.msfs-ui-fav__row [name="Creator"] { font-size: calc(var(--u) * 12) !important; margin-top: calc(var(--u) * 6) !important; }
 .msfs-ui-fav__row img[name="Image"] {
   background-image: linear-gradient(to bottom, rgb(165, 173, 198), rgb(150, 164, 193) 50%, rgb(100, 118, 152)) !important;
 }
