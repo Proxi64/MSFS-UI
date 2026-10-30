@@ -94,8 +94,11 @@
 /* List: the sim's horizontal tile, one per row. */
 /* Full width: its content is absolute, so in a column aligned to the start it would shrink to nothing. */
 .msfs-ui-gal__row { position: relative; flex-shrink: 0; width: 100%; height: calc(var(--u) * 77); margin-bottom: calc(var(--u) * 6); }
-/* The aircraft rows keep one width, in whole pixels, whether the list scrolls or not (gallery.ts, aircraftRowWidth). */
-.msfs-ui-gal__body .msfs-ui-gal__row { width: var(--aircraft-row-w, 100%); }
+/*
+ * The aircraft rows on the gallery tiles' edges, in whole pixels, whether the list scrolls or not (gallery.ts,
+ * aircraftEdges): the bar above does not move between the two views.
+ */
+.msfs-ui-gal__body .msfs-ui-gal__row { width: var(--aircraft-row-w, 100%); margin-left: var(--aircraft-row-x, 0px); }
 /*
  * The marketplace tile: one line centred in the row, the name in its bold Title, then "- studio - variant" in its
  * light Creator (gallery.ts). Its rating and separator, its price or "Owned" banner and its own heart over the

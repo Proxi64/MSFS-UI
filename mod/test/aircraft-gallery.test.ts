@@ -16,7 +16,7 @@ import {
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { aircraftBarEdges, aircraftRowWidth, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
+import { aircraftEdges, aircraftRowWidth, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
@@ -323,11 +323,12 @@ describe('gallery bar and rows', () => {
     assert.equal(shortCount(419, 100, 320), true);
   });
 
-  it('puts the bar of the aircraft column on its tiles or rows', () => {
+  it('puts the aircraft tiles, rows and bar on the same edges in both views', () => {
     // Three tiles of 322 px with 8 px each side: from the first tile's left to the last one's right.
-    assert.deepEqual(aircraftBarEdges('gallery', { columns: 3, width: 322 }, 8, 1016), { left: 8, right: 1006 });
-    // Rows start on the list's edge and are rowWidth wide.
-    assert.deepEqual(aircraftBarEdges('list', { columns: 3, width: 322 }, 8, 1016), { left: 0, right: 1016 });
+    // Measured at 1440 lines (8 px margins): tiles 322 px; the rows on the same edges.
+    assert.deepEqual(aircraftEdges({ columns: 3, width: 322 }, 8, 1016), { left: 8, right: 1006, rowRight: 1006 });
+    // A short list whose tiles take the scroll bar's room: the rows stop before it.
+    assert.deepEqual(aircraftEdges({ columns: 3, width: 328 }, 8, 1016), { left: 8, right: 1024, rowRight: 1016 });
   });
 
   it('gives the aircraft rows the same width whether the list scrolls or not', () => {

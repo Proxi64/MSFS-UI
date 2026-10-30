@@ -76,13 +76,15 @@ export function liveryFit(column: number, bar: number, sizes: LiverySizes, count
 }
 
 /**
- * Where the bar of the aircraft column starts and ends, in pixels from the list's left edge: on the tiles (the first
- * one's left, the last one's of a row right: `columns` tiles `width` wide, `margin` on each side) or on the rows
- * (`rowWidth` wide, from the edge), not over the scroll bar.
+ * Where the aircraft column's tiles and rows stand, in pixels from the list's left edge, the same in both views so that
+ * the bar above them does not move when the view changes: the gallery tiles' edges (the first one's left, the last
+ * one's of a row right: `columns` tiles `width` wide, `margin` on each side); the rows from the same left edge to the
+ * tiles' right one, but never over the scroll bar's room (`rowWidth` from the list's edge: `rowRight`).
  */
-export function aircraftBarEdges(view: string, tile: { columns: number; width: number }, margin: number, rowWidth: number): { left: number; right: number } {
-  if (view !== 'gallery') return { left: 0, right: rowWidth };
-  return { left: Math.round(margin), right: Math.round(tile.columns * (tile.width + 2 * margin) - margin) };
+export function aircraftEdges(tile: { columns: number; width: number }, margin: number, rowWidth: number): { left: number; right: number; rowRight: number } {
+  const left = Math.round(margin);
+  const right = Math.round(tile.columns * (tile.width + 2 * margin) - margin);
+  return { left, right, rowRight: Math.min(right, rowWidth) };
 }
 
 /**
