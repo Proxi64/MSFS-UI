@@ -1,6 +1,8 @@
 # Changelog
 
-## 2.0.2 (in progress)
+## 2.0.2 (2026-10-30)
+
+Includes 2.0.1 (built, not published): **favourites kept at every start**, see below.
 
 - **The bar over the tiles**: in the Default view, the search over the first column, Hidden, Favorites and the sort over the middle one(s), the sort's direction and the views over the last; in Gallery and List (side by side), Hidden and Favorites over the last column of tiles, the search over the others.
 - **Headers in the tiles' blue**: every section header of the mod (setup panel, livery column, weather bar) takes the colour of a tile's text banner; the tail number row the colour of the sim's *Configure your aircraft* tile, its field the search's.
