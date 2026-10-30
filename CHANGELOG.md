@@ -5,6 +5,9 @@
 - **Favourites kept at every start.** At some starts, the sim never finished a file read of the `msfs-ui.wasm` module: the module stayed silent, and the mod fell back to the sim's storage for the whole session (favourites not saved, or gone at the next start). The module now reads its files again when that happens, and the mod moves to the module as soon as it answers, with the changes made meanwhile.
 - **A click is never lost**: on a sim without the sim's storage, the mod keeps the data for the session when the module does not answer.
 - **Compatibility**: the Storage group shows the module's own state (whether it is ready, how many times it read its files).
+- **The search stays put** when switching between Gallery and List: the List rows now start and end where the gallery tiles do.
+- **Hidden and Favorites in the Default view**, beside the view buttons when the screen leaves them room: a click turns the filter on in the last of the mod's views (Gallery or List); the sim's grid itself is not filtered.
+- **Favourites stand out**: the bookmark of a favourite livery is in the sim's own yellow.
 
 ## 2.0.0 (2026-10-30)
 

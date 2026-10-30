@@ -120,7 +120,7 @@
     { "group": "Sim look", "names": ["blurredBackground", "inputLocker"] }
   ],
   "files": ["components/shared/resources/Icons/General/Sort.svg"],
-  "colorVariables": ["--colorPrimary", "--colorGradient", "--colorSecondary", "--colorComplementary1", "--colorComplementary2", "--fontSizeXS", "--unscaledScreenHeight", "--backgroundOpacity"],
+  "colorVariables": ["--color-yellow", "--colorPrimary", "--colorGradient", "--colorSecondary", "--colorComplementary1", "--colorComplementary2", "--fontSizeXS", "--unscaledScreenHeight", "--backgroundOpacity"],
   "translations": [
     "TT:GENERIC.LIST",
     "TT:GENERIC.SORT_BY",
