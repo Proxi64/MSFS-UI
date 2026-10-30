@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.1 (in progress)
+## 2.0.1 (2026-10-30)
 
 - **Favourites kept at every start.** At some starts, the sim never finished a file read of the `msfs-ui.wasm` module: the module stayed silent, and the mod fell back to the sim's storage for the whole session (favourites not saved, or gone at the next start). The module now reads its files again when that happens (but not while a slow start is still reading), and the mod moves to the module as soon as it answers, with the changes made meanwhile, unless the module holds newer ones (those are kept).
 - **Clicks kept for the session on a sim without its storage**: when the module does not answer either, the mod keeps the data in memory until the sim quits, instead of losing each click.
