@@ -16,7 +16,7 @@ import {
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { aircraftEdges, aircraftRowWidth, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns, stockFiltersFit } from '../src/features/aircraft-gallery/livery-column.ts';
+import { aircraftEdges, aircraftRowWidth, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
@@ -331,14 +331,6 @@ describe('gallery bar and rows', () => {
     assert.deepEqual(aircraftEdges({ columns: 3, width: 328 }, 8, 1016), { left: 8, right: 1024, rowRight: 1016 });
   });
 
-  it('shows Hidden and Favorites in the Default view only when they fit beside the sim search', () => {
-    // Measured at 3440 x 1440: the sim's search ends at 1925, the views start at 2463; the filters 256 units, gap 12.
-    const unit = 1440 / 1080;
-    assert.equal(stockFiltersFit(1925, 2463, 256 * unit, 12 * unit), true);
-    // 357 pixels of room for 357.3 needed: not shown.
-    assert.equal(stockFiltersFit(1925, 2282, 256 * unit, 12 * unit), false);
-  });
-
   it('gives the aircraft rows the same width whether the list scrolls or not', () => {
     // 3440 x 1440: the list 1058 px, the room 24 units = 32 px, the sim's scroll bar 10 px.
     assert.equal(aircraftRowWidth(1058, 32, 10), 1016);
@@ -350,5 +342,7 @@ describe('gallery body class', () => {
   it('keeps the side by side flag whenever the list is rebuilt', () => {
     assert.equal(galleryBodyClass('list', true), 'msfs-ui-gal__body is-list is-side-by-side');
     assert.equal(galleryBodyClass('gallery', false), 'msfs-ui-gal__body is-gallery');
+    // The Default view's grid (gallery.ts): never side by side.
+    assert.equal(galleryBodyClass('grid', false), 'msfs-ui-gal__body is-grid');
   });
 });

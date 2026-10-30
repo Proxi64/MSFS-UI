@@ -6,7 +6,7 @@
 /** What to do with a cell: create its components, destroy them, or nothing. */
 export type CellAction = 'create' | 'destroy' | 'none';
 
-/** A vertical extent, in pixels. */
+/** An extent along a list's axis, in pixels: top and bottom, or left and right along x (gallery.ts). */
 export interface Extent {
   top: number;
   bottom: number;

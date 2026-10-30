@@ -57,7 +57,7 @@
     }
   ],
   "symbols": [
-    { "group": "Component manipulators", "names": ["SearchInputManipulator", "addSubmitCallback", "addChangeCallback", "addEnterCallback", "addExitCallback", "setSearchValue", "forceInput", "ImageButtonLiveryManipulator", "TileButtonManipulator", "DropdownManipulator", "selectedCallback", "setEmptyTitle", "MarketplaceTileHorizontalManipulator", "isOwnedBySubscription", "tileClickDisabled", "real-scroll", "marquee__trigger", "scroll__content", "scroll__bar-container", "ui-scroll", "scrollToPosition", "updateSizes"] },
+    { "group": "Component manipulators", "names": ["SearchInputManipulator", "addSubmitCallback", "addChangeCallback", "addEnterCallback", "addExitCallback", "setSearchValue", "forceInput", "ImageButtonLiveryManipulator", "TileButtonManipulator", "DropdownManipulator", "selectedCallback", "setEmptyTitle", "MarketplaceTileHorizontalManipulator", "isOwnedBySubscription", "tileClickDisabled", "real-scroll", "marquee__trigger", "scroll__content", "scroll__container", "scroll__bar-container", "ui-scroll", "scrollToPosition", "updateSizes"] },
     {
       "group": "Data model",
       "names": [

@@ -52,18 +52,6 @@
 .msfs-ui-gal__sort { width: calc(var(--u) * 240); }
 .msfs-ui-gal__reverse { width: calc(var(--u) * 30); }
 .msfs-ui-gal__view { width: calc(var(--u) * 100); }
-/*
- * Default view: Hidden, Favorites and the views, on the line of the sim's search, on the right; the filters only when
- * they fit beside the sim's search (gallery.ts: is-cramped otherwise).
- */
-.msfs-ui-gal.is-stock .msfs-ui-gal__bar { height: 100%; margin-bottom: 0; justify-content: flex-end; }
-.msfs-ui-gal.is-stock .msfs-ui-gal__bar-start { flex-grow: 0; }
-.msfs-ui-gal.is-stock.is-cramped .msfs-ui-gal__bar-start,
-.msfs-ui-gal.is-stock .msfs-ui-gal__search,
-.msfs-ui-gal.is-stock .msfs-ui-gal__count,
-.msfs-ui-gal.is-stock .msfs-ui-gal__sort,
-.msfs-ui-gal.is-stock .msfs-ui-gal__reverse,
-.msfs-ui-gal.is-stock .msfs-ui-gal__body { display: none; }
 
 /*
  * The sim's scrolling list fills the body; its content (the sim's `scroll__content`, a plain block) leaves room on the
@@ -93,6 +81,30 @@
   margin: 0 calc(var(--u) * 6) calc(var(--u) * 12);
 }
 .msfs-ui-gal__tile [name="Content"] > [name="Background"] { flex-grow: 0 !important; height: var(--tile-image-h) !important; }
+
+/*
+ * Default: the layout of the sim's grid (gallery.ts, default-grid.ts). The sim's horizontal list (real-scroll
+ * direction="x") holds a row of columns of two tiles, column-major, without the list's padding; the bar, the list and
+ * its scroll bar as wide as the whole columns (written by gallery.ts). The tiles --grid-tile-w x --grid-tile-h, their
+ * image --grid-image-h (the sim's ratio), --grid-gap between the columns and between the two rows.
+ */
+.msfs-ui-gal__body.is-grid .scroll__container { margin-bottom: 0 !important; }
+.msfs-ui-gal__body.is-grid .scroll__content {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  padding: 0 !important;
+}
+.msfs-ui-gal__column { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start; margin-right: var(--grid-gap); }
+.msfs-ui-gal__column:last-child { margin-right: 0; }
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__tile { flex-shrink: 0; width: var(--grid-tile-w); height: var(--grid-tile-h); margin: 0; }
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__tile:first-child { margin-bottom: var(--grid-gap); }
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__tile [name="Content"] > [name="Background"] { height: var(--grid-image-h) !important; }
+/*
+ * The sim's horizontal scroll bar: 75 % of the list's width, centred, and 24 units below it by default (the sim's
+ * real-scroll CSS, 1.9.21); here from the grid's left edge to its right one, its bottom on the list's (the block's).
+ */
+.msfs-ui-gal__body.is-grid > real-scroll > .scroll__bar-container { width: 100% !important; margin: 0 !important; transform: none !important; }
 
 /* List: the sim's horizontal tile, one per row. */
 /* Full width: its content is absolute, so in a column aligned to the start it would shrink to nothing. */
@@ -185,6 +197,7 @@
   left: calc(50% - var(--u) * 20);
   top: calc(var(--tile-image-h) / 2 - var(--u) * 20);
 }
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__veil svg { top: calc(var(--grid-image-h) / 2 - var(--u) * 20); }
 /* A row's thumbnail is its ImageBlock, 161 units wide, the row's full height. */
 .msfs-ui-gal__row .msfs-ui-gal__veil svg {
   width: calc(var(--u) * 44);

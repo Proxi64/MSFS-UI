@@ -1,7 +1,8 @@
 // The aircraft gallery and list in the aircraft selection, in place of the sim's grid (right block): search (name,
 // publisher, variant), favourites (an aircraft with a favourite livery, first), hidden aircraft (the eye in each aircraft
-// tile's corner; the Hidden filter shows them), gallery or compact list, the sim's sort orders, and a button back to the
-// sim's own grid. Made of the sim's components. The sim's category tabs stay active: the list read
+// tile's corner; the Hidden filter shows them), three views of the same tiles (Gallery, a compact List, and Default:
+// the layout of the sim's own grid, two rows of large tiles scrolling horizontally), the sim's sort orders. Made of the
+// sim's components. The sim's category tabs stay active: the list read
 // (`Game.Aircraft.AircraftList`) is already filtered by category; the search and the favourites filter on top.
 // A click sends the page the `tileClick` event of the sim's tiles, a hover `tileHover`: the selection and the header
 // of the left column go through the sim's own logic.
@@ -11,7 +12,7 @@ import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { BOOKMARK_SVG, EYE_SLASH_SVG } from '../../core/icons.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
-import { cellAction, layoutWidth } from '../../core/virtual-list.ts';
+import { cellAction, layoutWidth, type Extent } from '../../core/virtual-list.ts';
 import { loadData, saveData } from '../../core/storage.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
@@ -25,8 +26,9 @@ import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layout.ts';
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
+import { columnOf, defaultGrid, settleColumn, type DefaultGrid } from './default-grid.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
-import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, stockFiltersFit, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
+import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
 import {
   accumulateKept,
   emptyMessage,
@@ -43,7 +45,10 @@ import {
   type Tile,
 } from './tiles.ts';
 
+/** The views; `stock` is the Default view (its stored name, from when it showed the sim's own grid). */
 type View = 'gallery' | 'list' | 'stock';
+/** The axis a view's list scrolls along: Default horizontally, the others vertically. */
+type Axis = 'x' | 'y';
 type Layout = Settings['aircraftGallery']['layout'];
 
 interface GalleryMemory {
@@ -52,8 +57,6 @@ interface GalleryMemory {
   favoritesOnly: boolean;
   /** The Hidden filter: only the hidden aircraft (absent before 2.0.0). */
   hiddenOnly?: boolean;
-  /** The last of the mod's views, shown when a filter is clicked in the Default view (absent before 2.0.1). */
-  lastView?: 'gallery' | 'list';
   /** Sort: the id of one of SORTS; absent: the sim's order, unchanged. */
   sort?: { option: string; reversed: boolean } | null;
 }
@@ -129,8 +132,6 @@ const TILE_RATIO = 250 / 360;
 const IMAGE_SHARE = 1.4 / 2.6;
 /** Height of the tile's text banner for its three lines of text (21 units each) and 6 units above and below. */
 const BANNER_HEIGHT = 75;
-/** Hidden and Favorites with their margins, in layout units (aircraft-gallery.css: 114 + 130, 6 before each). */
-const STOCK_FILTERS_WIDTH = 114 + 130 + 2 * 6;
 /** Components are created for the tiles within this distance of the visible part, and kept within the second, in layout units. */
 const CREATE_MARGIN = 300;
 const KEEP_MARGIN = 600;
@@ -138,6 +139,19 @@ const KEEP_MARGIN = 600;
 const SCROLL_BAR_ROOM = 24;
 /** The sim's scroll bar until the list's own is measured: 10 pixels at 1440 lines (measured on 1.9.21), in layout units. */
 const SCROLL_BAR_WIDTH = 7.5;
+/**
+ * Room under the Default view's two rows for the sim's horizontal scroll bar, in layout units: its 8 units and the gap
+ * above it (the sim's own grid keeps 24 units under its tiles; measured on 1.9.21, 2026-10-30).
+ */
+const GRID_SCROLL_ROOM = 24;
+/**
+ * Lowest height given to the Default view's two rows, in layout units: each row keeps room for an image and the
+ * banner's three lines (75 units), so that a short block never makes the grid add columns down to 1-pixel tiles.
+ */
+const MIN_GRID_HEIGHT = 2 * (75 + 75) + 24;
+/** The bar above the tiles, in layout units: its height and the gap under it (aircraft-gallery.css). */
+const BAR_HEIGHT = 36;
+const BAR_GAP = 12;
 /** Narrowest search before the count drops its total, in layout units (its placeholder's first words stay readable). */
 const MIN_SEARCH = 240;
 const RELOAD_DELAY_MS = 100;
@@ -176,9 +190,15 @@ export class Gallery {
   /** Width of the count's total, last measured in the line (layoutBar). */
   private countTotalWidth = 0;
   private readonly body = el('div', 'msfs-ui-gal__body');
-  /** The sim's scrolling list, in the body: it holds the tiles (or the empty message). */
-  private readonly list = document.createElement('real-scroll') as RealScroll;
-  /** What is in the list now: the tiles' hosts or the empty message. */
+  /**
+   * The sim's scrolling list, in the body: it holds the tiles (or the empty message). Made for one axis (makeList):
+   * Default scrolls along x, Gallery and List along y; another axis makes another list.
+   */
+  private list!: RealScroll;
+  private listAxis: Axis = 'y';
+  /** The list's own listener and its place in the body, disposed when the list is replaced. */
+  private listScope: Scope | null = null;
+  /** What is in the list now: the tiles' hosts (Gallery, List), their column hosts (Default) or the empty message. */
   private listItems: HTMLElement[] = [];
 
   private search: TextField | null = null;
@@ -213,7 +233,7 @@ export class Gallery {
   private hoveredId: number | null = null;
   /** The eye and veil of each slot of the pool, made with the slot (createSlot). */
   private readonly slotExtras = new WeakMap<PoolSlot<Cell>, SlotExtras>();
-  private readonly memory: GalleryMemory = loadData<GalleryMemory>(MEMORY_KEY, { view: 'gallery', favoritesOnly: false });
+  private readonly memory: GalleryMemory = loadMemory();
   /** Current aircraft (variant and livery, as `liveryKey`): selection of the livery tiles. */
   private current = { variationId: '', livery: '' };
   private loading = false;
@@ -222,10 +242,15 @@ export class Gallery {
 
   /** Width of the list's scroll bar, the widest seen (0 until it first shows). */
   private barWidth = 0;
-  /** The pool of slots of the current view, and its scope. */
+  /**
+   * The pool of slots of the current kind of component, and its scope: aircraft tiles (Gallery and Default share it)
+   * or List rows.
+   */
   private pool: ComponentPool<Cell> | null = null;
-  private poolView: View | null = null;
+  private poolKind: 'tile' | 'row' | null = null;
   private poolScope: Scope | null = null;
+  /** The Default view's grid, as last laid out (null until then): its column step places the selected tile. */
+  private grid: DefaultGrid | null = null;
   /** The tiles on screen, their scope (disposed when the list changes) and what they were built for. */
   private cells: Cell[] = [];
   private cellScope: Scope | null = null;
@@ -250,7 +275,11 @@ export class Gallery {
       // The setup panel shows its thumbnails again when the column goes.
       scope.add(() => setLiveriesInGallery(false));
     }
-    scope.add(() => this.showStockGrid(true));
+    // The sim's grid, hidden while the gallery shows, kept a stale selection: it is refreshed, then shown again.
+    scope.add(() => {
+      this.refreshStockGrid();
+      this.showStockGrid(true);
+    });
     // Every change to the sim is undone: the sim's list gets its own order back.
     scope.add(() => {
       if (this.sentSimSort !== null && this.sentSimSort !== this.defaultSimSort) this.sendSimSort(this.defaultSimSort);
@@ -280,9 +309,6 @@ export class Gallery {
       this.hidden = loadHidden();
       if (this.items.length > 0) this.render();
     });
-    // The sim's list scrolls itself (wheel, scroll bar): the tiles coming into view get their components.
-    scope.listen(this.list, 'ui-scroll', () => this.materialize());
-
     // Sort: the sim's options decide which of its sorts are offered, then the remembered sort is applied (the sim's
     // list reloads, the gallery follows). A remembered sort that is no longer offered is forgotten.
     aircraft.GetAircraftSortingOptions.request('').then(
@@ -367,35 +393,44 @@ export class Gallery {
       });
     }
     this.root.appendChild(this.body);
-    this.list.setAttribute('direction', 'y');
-    this.list.className = 'msfs-ui-gal__list';
-    this.body.appendChild(this.list);
+    this.makeList(axisOf(this.memory.view));
   }
 
   /**
-   * Favorites or Hidden clicked: that filter on and the other off, or off again; a new list starts from its top. In the
-   * Default view (the sim's grid, which the mod does not filter), the filter turns on in the mod's last view.
+   * The sim's scrolling list for `axis`, in the body (`<real-scroll direction="x">` scrolls as the vertical one,
+   * measured on 1.9.21, 2026-10-30). The previous list goes with its content: the pool's slots are parked first
+   * (clearCells), so they survive it.
    */
+  private makeList(axis: Axis): void {
+    if (this.listScope) this.listScope.dispose();
+    const scope = (this.listScope = this.scope.child());
+    const list = document.createElement('real-scroll') as RealScroll;
+    list.setAttribute('direction', axis);
+    list.className = 'msfs-ui-gal__list';
+    scope.append(this.body, list);
+    // The sim's list scrolls itself (wheel, scroll bar): the tiles coming into view get their components.
+    scope.listen(list, 'ui-scroll', () => this.materialize());
+    this.list = list;
+    this.listAxis = axis;
+  }
+
+  /** Favorites or Hidden clicked, in any view: that filter on and the other off, or off again; a new list starts from its start. */
   private setFilter(clicked: 'favorites' | 'hidden'): void {
-    const stock = this.memory.view === 'stock';
-    const filter = stock ? clicked : toggleFilter(readFilter(this.memory), clicked);
+    const filter = toggleFilter(readFilter(this.memory), clicked);
     this.memory.favoritesOnly = filter === 'favorites';
     this.memory.hiddenOnly = filter === 'hidden';
-    if (stock) this.memory.view = this.memory.lastView === 'list' ? 'list' : 'gallery';
     this.saveMemory();
     this.resetOrder();
     this.render();
     this.scrollToTop();
   }
 
+  /** Another view: the same tiles in its layout, the selected one in view. */
   private setView(view: View): void {
     this.memory.view = view;
-    if (view !== 'stock') this.memory.lastView = view;
     this.saveMemory();
-    // The sim's grid, hidden while choosing elsewhere, keeps a stale selection: it is refreshed.
-    if (view === 'stock') this.refreshStockGrid();
     this.render();
-    if (view !== 'stock') this.scrollToSelected();
+    this.scrollToSelected();
   }
 
   // ----- Sort -----
@@ -411,7 +446,8 @@ export class Gallery {
 
   /**
    * The sim's sorts are applied to its list; the mod's are applied when the tiles are drawn (render), and the sim's
-   * list goes back to its own order so that it is not left on another sort (Default view).
+   * list goes back to its own order so that it is not left on another sort (the sim's grid shows it again once the mod
+   * unloads).
    */
   private applySort(): void {
     const sort = this.memory.sort;
@@ -469,13 +505,14 @@ export class Gallery {
     this.scrollTo(0);
   }
 
-  /** Scrolls the sim's list (its sizes are measured again first: the tiles may have just changed). */
+  /** Scrolls the sim's list along its axis (its sizes are measured again first: the tiles may have just changed). */
   private scrollTo(position: number): void {
     if (this.list.updateSizes) this.list.updateSizes();
     this.list.scrollToPosition(Math.max(0, Math.min(position, this.list.maxScroll || 0)));
     this.materialize();
   }
 
+  /** The sim's grid redraws its tiles (their selection): it kept the one it had when the gallery covered it. */
   private refreshStockGrid(): void {
     const content = this.page.elt.querySelector(CONTENT) as (HTMLElement & { manipulator?: { updateAircraftList?: () => void } }) | null;
     if (content && content.manipulator && content.manipulator.updateAircraftList) content.manipulator.updateAircraftList();
@@ -484,9 +521,8 @@ export class Gallery {
   // ----- Layout -----
 
   /**
-   * On the sim's right block (`RightBlock`). In the Default view only the bar stays, on the line of the sim's
-   * search (`Header`), on the right; its empty parts let the clicks through (pointer-events). Side by side: the list on
-   * the left half, the livery column on the right half, 12 units apart.
+   * On the sim's right block (`RightBlock`), hidden (its grid and search): the gallery covers it whole. Side by side:
+   * the list on the left half, the livery column on the right half, 12 units apart. Default: the grid (layoutGrid).
    */
   private layout(): void {
     const right = this.page.elt.querySelector<HTMLElement>(RIGHT_BLOCK);
@@ -495,29 +531,26 @@ export class Gallery {
       this.placeLiveries(null);
       return;
     }
-    const stock = this.memory.view === 'stock';
-    this.showStockGrid(stock);
+    this.showStockGrid(false);
     const origin = this.page.elt.getBoundingClientRect();
     const rect = right.getBoundingClientRect();
-    const header = right.querySelector('[name="Header"]');
     const unit = uiUnit();
     const style = this.root.style;
     style.display = '';
     style.left = `${rect.left - origin.left}px`;
     style.width = `${rect.width}px`;
     style.top = `${rect.top - origin.top}px`;
-    style.height = stock && header ? `${header.getBoundingClientRect().height}px` : `${rect.height}px`;
-    if (stock) {
-      // Hidden and Favorites only when they fit between the sim's search and the views (a narrower screen: not shown).
-      const search = header ? header.querySelector('[name="Search"]') : null;
-      const fits = !!search && stockFiltersFit(search.getBoundingClientRect().right, this.barEnd.getBoundingClientRect().left, STOCK_FILTERS_WIDTH * unit, 12 * unit);
-      if (this.root.classList.contains('is-cramped') === fits) toggleClass(this.root, 'is-cramped', !fits);
+    style.height = `${rect.height}px`;
+    if (this.memory.view === 'stock') {
+      this.layoutGrid(rect, unit);
+      return;
     }
+    setStyle(this.bar.style, 'width', '');
     // Side by side: three aircraft and two liveries per row, all of the same width (livery-column.ts).
     const gap = Math.round(12 * unit);
-    const halves = this.liveryColumn && !stock ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, 6 * unit) : null;
+    const halves = this.liveryColumn ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, 6 * unit) : null;
     toggleClass(this.body, 'is-side-by-side', !!halves);
-    this.body.style.width = halves ? `${halves.left}px` : '';
+    setStyle(this.body.style, 'width', halves ? `${halves.left}px` : '');
     // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
     // before the scroll bar, and less the bar's own width when the tiles do not fit without it (core/virtual-list.ts:
     // decided on the full width, so the bar cannot make the tiles swing between two sizes).
@@ -529,7 +562,8 @@ export class Gallery {
       const image = Math.round(width * TILE_RATIO * IMAGE_SHARE);
       return { columns, width, image, height: image + Math.round(BANNER_HEIGHT * unit) };
     };
-    this.barWidth = Math.max(this.barWidth, scrollBarWidth(this.list));
+    // The vertical list's bar only (a horizontal one, between two views, is as wide as the grid).
+    if (this.listAxis === 'y') this.barWidth = Math.max(this.barWidth, scrollBarWidth(this.list));
     // The tiles the Gallery view shows or would show (one per row of the List view): both views keep their edges.
     const tiles = this.cells.length;
     const fit = layoutWidth(
@@ -562,6 +596,37 @@ export class Gallery {
   }
 
   /**
+   * The Default view on the right block `rect`: the bar on one line, then two rows of tiles (default-grid.ts) from 12
+   * units under it down to the sim's scroll bar, whose bottom is the block's (the left panel's). The bar, the list and
+   * its scroll bar are as wide as the grid's whole columns, from the block's left edge. No livery column. Written only
+   * when a value changes (every 250 ms). A new column width keeps the first column in view in its place: the block
+   * widens or narrows after a change of view (measured on 1.9.21, 2026-10-30: from List side by side, 1774 pixels wide
+   * for about a second, then 1614), which would leave the list between two columns.
+   */
+  private layoutGrid(rect: DOMRect, unit: number): void {
+    const height = Math.max(MIN_GRID_HEIGHT * unit, rect.height - (BAR_HEIGHT + BAR_GAP + GRID_SCROLL_ROOM) * unit);
+    const previous = this.grid;
+    const grid = (this.grid = defaultGrid(Math.round(rect.width), Math.floor(height), unit));
+    const style = this.root.style;
+    setVariable(style, '--grid-tile-w', `${grid.tileWidth}px`);
+    setVariable(style, '--grid-tile-h', `${grid.tileHeight}px`);
+    setVariable(style, '--grid-image-h', `${grid.imageHeight}px`);
+    setVariable(style, '--grid-gap', `${grid.gap}px`);
+    if (this.body.classList.contains('is-side-by-side')) toggleClass(this.body, 'is-side-by-side', false);
+    setStyle(this.body.style, 'width', `${grid.gridWidth}px`);
+    setStyle(this.bar.style, 'width', `${grid.gridWidth}px`);
+    // Once the list has its new width: its last scroll position depends on it.
+    const step = grid.tileWidth + grid.gap;
+    if (previous && previous.tileWidth + previous.gap !== step && this.listAxis === 'x') {
+      const column = Math.round((this.list.currentScroll || 0) / (previous.tileWidth + previous.gap));
+      if (this.list.updateSizes) this.list.updateSizes();
+      this.scrollTo(settleColumn(column * step, step, this.list.maxScroll || 0));
+    }
+    this.layoutBar(null, unit);
+    this.placeLiveries(null);
+  }
+
+  /**
    * The bar's two parts, in pixels from the gallery's left edge. Side by side (`split`): the first from the first
    * aircraft tile's left edge to the last one's right edge (or the rows' edges), not over the scroll bar; the second
    * above the livery column, from its left edge to its right one (the sort dropdown takes what the other controls
@@ -574,7 +639,6 @@ export class Gallery {
     setStyle(this.barStart.style, 'width', split ? `${split.start.right - split.start.left}px` : '');
     setStyle(this.barEnd.style, 'marginLeft', split ? `${split.end.left - split.start.right}px` : '');
     setStyle(this.barEnd.style, 'width', split ? `${split.end.width}px` : '');
-    if (this.memory.view === 'stock') return;
     const shortNow = this.count.classList.contains('is-short');
     const room = this.searchHost.getBoundingClientRect().width + this.count.getBoundingClientRect().width;
     // The total's width as measured in the line: out of the flow its leading space collapses (6 pixels less), which
@@ -628,22 +692,29 @@ export class Gallery {
     const view = this.memory.view;
     const filter = readFilter(this.memory);
     this.viewTabs.forEach((tab, key) => tab.select(key === view));
-    // The Default view is never filtered: its filters show off (a click turns one on in the mod's view).
-    if (this.hiddenButton) this.hiddenButton.select(view !== 'stock' && filter === 'hidden');
-    if (this.favoritesButton) this.favoritesButton.select(view !== 'stock' && filter === 'favorites');
+    if (this.hiddenButton) this.hiddenButton.select(filter === 'hidden');
+    if (this.favoritesButton) this.favoritesButton.select(filter === 'favorites');
   }
 
+  /**
+   * The tiles of the current view: the same in the three views (tiles.ts), laid out by the view. Gallery and List: one
+   * host per tile in the list; Default: one column host per two tiles (column-major, as the sim's grid), in a list that
+   * scrolls along x (a change of axis replaces the list first, its tiles parked).
+   */
   private render(): void {
     const view = this.memory.view;
-    this.renderBar();
-    if (view === 'stock') this.root.classList.add('is-stock');
-    else this.root.classList.remove('is-stock');
-    this.layout();
-    if (view === 'stock') {
-      this.setCount('', '');
+    const axis = axisOf(view);
+    if (axis !== this.listAxis) {
       this.clearCells();
-      return;
+      this.cellKey = '';
+      this.cellEmpty = '';
+      this.makeList(axis);
+      // The body's class at once: the layout pass below measures the new list's scroll bar, which the grid's class
+      // would stretch to the whole width (aircraft-gallery.css).
+      this.body.className = this.bodyClass(view);
     }
+    this.renderBar();
+    this.layout();
 
     // Favourites always come first, whatever the sort (the sim's included), as they were when the order was set; a
     // hidden aircraft among them stays, veiled, until the order is set again, and one whose livery is bookmarked since
@@ -679,7 +750,7 @@ export class Gallery {
       // Same tiles: their texts, images and state are refreshed in place (the set of tiles is unchanged).
       this.cells.forEach((cell, at) => {
         cell.tile = tiles[at]!;
-        this.fillCell(cell, view === 'gallery');
+        this.fillCell(cell, view !== 'list');
         this.updateCell(cell);
       });
       return;
@@ -688,7 +759,8 @@ export class Gallery {
     this.cellEmpty = empty;
     const scroll = this.list.currentScroll || 0;
     this.clearCells();
-    this.body.className = galleryBodyClass(view, this.liveryColumn !== null);
+    const grid = view === 'stock';
+    this.body.className = this.bodyClass(view);
     if (empty) {
       const message = el('div', 'msfs-ui-gal__empty');
       message.textContent = empty;
@@ -697,17 +769,33 @@ export class Gallery {
       return;
     }
     const scope = (this.cellScope = this.scope.child());
-    for (const tile of tiles) {
+    let column: HTMLElement | null = null;
+    for (let at = 0; at < tiles.length; at++) {
+      const tile = tiles[at]!;
       // marquee__trigger: hovering the tile scrolls its texts that are too long, as on the sim's own tiles.
-      const host = el('div', `${view === 'gallery' ? 'msfs-ui-gal__tile' : 'msfs-ui-gal__row'} marquee__trigger`);
-      this.list.appendChild(host);
-      this.listItems.push(host);
+      const host = el('div', `${view === 'list' ? 'msfs-ui-gal__row' : 'msfs-ui-gal__tile'} marquee__trigger`);
+      if (grid) {
+        // Two tiles per column, the first on top: a new column for every first one.
+        if (columnOf(at).row === 0 || !column) {
+          column = el('div', 'msfs-ui-gal__column', this.list);
+          this.listItems.push(column);
+        }
+        column.appendChild(host);
+      } else {
+        this.list.appendChild(host);
+        this.listItems.push(host);
+      }
       const cell: Cell = { tile, host, slot: null, card: null };
       scope.listen(host, 'mouseenter', () => this.hover(cell.tile.item));
       scope.listen(host, 'mouseleave', () => this.hover(null));
       this.cells.push(cell);
     }
     this.scrollTo(scroll);
+  }
+
+  /** The body's class for a view: Default is the grid (`is-grid`), never side by side. */
+  private bodyClass(view: View): string {
+    return view === 'stock' ? galleryBodyClass('grid', false) : galleryBodyClass(view, this.liveryColumn !== null);
   }
 
   private clearCells(): void {
@@ -720,21 +808,21 @@ export class Gallery {
       if (item.parentNode) item.parentNode.removeChild(item);
     }
     this.listItems = [];
-    if (this.memory.view === 'stock') this.cellKey = '';
   }
 
   /**
    * Keeps components only for the tiles near the visible part of the list, as the sim's own grid does: every tile alive
-   * makes each change of layout slower (core/virtual-list.ts). The positions are all read before any change, so the
-   * engine lays the page out once.
+   * makes each change of layout slower (core/virtual-list.ts). Along the list's axis: Default's tiles come into view
+   * from the sides. The positions are all read before any change, so the engine lays the page out once.
    */
   private materialize(): void {
     if (!this.cellScope || this.cells.length === 0) return;
-    const body = this.list.getBoundingClientRect();
-    if (body.height <= 0) return;
+    const extent = this.listAxis === 'x' ? (rect: DOMRect): Extent => ({ top: rect.left, bottom: rect.right }) : (rect: DOMRect): Extent => rect;
+    const body = extent(this.list.getBoundingClientRect());
+    if (body.bottom - body.top <= 0) return;
     const unit = uiUnit();
     const margins = { create: CREATE_MARGIN * unit, keep: KEEP_MARGIN * unit };
-    const actions = this.cells.map((cell) => cellAction(cell.host.getBoundingClientRect(), cell.slot !== null, body, margins));
+    const actions = this.cells.map((cell) => cellAction(extent(cell.host.getBoundingClientRect()), cell.slot !== null, body, margins));
     this.cells.forEach((cell, at) => {
       if (actions[at] === 'create') this.assignCell(cell);
       else if (actions[at] === 'destroy') this.releaseCell(cell);
@@ -747,7 +835,7 @@ export class Gallery {
     cell.slot = slot;
     cell.card = slot.card;
     if (slot.card) {
-      this.fillCell(cell, this.memory.view === 'gallery');
+      this.fillCell(cell, this.memory.view !== 'list');
       this.updateCell(cell);
     }
   }
@@ -759,19 +847,22 @@ export class Gallery {
     cell.card = null;
   }
 
-  /** The pool of the current view (aircraft tiles or list rows); another view makes a new one. */
+  /**
+   * The pool of the current kind of component: the aircraft tiles of Gallery and Default (one pool for both: their
+   * slots move from one view to the other) or the List rows; another kind makes a new one.
+   */
   private slotPool(): ComponentPool<Cell> {
-    const view = this.memory.view;
-    if (!this.pool || this.poolView !== view) {
+    const kind = this.memory.view === 'list' ? 'row' : 'tile';
+    if (!this.pool || this.poolKind !== kind) {
       if (this.poolScope) this.poolScope.dispose();
       const scope = (this.poolScope = this.scope.child());
-      this.poolView = view;
-      this.pool = new ComponentPool<Cell>(scope, this.root, (slot, slotScope) => this.createSlot(slot, slotScope, view === 'gallery'));
+      this.poolKind = kind;
+      this.pool = new ComponentPool<Cell>(scope, this.root, (slot, slotScope) => this.createSlot(slot, slotScope, kind === 'tile'));
     }
     return this.pool;
   }
 
-  /** A slot's components, made once; they show whatever cell holds the slot. */
+  /** A slot's components, made once; they show whatever cell holds the slot (`gallery`: an aircraft tile, else a row). */
   private createSlot(slot: PoolSlot<Cell>, scope: Scope, gallery: boolean): void {
     // The sim's tiles send tileClick / tileHover themselves, without data (the mod writes their texts itself): those
     // are stopped here, the mod sends its own with the aircraft (select, hover).
@@ -881,14 +972,27 @@ export class Gallery {
     }
   }
 
-  /** Scrolls to the selected aircraft. */
+  /**
+   * Scrolls to the selected aircraft when it is not wholly in view. Default: its column first in view, on a whole
+   * column (or the last scroll position, when the list ends before); elsewhere a little above its row.
+   */
   private scrollToSelected(): void {
     this.scope.timeout(() => {
-      const selected = this.cells.filter((cell) => cell.tile.item.isSelected && !cell.tile.livery)[0];
+      const at = this.cells.map((cell) => cell.tile.item.isSelected && !cell.tile.livery).indexOf(true);
+      const selected = this.cells[at];
       if (!selected) return;
       const body = this.list.getBoundingClientRect();
       const rect = selected.host.getBoundingClientRect();
-      if (rect.top < body.top || rect.bottom > body.bottom) this.scrollTo(this.list.currentScroll + rect.top - body.top - 8 * uiUnit());
+      if (this.listAxis === 'x') {
+        const grid = this.grid;
+        if (grid && (rect.left < body.left || rect.right > body.right)) {
+          if (this.list.updateSizes) this.list.updateSizes();
+          const step = grid.tileWidth + grid.gap;
+          this.scrollTo(settleColumn(columnOf(at).column * step, step, this.list.maxScroll || 0));
+        }
+      } else if (rect.top < body.top || rect.bottom > body.bottom) {
+        this.scrollTo(this.list.currentScroll + rect.top - body.top - 8 * uiUnit());
+      }
       this.materialize();
     }, 50);
   }
@@ -947,6 +1051,18 @@ export class Gallery {
   private saveMemory(): void {
     saveData(MEMORY_KEY, this.memory);
   }
+}
+
+/** The axis a view scrolls along: Default (`stock`) horizontally, as the sim's grid; Gallery and List vertically. */
+function axisOf(view: View): Axis {
+  return view === 'stock' ? 'x' : 'y';
+}
+
+/** The gallery's memory; the `lastView` of 2.0.1's development builds (a filter clicked in the sim's grid) is dropped. */
+function loadMemory(): GalleryMemory {
+  const memory = loadData<GalleryMemory & { lastView?: unknown }>(MEMORY_KEY, { view: 'gallery', favoritesOnly: false });
+  delete memory.lastView;
+  return memory;
 }
 
 /** Sets a style property only when its value changes. */
