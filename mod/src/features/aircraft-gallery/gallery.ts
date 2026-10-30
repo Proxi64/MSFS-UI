@@ -7,6 +7,7 @@
 // A click sends the page the `tileClick` event of the sim's tiles, a hover `tileHover`: the selection and the header
 // of the left column go through the sim's own logic.
 
+import { debounced } from '../../core/async.ts';
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { BOOKMARK_SVG, EYE_SLASH_SVG } from '../../core/icons.ts';
@@ -26,7 +27,7 @@ import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layout.ts';
 import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
-import { columnOf, defaultGrid, settleColumn, type DefaultGrid } from './default-grid.ts';
+import { columnOf, defaultGrid, settleColumn, WheelColumns, type DefaultGrid } from './default-grid.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
 import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, galleryBodyClass, shortCount, splitColumns } from './livery-column.ts';
 import {
@@ -167,6 +168,15 @@ const CONTENT = '[name="PlaneSelection_Content"]';
 const RIGHT_BLOCK = '[name="PlaneSelection_Content"] > [name="RightBlock"]';
 
 const aircraft = store.Game.Aircraft;
+
+/**
+ * No mouse button held during `event`. Coherent GT has no `buttons` (measured on 1.9.21, 2026-10-30): its `which`, as
+ * in WebKit, is 0 when no button is down and the button's number plus one otherwise.
+ */
+function noButtonHeld(event: MouseEvent): boolean {
+  const buttons = (event as { buttons?: unknown }).buttons;
+  return typeof buttons === 'number' ? buttons === 0 : event.which === 0;
+}
 
 export class Gallery {
   private readonly page: Manipulator;
@@ -418,38 +428,66 @@ export class Gallery {
   }
 
   /**
-   * Default only: the list rests on whole columns. One wheel notch moves one column (the sim's own wheel step is a
-   * third of a column: 187 pixels of 548 at 1440 lines, measured on 1.9.21, 2026-10-30), and a scroll that ends
-   * between columns (the bar dragged) settles on the nearest one: 150 ms after the last `ui-scroll`, or when the mouse
-   * button goes up, unless the button is still held on the bar.
+   * Default only: the list rests on whole columns. The wheel moves whole columns instead of the sim's own step (a third
+   * of a column: 187 pixels of 548 at 1440 lines, measured on 1.9.21, 2026-10-30): one per notch of a mouse wheel, the
+   * small deltas of a touchpad adding up (WheelColumns), each notch going on from the column the previous ones aimed at
+   * while the list still moves. A scroll that ends between columns (the bar dragged) settles on the nearest one 150 ms
+   * after the last `ui-scroll` or wheel event; while a mouse button that went down in the gallery is held, it waits for
+   * the release: a `mouseup` on the window (where the sim's own drags end), or the first move that reports no button
+   * held (a release the page never got).
    */
   private keepWholeColumns(scope: Scope, list: RealScroll): void {
-    // A scope's timeout cannot be cancelled: each ui-scroll takes a new ticket and only the last one settles.
-    let ticket = 0;
+    const wheel = new WheelColumns();
+    /** The column the wheel aims at while the list moves; null once it settles (the next notch starts from where it is). */
+    let target: number | null = null;
+    let held = false;
+    const settle = () => {
+      wheel.reset();
+      target = null;
+      this.settle(list);
+    };
+    const quiet = debounced(() => {
+      if (!held) settle();
+    }, SETTLE_DELAY_MS);
+    scope.add(quiet.cancel);
+    const release = () => {
+      if (!held) return;
+      held = false;
+      quiet.cancel();
+      settle();
+    };
+    // The body is an input group: a press on the bar or a tile arrives here (capture: before the sim's list handles it).
+    scope.listen(
+      this.body,
+      'mousedown',
+      () => {
+        held = true;
+      },
+      true,
+    );
+    scope.listen(window, 'mouseup', release, true);
+    scope.listen(document, 'mousemove', (event) => {
+      if (held && noButtonHeld(event)) release();
+    });
     scope.listen(
       this.body,
       'wheel',
       (event) => {
-        const wheel = event as WheelEvent;
         event.preventDefault();
         event.stopPropagation();
-        const direction = Math.sign(wheel.deltaY || wheel.deltaX);
+        quiet.call();
+        const columns = wheel.add(event.deltaY || event.deltaX, event.deltaMode);
         const step = this.columnStep();
-        if (!direction || !step) return;
+        if (!columns || !step) return;
         if (list.updateSizes) list.updateSizes();
-        const column = Math.round(settleColumn(list.currentScroll || 0, step, list.maxScroll || 0) / step);
-        this.scrollToColumn(column + direction);
+        const max = list.maxScroll || 0;
+        const from = target !== null ? target : Math.round(settleColumn(list.currentScroll || 0, step, max) / step);
+        target = Math.max(0, Math.min(Math.ceil(max / step), from + columns));
+        this.scrollToColumn(target);
       },
       true,
     );
-    // The release may never reach the document (off an input group): the quiet time settles on its own too.
-    scope.listen(document, 'mouseup', () => this.settle(list));
-    scope.listen(list, 'ui-scroll', () => {
-      const mine = ++ticket;
-      scope.timeout(() => {
-        if (mine === ticket) this.settle(list);
-      }, SETTLE_DELAY_MS);
-    });
+    scope.listen(list, 'ui-scroll', quiet.call);
   }
 
   /** The list on the whole column nearest to where it is (or at its end), when it is not on one. */

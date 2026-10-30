@@ -57,6 +57,34 @@ export function settleColumn(position: number, step: number, max: number): numbe
   return max - clamped < Math.abs(clamped - candidate) ? max : candidate;
 }
 
+/** The wheel delta that moves the Default view one column: a mouse wheel's notch (deltaY 100, deltaMode 0, measured on 1.9.21, 2026-10-30). */
+export const WHEEL_COLUMN_DELTA = 100;
+
+/**
+ * The wheel's travel in whole columns: the events' deltas add up (a touchpad or a free-spinning wheel gives many small
+ * ones) and every WHEEL_COLUMN_DELTA of them is one column; a change of direction starts again from nothing.
+ */
+export class WheelColumns {
+  private rest = 0;
+
+  /** The whole columns this event adds (negative toward the start); a delta in lines or pages (`deltaMode` not 0) is one notch. */
+  add(delta: number, deltaMode: number): number {
+    if (!delta) return 0;
+    const pixels = deltaMode === 0 ? delta : Math.sign(delta) * WHEEL_COLUMN_DELTA;
+    if (this.rest !== 0 && Math.sign(this.rest) !== Math.sign(pixels)) this.rest = 0;
+    this.rest += pixels;
+    const columns = this.rest > 0 ? Math.floor(this.rest / WHEEL_COLUMN_DELTA) : Math.ceil(this.rest / WHEEL_COLUMN_DELTA);
+    if (columns === 0) return 0;
+    this.rest -= columns * WHEEL_COLUMN_DELTA;
+    return columns;
+  }
+
+  /** Forgets the travel short of a column. */
+  reset(): void {
+    this.rest = 0;
+  }
+}
+
 /** The place of a tile in the Default view's grid: column-major, as the sim (tiles 0 and 1 in column 0). */
 export function columnOf(index: number): { column: number; row: 0 | 1 } {
   return { column: Math.floor(index / 2), row: index % 2 === 0 ? 0 : 1 };
