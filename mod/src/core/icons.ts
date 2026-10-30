@@ -2,18 +2,14 @@
 // colours them with `color` (white; dark on a hovered white row). Drawn on a 24 x 24 grid, 1.7 wide round strokes.
 
 const OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">';
-const BOOKMARK = '<path d="M6.5 20.5V5.2c0-1.1.9-2 2-2h7c1.1 0 2 .9 2 2v5.3"/><path d="M6.5 20.5l4.6-3.4"/>';
-const STAR = '16.6,13.9 17.4,15.7 19.3,15.8 17.8,17 18.3,18.9 16.6,17.9 14.9,18.9 15.4,17 13.9,15.8 15.8,15.7';
-/** The same star as a path, its points in reverse order: wound against the disc, the hole shows under both fill rules. */
-const STAR_PATH = 'M16.6 13.9L15.8 15.7L13.9 15.8L15.4 17L14.9 18.9L16.6 17.9L18.3 18.9L17.8 17L19.3 15.8L17.4 15.7z';
+/** A heart, its point at the bottom, as the sim's own heart of 1.x (the users preferred it to the bookmark of 2.0.0, 2026-10-30). */
+const HEART = 'M12 20.3C7.2 16.4 3.6 13.3 3.6 9.3c0-2.6 2-4.6 4.5-4.6 1.6 0 3 .8 3.9 2.1.9-1.3 2.3-2.1 3.9-2.1 2.5 0 4.5 2 4.5 4.6 0 4-3.6 7.1-8.4 11z';
 
-/** Bookmark with an empty star disc: not a favourite. */
-export const BOOKMARK_SVG = `${OPEN}${BOOKMARK}<circle cx="16.6" cy="16.6" r="5.2"/><polygon points="${STAR}" fill="currentColor" stroke="none"/></svg>`;
+/** An empty heart: not a favourite. */
+export const HEART_SVG = `${OPEN}<path d="${HEART}"/></svg>`;
 
-/** Bookmark with a filled disc, the star cut out of it (even-odd), so that it shows the colour under it: a favourite. */
-export const BOOKMARK_FULL_SVG =
-  `${OPEN}${BOOKMARK}` +
-  `<path d="M16.6 11a5.6 5.6 0 1 1 0 11.2a5.6 5.6 0 1 1 0-11.2z${STAR_PATH}" fill="currentColor" fill-rule="evenodd" stroke="none"/></svg>`;
+/** A full heart: a favourite. */
+export const HEART_FULL_SVG = `${OPEN}<path d="${HEART}" fill="currentColor"/></svg>`;
 
 /** Slashed eye: an aircraft hidden (or to hide). */
 export const EYE_SLASH_SVG =

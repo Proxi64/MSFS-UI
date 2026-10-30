@@ -1,5 +1,5 @@
 // The setup panel in the aircraft selection, in place of the statistics (left column): variant, liveries as
-// thumbnails (with a bookmark: favourite liveries, shown first), editable tail number, shortcuts to Fuel and
+// thumbnails (with a heart: favourite liveries, shown first), editable tail number, shortcuts to Fuel and
 // Identification. Made of the sim's own components. Everything goes through the sim's configurator
 // (`Game.Aircraft.Configurator`), which the sim already sets on the aircraft chosen in the list; no 3D preview loads.
 
@@ -40,6 +40,23 @@ interface LiveryButtonManipulator {
   setData(image: string, callback: () => void): void;
 }
 
+/** One statistic of the current aircraft (`CurrentAircraft().details`), as the sim's Statistics block shows it. */
+interface AircraftStatistic {
+  name: string;
+  valueStr: string;
+  unit: string;
+  /** `ICON`: the value is an icon (`html`, a `coui://` file), as the landing surface. */
+  type: string;
+  html: string;
+  /** 1: the sim's arrow beside the value. */
+  quality: number;
+}
+
+/** The sim's row of its Statistics block (FleetDetailsListitemManipulator): it writes the title and the value with its unit. */
+interface StatisticRowManipulator {
+  setData(statistic: AircraftStatistic): void;
+}
+
 /** A list of the panel in the sim's scrolling list; its children go into the list's content. */
 function scrollList(className: string): RealScroll {
   const list = document.createElement('real-scroll') as RealScroll;
@@ -63,10 +80,15 @@ const LIVERY_COLUMNS = 3;
 const LIVERY_RATIO = 0.47;
 /** Selection corner of the compact tiles (core/theme.css), kept clear of the title. */
 const CORNER_UNITS = 30;
-/** Layout units, as in aircraft-setup.css: height of a variant tile, gap between tiles, panel padding. */
+/**
+ * Layout units, as in aircraft-setup.css: height of a variant tile, gap between tiles, the panel's padding at the top
+ * only (its blocks as wide as the sim's title block, the last one 6 units above the sim's "Configure" tile).
+ */
 const VARIANT_HEIGHT = 36;
+/** A row of the statistics, in layout units (the sim's rows: 48 pixels at 1440 lines). */
+const STATISTIC_HEIGHT = 36;
 const GAP = 6;
-const PADDING = 6;
+const PADDING_TOP = 6;
 /** Room left on the right of a list that scrolls, for the sim's scroll bar, in layout units. */
 const SCROLL_BAR_ROOM = 24;
 const FLOW = {
@@ -85,7 +107,7 @@ function launchFlow(event: string): void {
 
 interface LiveryTile {
   button: SimComponent;
-  /** The favourite bookmark; a livery without a folder cannot be a favourite and has none. */
+  /** The favourite heart; a livery without a folder cannot be a favourite and has none. */
   icon: IconToggle | null;
   host: HTMLElement;
 }
@@ -125,6 +147,16 @@ export class SetupPanel {
   private readonly liveryTiles = new Map<string, LiveryTile>();
   private liveryOrder: LiveryOrder | null = null;
   private selectedLiveryTitle = '';
+
+  /**
+   * The current aircraft's statistics (the owner's wish, 2026-10-30: the room under the variants put to use), in the
+   * sim's own rows, above the tail number; shown only when the lists keep all the room they need.
+   */
+  private readonly statsSection = el('div', 'msfs-ui-setup__stats');
+  private readonly statsRows = el('div', 'msfs-ui-setup__stats-rows');
+  private statistics: AircraftStatistic[] = [];
+  private statisticRows: { host: HTMLElement; row: SimComponent | null }[] = [];
+  private statisticScope: Scope | null = null;
 
   /** The configurator as last read: the choices are made on it. */
   private state: ConfiguratorState = { variants: [], liveries: [], details: null, variationTitle: '' };
@@ -179,7 +211,7 @@ export class SetupPanel {
     watch(scope, configurator.Details, reload);
     watch(scope, aircraft.CurrentAircraft, reload);
     watch<{ identificationInfos?: IdentificationField[] } | null>(scope, aircraft.CurrentIdentification, (identification) => this.onIdentification(identification));
-    // A gallery bookmark removed also removes the aircraft's favourite liveries.
+    // A gallery heart removed also removes the aircraft's favourite liveries.
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, reload);
     scope.add(() => clearTimeout(this.reloadTimer));
   }
@@ -188,8 +220,7 @@ export class SetupPanel {
 
   /** The fixed parts; returns the host of the tail number field. */
   private build(): HTMLElement {
-    const variantHeader = el('div', 'msfs-ui-header', this.root);
-    el('span', 'msfs-ui-title', variantHeader).textContent = translate('TT:MANUFACTURE.BREADCRUMB.VARIATION');
+    // No header over the variants nor over the statistics (the owner's choice, 2026-10-30): their tiles and rows say it.
     this.root.appendChild(this.variantsList);
 
     const liveryHeader = el('div', 'msfs-ui-header msfs-ui-setup__livery-header', this.root);
@@ -197,8 +228,13 @@ export class SetupPanel {
     liveryHeader.appendChild(this.liveryName);
     this.root.appendChild(this.liveriesList);
 
-    const tailRow = el('div', 'msfs-ui-header msfs-ui-setup__tail', this.root);
-    el('span', 'msfs-ui-title', tailRow).textContent = translate(TAIL_NUMBER);
+    this.statsSection.appendChild(this.statsRows);
+    this.root.appendChild(this.statsSection);
+
+    // Two blocks over the two buttons under them: the title over Fuel and Payload, the field over Identification.
+    const tailRow = el('div', 'msfs-ui-setup__tail', this.root);
+    const tailTitle = el('div', 'msfs-ui-header msfs-ui-setup__tail-title', tailRow);
+    el('span', 'msfs-ui-title', tailTitle).textContent = translate(TAIL_NUMBER);
     const tailHost = el('div', 'msfs-ui-setup__field', tailRow);
 
     const actions = el('div', 'msfs-ui-setup__actions', this.root);
@@ -212,7 +248,7 @@ export class SetupPanel {
         (error: unknown) => logError('a button of the setup panel could not be created', error),
       );
     }
-    this.fixedParts = [variantHeader, liveryHeader, tailRow, actions];
+    this.fixedParts = [liveryHeader, tailRow, actions];
     return tailHost;
   }
 
@@ -250,21 +286,32 @@ export class SetupPanel {
    * again (the panel would swing between the two at every pass).
    */
   private layoutLists(width: number, height: number, unit: number): void {
-    const full = width - 2 * PADDING * unit;
+    const full = width;
     const narrow = (list: RealScroll) => full - scrollBarWidth(list) - SCROLL_BAR_ROOM * unit;
     const gap = GAP * unit;
-    // The panel's padding, and the gap under the two headers, the two lists and the tail number.
+    // Fuel and Identification in whole pixels, the second taking the rest (aircraft-setup.css).
+    const actionGap = Math.round(gap);
+    setVariable(this.root.style, '--action-gap', `${actionGap}px`);
+    setVariable(this.root.style, '--action-w', `${Math.floor((Math.round(width) - actionGap) / 2)}px`);
     // Side by side layout: the gallery shows the liveries (sim/selection-layout.ts), the panel only the variants.
     const withLiveries = !liveriesInGallery();
     toggleClass(this.root, 'is-without-liveries', !withLiveries);
-    // The panel's padding, and the gap under the headers, the lists and the tail number (the hidden ones have none).
-    let room = height - 2 * PADDING * unit - (withLiveries ? 5 : 3) * gap;
+    // The panel's padding at the top, and the gap under the lists, the livery header and the tail number (the hidden
+    // ones have none).
+    let room = height - PADDING_TOP * unit - (withLiveries ? 4 : 2) * gap;
     for (const part of this.fixedParts) room -= part.getBoundingClientRect().height;
 
     const liveryRows = (thumbnail: { height: number }): Rows => ({ count: withLiveries ? rowCount(this.liveries.length, LIVERY_COLUMNS) : 0, step: thumbnail.height + gap });
     const variantRows = (perRow: number): Rows => ({ count: rowCount(this.variants.length, perRow), step: (VARIANT_HEIGHT + GAP) * unit });
     const wideThumbnail = this.thumbnailSize(full, unit);
     let perRow = this.variantsPerRow(full, gap);
+    // The statistics take their room only when the lists still have all they need at full width (decided on the full
+    // width and the lists' natural heights: never a scrolling list for them, never a swing between the two).
+    const listsNeed = variantRows(perRow).count * variantRows(perRow).step + liveryRows(wideThumbnail).count * liveryRows(wideThumbnail).step;
+    const statsHigh = this.statistics.length > 0 ? Math.ceil(this.statistics.length * STATISTIC_HEIGHT * unit + gap) : 0;
+    const withStats = statsHigh > 0 && room - statsHigh >= listsNeed;
+    toggleClass(this.root, 'has-statistics', withStats);
+    if (withStats) room -= statsHigh;
     let variants = variantRows(perRow);
     let variantsHigh = variantsHeight(room, variants, liveryRows(wideThumbnail));
     const variantsScroll = overflows(variants, variantsHigh);
@@ -332,7 +379,49 @@ export class SetupPanel {
     this.state = state;
     this.renderVariants(state.variants);
     this.renderLiveries(state.liveries);
+    const current = (await aircraft.CurrentAircraft()) as { details?: AircraftStatistic[] } | null;
+    if (this.scope.disposed || number !== this.reloadNumber) return;
+    this.renderStatistics(current && Array.isArray(current.details) ? current.details.filter((statistic) => !!statistic && !!statistic.name) : []);
     await aircraft.UpdateCurrentAircraftIdentification.request();
+  }
+
+  // ----- Statistics -----
+
+  /**
+   * The rows of the sim's Statistics block (its Fleet_Details_Listitem), one per statistic: built again when their
+   * number changes, otherwise given the new values. The sim writes each title and value (with the unit of the
+   * player's settings); its rows alternate dark and light, the first dark.
+   */
+  private renderStatistics(statistics: AircraftStatistic[]): void {
+    this.statistics = statistics;
+    if (statistics.length !== this.statisticRows.length) {
+      if (this.statisticScope) this.statisticScope.dispose();
+      removeAll(this.statisticRows.map((entry) => entry.host));
+      const scope = (this.statisticScope = this.scope.child());
+      this.statisticRows = statistics.map(() => ({ host: el('div', 'msfs-ui-setup__stat', this.statsRows), row: null }));
+      this.statisticRows.forEach((entry, at) => {
+        createComponent(scope, COMPONENTS.statisticRow, entry.host).then(
+          (row) => {
+            if (scope.disposed) return;
+            entry.row = row;
+            this.fillStatistic(row, at);
+          },
+          (error: unknown) => logError('a statistic of the setup panel could not be created', error),
+        );
+      });
+      return;
+    }
+    this.statisticRows.forEach((entry, at) => {
+      if (entry.row) this.fillStatistic(entry.row, at);
+    });
+  }
+
+  private fillStatistic(row: SimComponent, at: number): void {
+    const statistic = this.statistics[at];
+    const manipulator = row.manipulator<StatisticRowManipulator>();
+    if (!statistic || !manipulator) return;
+    manipulator.setData(statistic);
+    row.updateVisual({ dark: at % 2 === 0, arrow: statistic.quality === 1, icon: statistic.type === 'ICON' });
   }
 
   // ----- Variants -----
@@ -479,7 +568,7 @@ export class SetupPanel {
       this.liveryHosts.push(host);
       const buttonHost = el('div', 'msfs-ui-setup__thumbnail', host);
       const iconHost = liveryFolder(livery) ? el('div', 'msfs-ui-setup__icon', host) : null;
-      // The change event redraws this panel (bookmarks) and the gallery; the order of the thumbnails stays.
+      // The change event redraws this panel (hearts) and the gallery; the order of the thumbnails stays.
       const icon = iconHost ? iconToggle(scope, iconHost, 'favorite', (checked) => setFavoriteLivery(this.state, livery.id, checked)) : null;
       scope.listen(host, 'mouseenter', () => (this.liveryName.textContent = translate(livery.title)));
       scope.listen(host, 'mouseleave', () => (this.liveryName.textContent = this.selectedLiveryTitle));
@@ -508,7 +597,7 @@ export class SetupPanel {
   }
 
   /**
-   * Selection, favourite bookmark and availability of one thumbnail. ImageButton_Livery has no Disabled state of its
+   * Selection, favourite heart and availability of one thumbnail. ImageButton_Livery has no Disabled state of its
    * own: an unavailable livery is dimmed by its host (aircraft-setup.css), and a click on it is ignored.
    */
   private updateLivery(livery: ConfiguratorLivery, tile: LiveryTile, favorites: ReturnType<typeof loadFavoriteLiveries>): void {

@@ -1,5 +1,5 @@
 // Which favourites the Free Flight block shows, without the sim (tested by test/freeflight-favorites.test.ts): one
-// entry per favourite livery (the bookmark of the liveries in the aircraft selection), which loads the aircraft with it.
+// entry per favourite livery (the heart of the liveries in the aircraft selection), which loads the aircraft with it.
 // The order goes from the most recently used to the oldest, and is kept while the screen stays on display.
 
 import { type FavoriteLivery, type LiveryRef } from '../../sim/favorites.ts';

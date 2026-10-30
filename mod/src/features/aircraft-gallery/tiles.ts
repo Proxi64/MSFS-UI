@@ -59,7 +59,7 @@ export function favoriteAircraftIds(items: readonly AircraftItem[], liveries: re
 /**
  * The hidden aircraft kept in the normal view, veiled (`keepIds`): those that were favourites when the order was set
  * (`frozen`, kept while the screen stays, as the favourites put first) and those that are favourites now, so that a
- * livery bookmarked since shows its hidden aircraft at once ("favourites come first", without exception).
+ * livery given a heart since shows its hidden aircraft at once ("favourites come first", without exception).
  */
 export function keptAircraftIds(frozen: readonly number[] | null, items: readonly AircraftItem[], liveries: readonly FavoriteLivery[]): number[] {
   const kept = frozen ? frozen.slice() : [];
@@ -150,7 +150,7 @@ export function toggleFilter(current: GalleryFilter, clicked: 'favorites' | 'hid
  * kept (every category tab), `searching` whether the search has text.
  */
 export function emptyMessage(filter: GalleryFilter, counts: { favorites: number; hidden: number; searching: boolean }): string {
-  if (filter === 'favorites' && counts.favorites === 0) return 'No favorites yet: click the bookmark on a livery.';
+  if (filter === 'favorites' && counts.favorites === 0) return 'No favorites yet: click the heart on a livery.';
   // Without a search, an empty Hidden view has nothing hidden in this category tab.
   if (filter === 'hidden' && (!counts.searching || counts.hidden === 0)) return 'No hidden aircraft: click the eye on an aircraft to hide it.';
   return 'No aircraft matches.';
@@ -201,7 +201,7 @@ export function sortTiles(tiles: readonly Tile[], sort: LocalSort, reversed: boo
 /**
  * Favourites first, whatever the sort: the favourite aircraft (`favoriteIds`, from favoriteAircraftIds) and the
  * favourite livery tiles, then the others, each part in the order given. The gallery keeps the ids of its first
- * display while the screen stays, so that an aircraft whose livery gets a bookmark does not jump away under the mouse.
+ * display while the screen stays, so that an aircraft whose livery gets a heart does not jump away under the mouse.
  */
 export function favoritesFirst(tiles: readonly Tile[], favoriteIds: readonly number[]): Tile[] {
   const isFavorite = (tile: Tile) => !!tile.livery || favoriteIds.indexOf(tile.item.aircraftId) >= 0;

@@ -117,10 +117,10 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 **Where:** Free Flight, left column, under *Search location*, as wide as the aircraft button. The block hides while the search shows its results.
 
-- One row per **favourite livery** (the bookmark of the liveries in the aircraft selection). No favourite: no block.
+- One row per **favourite livery** (the heart of the liveries in the aircraft selection). No favourite: no block.
 - Each row shows the livery's thumbnail, the aircraft's name, then its variant, livery and tail number. A text too long for the row scrolls when the mouse is over it.
 - **Click**: loads the variant, then the livery; the sim's aircraft button follows. The row of the current aircraft is selected.
-- **Bookmark**: clicking it removes the favourite livery.
+- **Heart**: clicking it removes the favourite livery.
 - **Order**: from the most recently used, computed when the screen opens, then kept while it stays open, so that a clicked row does not jump under the mouse.
 - The use of each aircraft (last livery per variant) is recorded at every change of aircraft, whatever the screen.
 
@@ -141,10 +141,10 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 - **Gallery**: the sim's aircraft tiles, with the name, the variant and the studio on three lines. **List**: one row per aircraft, the thumbnail then *name - studio - variant* on one line.
 - Both views scroll with the wheel or the sim's scroll bar; a text too long for its tile scrolls on hover.
 - **Click** selects the aircraft, exactly like a tile of the sim; **hover** shows it in the header of the left column, unless the setup panel is shown: the header then stays on the selected aircraft, whose variants and tail number the panel shows.
-- **No bookmark on the aircraft**: the bookmarks (a bookmark with a star, in the top right corner, in the sim's yellow on a favourite) are on the liveries (the setup panel's thumbnails, or the livery column in the side by side layout). The **Favorites** filter shows one tile per favourite livery, with its bookmark to remove it; a click loads the aircraft with that livery. Switching the **Hidden** or **Favorites** filter scrolls the list back to the top.
+- **No heart on the aircraft**: the hearts (in the top right corner, full on a favourite) are on the liveries (the setup panel's thumbnails, or the livery column in the side by side layout). The **Favorites** filter shows one tile per favourite livery, with its heart to remove it; a click loads the aircraft with that livery. Switching the **Hidden** or **Favorites** filter scrolls the list back to the top.
 - **Hiding aircraft**: every aircraft tile and row has a slashed eye in its top right corner (not the Favorites tiles, nor the liveries). A click hides the aircraft, with all its variants: it leaves the three views. The **Hidden** filter shows the hidden aircraft; a click on the eye there brings one back, and the view says *No hidden aircraft: click the eye on an aircraft to hide it.* when none is hidden. An aircraft with a favourite livery stays among the favourites, darkened, with a large slashed eye on its image. The count shows the aircraft shown / those of the tab.
 - On opening, the gallery scrolls to the selected aircraft. The view, the Hidden and Favorites filters and the sort are remembered.
-- **Default** is drawn by the mod too, with the same bar, filters, sorts, eyes and bookmarks as Gallery and List, in the sim's own layout: its large tiles in two rows, scrolling sideways. The grid stops on whole columns, aligned on the scroll bar: one wheel notch moves one column, and a column dragged by the bar settles on the nearest one.
+- **Default** is drawn by the mod too, with the same bar, filters, sorts, eyes and hearts as Gallery and List, in the sim's own layout: its large tiles in two rows, scrolling sideways. The grid stops on whole columns, aligned on the scroll bar: one wheel notch moves one column, and a column dragged by the bar settles on the nearest one.
 
 **Layout** (option of the feature in MSFS-UI-GENERATOR):
 
@@ -157,7 +157,7 @@ In the side by side layout:
 - the bar is split over the two columns: search, count, *Hidden* and *Favorites* above the aircraft; sort, direction, *Gallery*, *List* and *Default* above the liveries (the count shortens first when the controls do not fit). In the Classic layout the bar stays on one line;
 - each livery tile shows the livery's thumbnail whole, its name and its tail number (the one you chose for it, else the `atc_id` of its `livery.cfg`, else a registration found in its name; nothing when none is found);
 - **List** shows both sides as rows, on two lines: the aircraft's name then *studio · variant*; the livery's name then its tail number;
-- a click on a livery changes it, as in the setup panel; the bookmark marks it as a favourite; hovering shows its name above the column, which opens on the selected livery;
+- a click on a livery changes it, as in the setup panel; the heart marks it as a favourite; hovering shows its name above the column, which opens on the selected livery;
 - **Default** has no livery column: the setup panel shows its thumbnails.
 
 ### Aircraft setup panel
@@ -167,7 +167,7 @@ In the side by side layout:
 | Section | Content |
 |---|---|
 | **Variant** | One tile per variant, up to three per row (fewer when the names are long); a click changes the variant (the sim then puts back its first livery) |
-| **Livery** | The livery thumbnails, three per row, favourites first; the active one is framed. Its name shows next to the title, the hovered one's on hover. A click changes the livery. A bookmark on each thumbnail marks it as a favourite (for the variant shown) |
+| **Livery** | The livery thumbnails, three per row, favourites first; the active one is framed. Its name shows next to the title, the hovered one's on hover. A click changes the livery. A heart on each thumbnail marks it as a favourite (for the variant shown) |
 | **Tail number** | The tail number of the current livery (letters, digits, dash; 9 characters at most) |
 | Buttons | **Fuel and Payload** and **Identification** open those tabs of the sim's configurator directly |
 

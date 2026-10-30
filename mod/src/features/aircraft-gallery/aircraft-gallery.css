@@ -129,7 +129,7 @@
 /*
  * The marketplace tile: one line centred in the row, the name in its bold Title, then "- studio - variant" in its
  * light Creator (gallery.ts). Its rating and separator, its price or "Owned" banner and its own heart over the
- * image are hidden: the row's bookmark is the mod's, in its top right corner.
+ * image are hidden: the row's heart is the mod's, in its top right corner.
  */
 .msfs-ui-gal__row [name="Rating_Overview"],
 .msfs-ui-gal__row [name="Details"] [name="Separator"],
@@ -171,15 +171,20 @@
  */
 .msfs-ui-gal__tile.has-third-line [name="Distance"] { display: flex !important; }
 
-/* The mod's icon (core/theme.css), over the tile in its top right corner: 20 units on a tile, 22 on a row. */
+/*
+ * The mod's icon (core/theme.css), in the top right corner: on a tile 20 units in its small dark disc (24 units, 4 from
+ * the corner: the icon 6 from it, as in 2.0.0), on a row 22 units.
+ */
 .msfs-ui-gal__icon {
   position: absolute;
-  top: calc(var(--u) * 6);
-  right: calc(var(--u) * 6);
-  width: calc(var(--u) * 20);
-  height: calc(var(--u) * 20);
+  top: calc(var(--u) * 4);
+  right: calc(var(--u) * 4);
+  width: calc(var(--u) * 24);
+  height: calc(var(--u) * 24);
 }
 .msfs-ui-gal__row .msfs-ui-gal__icon {
+  top: calc(var(--u) * 6);
+  right: calc(var(--u) * 6);
   width: calc(var(--u) * 22);
   height: calc(var(--u) * 22);
 }

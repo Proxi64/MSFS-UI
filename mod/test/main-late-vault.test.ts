@@ -104,7 +104,7 @@ describe('main.ts, a vault module that answers late', () => {
     for (let i = 0; i < 50 && !runtime()?.storage; i++) await realTick();
     assert.equal(runtime()?.storage?.kind, 'datastorage', 'the time-out: the session starts on the sim storage');
 
-    // The fallback window: a bookmark clicked on the stale list, a key the vault does not have.
+    // The fallback window: a heart clicked on the stale list, a key the vault does not have.
     saveData('FAVORITE_LIVERIES', [{ dir: 'old' }, { dir: 'clicked' }]);
     saveData('BASE_TAIL', 'ASXGS');
 

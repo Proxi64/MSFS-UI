@@ -1,7 +1,7 @@
 // The Favorites block on Free Flight, under the sim's "Search location" field, as wide as the sim's aircraft button:
 // a card like the sim's (background layers, header), its rows in the sim's scrolling list, each row the sim's
-// horizontal tile (as the gallery's list view) with the mod's bookmark at its end. One row per favourite livery: a click
-// loads the aircraft with it; the bookmark removes the favourite.
+// horizontal tile (as the gallery's list view) with the mod's heart at its end. One row per favourite livery: a click
+// loads the aircraft with it; the heart removes the favourite.
 
 import { el, uiUnit } from '../../core/dom.ts';
 import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
@@ -173,7 +173,7 @@ export class FavoritesPanel {
     this.listItems.push(host);
     const cardHost = el('div', 'msfs-ui-fav__card', host);
     const iconHost = el('div', 'msfs-ui-fav__icon', host);
-    // Every row is a favourite: the bookmark is full, and a click removes the favourite.
+    // Every row is a favourite: the heart is full, and a click removes the favourite.
     const icon = iconToggle(scope, iconHost, 'favorite', (checked) => (checked ? undefined : this.remove(row.entry)));
     icon.set(true);
     const row: Row = { entry, host, card: null, icon };
@@ -223,7 +223,7 @@ export class FavoritesPanel {
       });
   }
 
-  /** The bookmark clicked: the favourite livery is removed (its change event redraws the block). */
+  /** The heart clicked: the favourite livery is removed (its change event redraws the block). */
   private remove(entry: FavoriteEntry): void {
     saveFavoriteLiveries(withoutLivery(loadFavoriteLiveries(), entry));
   }

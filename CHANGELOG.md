@@ -5,6 +5,9 @@
 - **The bar over the tiles**: in the Default view, the search over the first column, Hidden, Favorites and the sort over the middle one(s), the sort's direction and the views over the last; in Gallery and List (side by side), Hidden and Favorites over the last column of tiles, the search over the others.
 - **Headers in the tiles' blue**: every section header of the mod (setup panel, livery column, Free Flight favourites, weather bar) takes the colour of a tile's text banner; the tail number row the colour of the sim's *Configure your aircraft* tile, its field the search's.
 - **The livery header** as far from the tiles under it as from the controls above it.
+- **Statistics in the setup panel**: the sim's own rows (seats, landing surface, fuel, cruise speed, max altitude, range) for the selected aircraft, in the room under the variants, when the lists leave it.
+- **The setup panel aligned on the sim's title block**: every block as wide, every text 12 units in, no header over the variants, the tail number in two blocks over *Fuel and Payload* and *Identification*, 8 pixels between all blocks down to *Configure your aircraft*.
+- **Hearts again**: a heart marks the favourite liveries (full for a favourite), as the users preferred to the bookmark; the hearts and eyes are full white, with a small dark disc on the thumbnails.
 
 ## 2.0.1 (2026-10-30)
 

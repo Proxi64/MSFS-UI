@@ -10,7 +10,7 @@
 import { debounced } from '../../core/async.ts';
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
-import { BOOKMARK_SVG, EYE_SLASH_SVG } from '../../core/icons.ts';
+import { HEART_SVG, EYE_SLASH_SVG } from '../../core/icons.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { cellAction, layoutWidth, type Extent } from '../../core/virtual-list.ts';
@@ -116,7 +116,7 @@ interface Cell {
 
 /**
  * What a slot of the pool adds to its card for the aircraft tiles: the eye in the corner (hides or brings back the
- * aircraft) next to the bookmark of the Favorites tiles, and the veil of a hidden aircraft kept for its favourite
+ * aircraft) next to the heart of the Favorites tiles, and the veil of a hidden aircraft kept for its favourite
  * liveries (a dark layer with a large slashed eye over the thumbnail, a marker only).
  */
 interface SlotExtras {
@@ -230,11 +230,11 @@ export class Gallery {
   private readonly viewTabs = new Map<View, SimComponent>();
 
   private items: AircraftItem[] = [];
-  /** Favourite liveries (their bookmarks: setup panel, livery column, Favorites tiles): an aircraft that has some is a favourite. */
+  /** Favourite liveries (their hearts: setup panel, livery column, Favorites tiles): an aircraft that has some is a favourite. */
   private favoriteLiveries: FavoriteLivery[] = loadFavoriteLiveries();
   /**
    * The favourite aircraft put first (`aircraftId`), as they were when the order was set: kept while the screen stays,
-   * so that a bookmark clicked does not move the tiles; set again on a new sort, search or filter (resetOrder).
+   * so that a heart clicked does not move the tiles; set again on a new sort, search or filter (resetOrder).
    */
   private favoriteIds: number[] | null = null;
   /** The hidden aircraft shown veiled since the order was set (the union of keptAircraftIds at each drawing): one stays even when its last favourite livery goes. */
@@ -311,7 +311,7 @@ export class Gallery {
     });
     watch(scope, aircraft.CurrentAircraft, reload);
     scope.add(() => clearTimeout(this.reloadTimer));
-    // Bookmark of a livery (setup panel, livery column, a Favorites tile): the Favorites tiles may change.
+    // Heart of a livery (setup panel, livery column, a Favorites tile): the Favorites tiles may change.
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, () => {
       this.favoriteLiveries = loadFavoriteLiveries();
       if (this.items.length > 0) this.render();
@@ -376,7 +376,7 @@ export class Gallery {
     });
     component(this.barStart, COMPONENTS.textButtonSmall, 'msfs-ui-gal__filter msfs-ui-gal__favorites', { Text: 'Favorites' }, (button) => {
       this.favoritesButton = button;
-      labelIcon(button, BOOKMARK_SVG);
+      labelIcon(button, HEART_SVG);
       button.onClick(this.scope, () => this.setFilter('favorites'));
     });
     component(this.barEnd, COMPONENTS.dropdown, 'msfs-ui-gal__sort', {}, (dropdown) => {
@@ -894,7 +894,7 @@ export class Gallery {
     this.layout();
 
     // Favourites always come first, whatever the sort (the sim's included), as they were when the order was set; a
-    // hidden aircraft among them stays, veiled, until the order is set again, and one whose livery is bookmarked since
+    // hidden aircraft among them stays, veiled, until the order is set again, and one whose livery is given a heart since
     // shows at once, veiled, in its place (keptAircraftIds).
     if (this.favoriteIds === null && this.items.length > 0) this.favoriteIds = favoriteAircraftIds(this.items, this.favoriteLiveries);
     accumulateKept(this.keptIds, keptAircraftIds(this.favoriteIds, this.items, this.favoriteLiveries));
@@ -1048,7 +1048,7 @@ export class Gallery {
         if ((event as CustomEvent).detail === undefined || (event as CustomEvent).detail === null) event.stopPropagation();
       });
     }
-    // A Favorites tile's bookmark is full: a click removes the favourite livery the tile stands for.
+    // A Favorites tile's heart is full: a click removes the favourite livery the tile stands for.
     slot.icon = iconToggle(scope, slot.iconHost, 'favorite', () => {
       const cell = slot.item;
       if (cell && cell.slot === slot && cell.tile.livery) this.removeFavoriteLivery(cell.tile.livery);
@@ -1127,7 +1127,7 @@ export class Gallery {
   }
 
   /**
-   * Selection, availability, icon and veil of a tile. A favourite livery tile (Favorites) has the bookmark (it removes
+   * Selection, availability, icon and veil of a tile. A favourite livery tile (Favorites) has the heart (it removes
    * the favourite); an aircraft tile has the eye, on when the aircraft is hidden. A hidden aircraft kept for its
    * favourite liveries is veiled, in both kinds of tile.
    */

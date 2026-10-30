@@ -1,5 +1,5 @@
 // Order of the livery thumbnails, without the sim (tested by test/aircraft-setup.test.ts): favourites first, each part
-// in the sim's order. The order is set when a variant first appears, then kept: clicking a bookmark or a livery does not
+// in the sim's order. The order is set when a variant first appears, then kept: clicking a heart or a livery does not
 // move the thumbnail under the mouse.
 
 import { variationOf } from '../../sim/liveries.ts';

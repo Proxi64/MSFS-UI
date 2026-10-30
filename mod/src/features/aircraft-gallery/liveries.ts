@@ -1,6 +1,6 @@
 // The livery column of the side by side layout (gallery.ts): the liveries of the current aircraft as large tiles, two
 // per row, with their name and tail number, favourites first; in the gallery's List view, as rows. Made of the sim's components (its aircraft tile,
-// its scrolling list) and the mod's bookmark; the choices go through the configurator as in the setup panel (sim/configurator.ts).
+// its scrolling list) and the mod's heart; the choices go through the configurator as in the setup panel (sim/configurator.ts).
 
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { iconToggle } from '../../core/icon-toggle.ts';
@@ -190,7 +190,7 @@ export class LiveryColumn {
         this.revealSelected = true;
       }
     } else {
-      // Same tiles: selection, availability and bookmarks refreshed in place.
+      // Same tiles: selection, availability and hearts refreshed in place.
       this.cells.forEach((cell, at) => (cell.livery = ordered.items[at]!));
     }
     const tails = loadLiveryTails();
@@ -298,10 +298,10 @@ export class LiveryColumn {
     );
   }
 
-  /** Selection, availability, tail number and bookmark of a tile. */
+  /** Selection, availability, tail number and heart of a tile. */
   private update(cell: Cell, favorites: readonly FavoriteLivery[], tails: Record<string, string>): void {
     const { livery, card } = cell;
-    // A livery without a folder or a thumbnail cannot be a favourite: no bookmark.
+    // A livery without a folder or a thumbnail cannot be a favourite: no heart.
     if (cell.slot) cell.slot.iconHost.style.display = liveryFolder(livery) ? '' : 'none';
     if (card) {
       card.set(this.rows ? 'Image' : 'AircraftImage', livery.imageUrl);

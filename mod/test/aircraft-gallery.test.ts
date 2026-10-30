@@ -104,7 +104,7 @@ describe('hidden aircraft', () => {
   });
 
   it('keeps a hidden aircraft veiled when its favourite was added after the order was set', () => {
-    // The order was set without favourites (frozen ids empty); a livery of the hidden Vision Jet got its bookmark since.
+    // The order was set without favourites (frozen ids empty); a livery of the hidden Vision Jet got its heart since.
     const liveries = [livery('sf50-exec', 'Alpine')];
     const tiles = query({ liveries, keepIds: keptAircraftIds([], ITEMS, liveries) });
     const vision = tiles.filter((tile) => tile.item.variationId === 'sf50-exec')[0];
@@ -112,11 +112,11 @@ describe('hidden aircraft', () => {
     assert.equal(vision.veiled, true);
   });
 
-  it('keeps a hidden aircraft veiled after its last bookmark goes, until the order is set again', () => {
+  it('keeps a hidden aircraft veiled after its last heart goes, until the order is set again', () => {
     const kept: number[] = [];
-    const bookmarked = [livery('sf50-exec', 'Alpine')];
-    accumulateKept(kept, keptAircraftIds([], ITEMS, bookmarked));
-    // The bookmark is removed: the aircraft stays, veiled.
+    const hearted = [livery('sf50-exec', 'Alpine')];
+    accumulateKept(kept, keptAircraftIds([], ITEMS, hearted));
+    // The heart is removed: the aircraft stays, veiled.
     accumulateKept(kept, keptAircraftIds([], ITEMS, []));
     const vision = query({ liveries: [], keepIds: kept }).filter((tile) => tile.item.variationId === 'sf50-exec')[0];
     assert.ok(vision, 'the hidden aircraft is still shown');
@@ -179,7 +179,7 @@ describe('gallery filter', () => {
     assert.equal(emptyMessage('hidden', { favorites: 0, hidden: 3, searching: false }), hint);
     assert.equal(emptyMessage('hidden', { favorites: 0, hidden: 0, searching: true }), hint);
     assert.equal(emptyMessage('hidden', { favorites: 0, hidden: 3, searching: true }), 'No aircraft matches.');
-    assert.equal(emptyMessage('favorites', { favorites: 0, hidden: 0, searching: true }), 'No favorites yet: click the bookmark on a livery.');
+    assert.equal(emptyMessage('favorites', { favorites: 0, hidden: 0, searching: true }), 'No favorites yet: click the heart on a livery.');
     assert.equal(emptyMessage('favorites', { favorites: 1, hidden: 0, searching: true }), 'No aircraft matches.');
     assert.equal(emptyMessage('all', { favorites: 0, hidden: 0, searching: false }), 'No aircraft matches.');
   });

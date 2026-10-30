@@ -11,7 +11,8 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  padding: calc(var(--u) * 6);
+  /* At the top only: its blocks as wide as the sim's title block, the last one 6 units above the "Configure" tile. */
+  padding: calc(var(--u) * 6) 0 0 0;
   /* One unit of the sim's mock-ups (1/1080 of the screen height), from the sim's own variable. */
   --u: calc(var(--unscaledScreenHeight) * 1px / 1080);
   color: var(--colorComplementary1);
@@ -61,26 +62,41 @@
 /* An unavailable livery: ImageButton_Livery has no Disabled state, so its host is dimmed as the sim's components are. */
 .msfs-ui-setup__livery.is-disabled { opacity: 0.45; }
 .msfs-ui-setup__thumbnail { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
-/* The mod's bookmark (core/theme.css), in the top right corner: shown on hover of the thumbnail, or when the livery is a favourite. */
+/*
+ * The mod's heart (core/theme.css), 20 units in its small dark disc (24 units, 4 from the corner), in the top right
+ * corner: shown on hover of the thumbnail, or when the livery is a favourite.
+ */
 .msfs-ui-setup__icon {
   position: absolute;
-  top: calc(var(--u) * 6);
-  right: calc(var(--u) * 6);
-  width: calc(var(--u) * 20);
-  height: calc(var(--u) * 20);
+  top: calc(var(--u) * 4);
+  right: calc(var(--u) * 4);
+  width: calc(var(--u) * 24);
+  height: calc(var(--u) * 24);
   opacity: 0;
 }
 .msfs-ui-setup__livery:hover .msfs-ui-setup__icon,
 .msfs-ui-setup__livery.is-favorite .msfs-ui-setup__icon { opacity: 1; }
 
 /*
- * Tail number: title on the left, the sim's field on the right; in the colours of the sim's "Configure your aircraft"
- * tile under it (the owner's choice, 2026-10-30; measured on 1.9.21: its Gradient, rgb(59, 132, 235) to rgb(20, 72, 147)
- * at 165 degrees, at 80 %).
+ * The aircraft's statistics, when panel.ts gives them room (has-statistics): the sim's rows (36 units, as on its own
+ * Statistics block), without a header, right above the tail number, the room left over between them and the lists.
  */
-.msfs-ui-setup__tail {
-  padding-right: calc(var(--u) * 3);
-  margin-top: auto;
+.msfs-ui-setup__stats { display: none; flex-direction: column; flex-shrink: 0; margin-top: auto; margin-bottom: calc(var(--u) * 6); }
+.msfs-ui-setup.has-statistics .msfs-ui-setup__stats { display: flex; }
+.msfs-ui-setup.has-statistics .msfs-ui-setup__tail { margin-top: 0; }
+.msfs-ui-setup__stat { position: relative; flex-shrink: 0; height: calc(var(--u) * 36); }
+
+/*
+ * Tail number: two blocks over the two buttons under them, as high and as wide, as far apart (the owner's wish,
+ * 2026-10-30; --action-w and --action-gap: panel.ts): the title over Fuel and Payload, in the colours of the sim's
+ * "Configure your aircraft" tile (measured on 1.9.21: its Gradient, rgb(59, 132, 235) to rgb(20, 72, 147) at 165
+ * degrees, at 80 %), the sim's field over Identification.
+ */
+.msfs-ui-setup__tail { display: flex; flex-shrink: 0; height: calc(var(--u) * 30); margin-top: auto; margin-bottom: calc(var(--u) * 6); }
+.msfs-ui-setup .msfs-ui-setup__tail-title {
+  flex: 0 0 var(--action-w, 50%);
+  height: 100%;
+  margin-bottom: 0;
   background-image: linear-gradient(165deg, rgba(59, 132, 235, 0.8) 0%, rgba(20, 72, 147, 0.8) 100%);
 }
 /*
@@ -89,12 +105,30 @@
  * colour under it instead of the row's blue (sampled on the owner's screenshot around the search, 3440 x 1440: from
  * rgb(72, 81, 98) to rgb(83, 91, 103)).
  */
-.msfs-ui-setup__field { position: relative; width: 45%; height: calc(var(--u) * 30); background-color: rgb(76, 86, 100); }
+.msfs-ui-setup__field { position: relative; flex-grow: 1; height: 100%; margin-left: var(--action-gap, calc(var(--u) * 6)); background-color: rgb(76, 86, 100); }
 
 /* Fuel and Identification. */
 .msfs-ui-setup__actions { display: flex; flex-shrink: 0; }
+/*
+ * The texts of the buttons and of the tail number field start 12 units inside their block, as the title block's, the
+ * variants' and the statistics' (the owner's wish, 2026-10-30): the sim's text button and text field keep 6 (measured
+ * on 1.9.21: their Content's padding, 8 pixels at 1440 lines; the variant tiles' 16).
+ */
+.msfs-ui-setup__action [name="Content"],
+.msfs-ui-setup__field [name="Content"] { padding-left: calc(var(--u) * 12) !important; }
+/*
+ * The sim's "Configure your aircraft" tile under the panel, as wide as the sim's title block like the panel's blocks
+ * (the owner's wish, 2026-10-30): its 6-unit side margins in its block go (measured on 1.9.21: 555 to 1070 for a block
+ * from 547 to 1078 at 1440 lines); its top margin stays, the gap under the panel's buttons.
+ */
+[name="Fleet_Details"] [name="TileButton_Watermark_Small_Cockpit"] { left: 0 !important; right: 0 !important; }
+/*
+ * Two buttons in whole pixels (panel.ts: --action-w, --action-gap): the first half of the width, rounded down, the
+ * second the rest; shared by the engine, the second ended a pixel past the title block (measured at 1440 lines).
+ */
 .msfs-ui-setup__action { position: relative; flex-grow: 1; flex-basis: 0; height: calc(var(--u) * 30); }
-.msfs-ui-setup__action + .msfs-ui-setup__action { margin-left: calc(var(--u) * 6); }
+.msfs-ui-setup__action:first-child { flex-grow: 0; flex-basis: var(--action-w, 50%); }
+.msfs-ui-setup__action + .msfs-ui-setup__action { margin-left: var(--action-gap, calc(var(--u) * 6)); }
 
 /* Side by side layout: the liveries are in the gallery (panel.ts), the variants take their room. The sim's list has a display of its own. */
 .msfs-ui-setup.is-without-liveries .msfs-ui-setup__livery-header,

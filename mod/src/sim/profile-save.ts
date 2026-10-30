@@ -14,7 +14,7 @@ import { readArray, store, type StoreNode } from './store.ts';
 /** The option re-validated: "Show the white dot cursor in freelook" (Flight interface), on or off. */
 const SECTION = 'MENU_OPTIONS_FLIGHT_INTERFACE';
 const OPTION = 'OptionsGeneralItemGUID_{666BFED5-26A0-4C7D-BF27-D717AFCAF33D}';
-/** A burst of writes (bookmarks clicked one after the other) gives one save, this long after the last. */
+/** A burst of writes (hearts clicked one after the other) gives one save, this long after the last. */
 const DELAY_MS = 2000;
 const ANSWER_TIMEOUT_MS = 5000;
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { iconToggle } from '../src/core/icon-toggle.ts';
-import { BOOKMARK_FULL_SVG } from '../src/core/icons.ts';
+import { HEART_FULL_SVG, HEART_SVG } from '../src/core/icons.ts';
 import { Scope } from '../src/core/scope.ts';
 
 type Listener = (event: FakeEvent) => void;
@@ -88,29 +88,21 @@ describe('iconToggle', () => {
     assert.equal(element.classList.contains('is-on'), false);
   });
 
-  it('draws a full bookmark for a favourite and an empty one otherwise', () => {
+  it('draws a full heart for a favourite and an empty one otherwise', () => {
     const { icon, element } = make();
     const empty = element.innerHTML;
     icon.set(true);
-    assert.notEqual(element.innerHTML, empty);
-    assert.ok(element.innerHTML.indexOf('evenodd') > 0);
+    assert.equal(element.innerHTML, HEART_FULL_SVG);
     icon.set(false);
     assert.equal(element.innerHTML, empty);
+    assert.equal(empty, HEART_SVG);
   });
 
-  it('cuts the star out of the disc under both fill rules and keeps no stroked ring under the disc', () => {
-    const path = /<path d="(M16.6 11[^"]*)"/.exec(BOOKMARK_FULL_SVG)![1]!;
-    const [disc, star] = path.split('z');
-    // Signed area of the star polygon (y down): opposite to the disc's clockwise arc, so nonzero cuts it out too.
-    const points = star!.split('L').map((part) => part.replace('M', '').trim().split(' ').map(Number));
-    let area = 0;
-    points.forEach((a, at) => {
-      const b = points[(at + 1) % points.length]!;
-      area += a[0]! * b[1]! - b[0]! * a[1]!;
-    });
-    assert.ok(area < 0, 'the star runs counter-clockwise');
-    assert.ok(disc!.indexOf('1 1 0 11.2') > 0, 'the disc sweeps clockwise');
-    assert.equal(BOOKMARK_FULL_SVG.indexOf('<circle'), -1);
+  it('fills only the full heart, with the same outline as the empty one', () => {
+    const outline = (svg: string) => /<path d="([^"]*)"/.exec(svg)![1];
+    assert.equal(outline(HEART_FULL_SVG), outline(HEART_SVG));
+    assert.ok(HEART_FULL_SVG.indexOf('fill="currentColor"') > 0);
+    assert.equal(HEART_SVG.indexOf('fill="currentColor"'), -1);
   });
 
   it('asks for the opposite state at a click and does not let the click reach the tile under it', () => {

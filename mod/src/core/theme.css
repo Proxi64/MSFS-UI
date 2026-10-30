@@ -72,10 +72,10 @@
 
 /*
  * The mod's own icon buttons (core/icon-toggle.ts): an inline SVG in currentColor, filling its host, which the feature's
- * CSS places. White like the sim's line icons, lighter on hover (no preview of the opposite state); dark on a white
- * hovered list row. A favourite is in the sim's yellow, its star cut out of its disc, so it shows the colour under it.
- * The eye of a hidden aircraft is dimmed until hovered, full when on. Children take no pointer events: a click on one
- * would not bubble up.
+ * CSS places. Full white (users found them hard to see, 2026-10-30: they were 85 % white, the eye 55 % until hovered);
+ * dark on a white hovered list row; over a thumbnail, a dark disc under them (the features' CSS). A favourite's heart is
+ * full, white as the others (the owner's choice, 2026-10-30, after the sim's yellow). Children take no pointer events: a
+ * click on one would not bubble up.
  */
 .msfs-ui-icon {
   position: absolute;
@@ -83,20 +83,26 @@
   top: 0;
   right: 0;
   bottom: 0;
-  color: rgba(255, 255, 255, 0.85);
+  color: #ffffff;
   pointer-events: auto;
 }
-.msfs-ui-icon:hover { color: #ffffff; }
 .msfs-ui-icon svg,
 .msfs-ui-icon svg * { pointer-events: none; }
 .msfs-ui-icon svg { display: block; width: 100%; height: 100%; }
-/* A favourite in the sim's own accent yellow (the owner's choice, 2026-10-30: more visible than white). */
-.msfs-ui-icon--favorite.is-on,
-.msfs-ui-icon--favorite.is-on:hover { color: var(--color-yellow, #ffd300); }
-/* Off: 0.85 x 0.65 = about 55 % white; on: 85 % white, full on hover. */
-.msfs-ui-icon--hidden { opacity: 0.65; }
-.msfs-ui-icon--hidden:hover,
-.msfs-ui-icon--hidden.is-on { opacity: 1; }
+/*
+ * Over a thumbnail (a tile of the gallery, of the Default view or of the livery column; a livery of the setup panel):
+ * a small dark translucent disc under the icon, tight (its host 4 units larger; a larger one looked heavy to the
+ * owner), so that it reads over a light sky. Not on a list row, whose blue is dark enough.
+ */
+.msfs-ui-gal__tile .msfs-ui-gal__icon,
+.msfs-ui-setup__icon { border-radius: 50%; background-color: rgba(10, 16, 26, 0.55); }
+.msfs-ui-gal__tile .msfs-ui-gal__icon .msfs-ui-icon,
+.msfs-ui-setup__icon .msfs-ui-icon {
+  left: calc(var(--u) * 2);
+  top: calc(var(--u) * 2);
+  right: calc(var(--u) * 2);
+  bottom: calc(var(--u) * 2);
+}
 .msfs-ui-gal__row:hover .msfs-ui-icon,
 .msfs-ui-fav__row:hover .msfs-ui-icon { color: rgba(31, 37, 48, 0.85); }
 .msfs-ui-gal__row:hover .msfs-ui-icon:hover,

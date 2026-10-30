@@ -31,6 +31,8 @@ export const COMPONENTS = {
   dropdown: '{3321B59E-EA1D-4C72-8D69-3F1BB530437C}',
   /** Text field of the sim (search fields); with `State_Input`, a plain input without the magnifier. */
   searchInput: '{996A0E75-BA4D-4EB4-BD27-683B1013B42C}',
+  /** A row of the sim's Statistics block (aircraft selection, Configure): a title and a value, or an icon. */
+  statisticRow: '{E43EDD70-0B52-48D1-BC1D-2E3764CA00BF}',
 } as const;
 
 export type ComponentGuid = (typeof COMPONENTS)[keyof typeof COMPONENTS];
