@@ -19,13 +19,24 @@
 .msfs-ui-gal__body,
 .msfs-ui-gal__control { pointer-events: auto; }
 
-/* Bar: search, count, Favorites, sort and its direction, views. */
+/* Bar: search, count, Hidden, Favorites, sort and its direction, views. */
 /* Above the tiles: the sort dropdown opens over them. */
 .msfs-ui-gal__bar { position: relative; z-index: 2; display: flex; align-items: center; flex-shrink: 0; height: calc(var(--u) * 36); margin-bottom: calc(var(--u) * 12); }
 .msfs-ui-gal__control { position: relative; flex-shrink: 0; height: calc(var(--u) * 30); margin-left: calc(var(--u) * 6); }
 .msfs-ui-gal__search { flex-grow: 1; flex-shrink: 1; margin-left: 0; }
 .msfs-ui-gal__count { margin: 0 calc(var(--u) * 6) 0 calc(var(--u) * 12); opacity: 0.75; flex-shrink: 0; white-space: nowrap; }
+.msfs-ui-gal__hidden { width: calc(var(--u) * 114); }
 .msfs-ui-gal__favorites { width: calc(var(--u) * 130); }
+/* The mod's icon before the text of Hidden and Favorites, in the button's content row, in the text's colour. */
+.msfs-ui-gal__label-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
+  margin-right: calc(var(--u) * 6);
+  pointer-events: none;
+}
+.msfs-ui-gal__label-icon svg { display: block; width: 100%; height: 100%; }
 .msfs-ui-gal__sort { width: calc(var(--u) * 240); }
 .msfs-ui-gal__reverse { width: calc(var(--u) * 30); }
 .msfs-ui-gal__view { width: calc(var(--u) * 100); }
@@ -33,7 +44,7 @@
 .msfs-ui-gal.is-stock .msfs-ui-gal__bar { height: 100%; margin-bottom: 0; justify-content: flex-end; }
 .msfs-ui-gal.is-stock .msfs-ui-gal__search,
 .msfs-ui-gal.is-stock .msfs-ui-gal__count,
-.msfs-ui-gal.is-stock .msfs-ui-gal__favorites,
+.msfs-ui-gal.is-stock .msfs-ui-gal__filter,
 .msfs-ui-gal.is-stock .msfs-ui-gal__sort,
 .msfs-ui-gal.is-stock .msfs-ui-gal__reverse,
 .msfs-ui-gal.is-stock .msfs-ui-gal__body { display: none; }
@@ -84,7 +95,7 @@
  * cut the top and bottom of each thumbnail. The title block keeps its 6-unit gap after it.
  */
 .msfs-ui-gal__row [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
-/* The text stops before the row's bookmark and is cut there (no ellipsis in the engine; hovering scrolls it). */
+/* The text stops before the row's icon and is cut there (no ellipsis in the engine; hovering scrolls it). */
 .msfs-ui-gal__row [name="TitleBlock"] {
   left: calc(var(--u) * 167) !important;
   right: calc(var(--u) * 40) !important;
@@ -95,8 +106,6 @@
   align-items: center !important;
   justify-content: flex-start !important;
 }
-/* An aircraft row has no icon (the favourites are liveries): its text goes to the end of the row. */
-.msfs-ui-gal__row.is-without-icon [name="TitleBlock"] { right: calc(var(--u) * 6) !important; }
 .msfs-ui-gal__row [name="Title"] { flex-grow: 0 !important; flex-shrink: 0 !important; width: auto !important; }
 .msfs-ui-gal__row [name="Details"] { margin-left: calc(var(--u) * 6) !important; margin-top: 0 !important; }
 
@@ -127,6 +136,39 @@
 .msfs-ui-gal__row .msfs-ui-gal__icon {
   width: calc(var(--u) * 22);
   height: calc(var(--u) * 22);
+}
+
+/*
+ * A hidden aircraft kept for its favourite liveries: a dark veil (35 % black) over the whole tile or row, under the
+ * corner icon, and a large slashed eye centred on the thumbnail (twice the corner icon), a marker only: the clicks go
+ * through to the tile.
+ */
+.msfs-ui-gal__veil {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  pointer-events: none;
+}
+.msfs-ui-gal__veil svg,
+.msfs-ui-gal__veil svg * { pointer-events: none; }
+.msfs-ui-gal__veil svg {
+  position: absolute;
+  display: block;
+  width: calc(var(--u) * 40);
+  height: calc(var(--u) * 40);
+  left: calc(50% - var(--u) * 20);
+  top: calc(var(--tile-image-h) / 2 - var(--u) * 20);
+}
+/* A row's thumbnail is its ImageBlock, 161 units wide, the row's full height. */
+.msfs-ui-gal__row .msfs-ui-gal__veil svg {
+  width: calc(var(--u) * 44);
+  height: calc(var(--u) * 44);
+  left: calc(var(--u) * 58.5);
+  top: calc(50% - var(--u) * 22);
 }
 
 /*

@@ -1,12 +1,14 @@
 // The aircraft gallery and list in the aircraft selection, in place of the sim's grid (right block): search (name,
-// publisher, variant), favourites (an aircraft with a favourite livery, first), gallery or compact list, the sim's sort orders, and a button back to the
+// publisher, variant), favourites (an aircraft with a favourite livery, first), hidden aircraft (the eye in each aircraft
+// tile's corner; the Hidden filter shows them), gallery or compact list, the sim's sort orders, and a button back to the
 // sim's own grid. Made of the sim's components. The sim's category tabs stay active: the list read
 // (`Game.Aircraft.AircraftList`) is already filtered by category; the search and the favourites filter on top.
 // A click sends the page the `tileClick` event of the sim's tiles, a hover `tileHover`: the selection and the header
 // of the left column go through the sim's own logic.
 
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
-import { iconToggle } from '../../core/icon-toggle.ts';
+import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
+import { BOOKMARK_SVG, EYE_SLASH_SVG } from '../../core/icons.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { cellAction, layoutWidth } from '../../core/virtual-list.ts';
@@ -16,6 +18,7 @@ import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type ComponentGuid, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
+import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
@@ -24,14 +27,29 @@ import { readArray, store, translate, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
 import { AIRCRAFT_COLUMNS, galleryBodyClass, splitColumns } from './livery-column.ts';
-import { favoriteAircraftIds, favoritesFirst, sortTiles, visibleTiles, type AircraftItem, type LocalSort, type Tile } from './tiles.ts';
+import {
+  emptyMessage,
+  favoriteAircraftIds,
+  favoritesFirst,
+  normalize,
+  readFilter,
+  sortTiles,
+  toggleFilter,
+  visibleTiles,
+  type AircraftItem,
+  type LocalSort,
+  type Tile,
+} from './tiles.ts';
 
 type View = 'gallery' | 'list' | 'stock';
 type Layout = Settings['aircraftGallery']['layout'];
 
 interface GalleryMemory {
   view: View;
+  /** The Favorites filter; never together with `hiddenOnly` (readFilter). */
   favoritesOnly: boolean;
+  /** The Hidden filter: only the hidden aircraft (absent before 2.0.0). */
+  hiddenOnly?: boolean;
   /** Sort: the id of one of SORTS; absent: the sim's order, unchanged. */
   sort?: { option: string; reversed: boolean } | null;
 }
@@ -88,6 +106,16 @@ interface Cell {
   card: SimComponent | null;
 }
 
+/**
+ * What a slot of the pool adds to its card for the aircraft tiles: the eye in the corner (hides or brings back the
+ * aircraft) next to the bookmark of the Favorites tiles, and the veil of a hidden aircraft kept for its favourite
+ * liveries (a dark layer with a large slashed eye over the thumbnail, a marker only).
+ */
+interface SlotExtras {
+  eye: IconToggle;
+  veil: HTMLElement;
+}
+
 const MEMORY_KEY = 'AIRCRAFT_GALLERY';
 const SORT_ICON = 'coui://html_UI/VFS/components/shared/resources/Icons/General/Sort.svg';
 /** Aimed width of a gallery tile, in layout units; the sim's aircraft tile is 360 × 250. */
@@ -132,6 +160,7 @@ export class Gallery {
 
   private search: TextField | null = null;
   private favoritesButton: SimComponent | null = null;
+  private hiddenButton: SimComponent | null = null;
   private reverseButton: SimComponent | null = null;
   private sortDropdown: SimComponent | null = null;
   /** The sorts available: SORTS, without the sim's ones it does not offer. */
@@ -153,6 +182,10 @@ export class Gallery {
    * so that a bookmark clicked does not move the tiles; set again on a new sort, search or filter (resetOrder).
    */
   private favoriteIds: number[] | null = null;
+  /** The aircraft hidden by the user (their eye): out of the gallery, unless kept veiled for their favourite liveries. */
+  private hidden: HiddenAircraft[] = loadHidden();
+  /** The eye and veil of each slot of the pool, made with the slot (createSlot). */
+  private readonly slotExtras = new WeakMap<PoolSlot<Cell>, SlotExtras>();
   private readonly memory: GalleryMemory = loadData<GalleryMemory>(MEMORY_KEY, { view: 'gallery', favoritesOnly: false });
   /** Current aircraft (variant and livery, as `liveryKey`): selection of the livery tiles. */
   private current = { variationId: '', livery: '' };
@@ -215,6 +248,11 @@ export class Gallery {
       this.favoriteLiveries = loadFavoriteLiveries();
       if (this.items.length > 0) this.render();
     });
+    // An eye clicked: the aircraft leaves (or comes back); the list keeps its scroll, the next tiles close the gap.
+    scope.listen(document, HIDDEN_AIRCRAFT_CHANGED, () => {
+      this.hidden = loadHidden();
+      if (this.items.length > 0) this.render();
+    });
     // The sim's list scrolls itself (wheel, scroll bar): the tiles coming into view get their components.
     scope.listen(this.list, 'ui-scroll', () => this.materialize());
 
@@ -266,14 +304,16 @@ export class Gallery {
     );
     this.bar.appendChild(this.count);
 
-    component(COMPONENTS.textButtonSmall, 'msfs-ui-gal__favorites', { Text: 'Favorites' }, (button) => {
+    // Hidden and Favorites, each with the mod's icon before its text; never both on.
+    component(COMPONENTS.textButtonSmall, 'msfs-ui-gal__filter msfs-ui-gal__hidden', { Text: 'Hidden' }, (button) => {
+      this.hiddenButton = button;
+      labelIcon(button, EYE_SLASH_SVG);
+      button.onClick(this.scope, () => this.setFilter('hidden'));
+    });
+    component(COMPONENTS.textButtonSmall, 'msfs-ui-gal__filter msfs-ui-gal__favorites', { Text: 'Favorites' }, (button) => {
       this.favoritesButton = button;
-      button.onClick(this.scope, () => {
-        this.memory.favoritesOnly = !this.memory.favoritesOnly;
-        this.saveMemory();
-        this.resetOrder();
-        this.render();
-      });
+      labelIcon(button, BOOKMARK_SVG);
+      button.onClick(this.scope, () => this.setFilter('favorites'));
     });
     component(COMPONENTS.dropdown, 'msfs-ui-gal__sort', {}, (dropdown) => {
       this.sortDropdown = dropdown;
@@ -304,6 +344,17 @@ export class Gallery {
     this.list.setAttribute('direction', 'y');
     this.list.className = 'msfs-ui-gal__list';
     this.body.appendChild(this.list);
+  }
+
+  /** Favorites or Hidden clicked: that filter on and the other off, or off again; a new list starts from its top. */
+  private setFilter(clicked: 'favorites' | 'hidden'): void {
+    const filter = toggleFilter(readFilter(this.memory), clicked);
+    this.memory.favoritesOnly = filter === 'favorites';
+    this.memory.hiddenOnly = filter === 'hidden';
+    this.saveMemory();
+    this.resetOrder();
+    this.render();
+    this.scrollToTop();
   }
 
   private setView(view: View): void {
@@ -501,11 +552,13 @@ export class Gallery {
 
   // ----- Rendering -----
 
-  /** Views and Favorites; the sort dropdown is redrawn only when the sort changes (renderSort). */
+  /** Views, Hidden and Favorites; the sort dropdown is redrawn only when the sort changes (renderSort). */
   private renderBar(): void {
     const view = this.memory.view;
+    const filter = readFilter(this.memory);
     this.viewTabs.forEach((tab, key) => tab.select(key === view));
-    if (this.favoritesButton) this.favoritesButton.select(this.memory.favoritesOnly);
+    if (this.hiddenButton) this.hiddenButton.select(filter === 'hidden');
+    if (this.favoritesButton) this.favoritesButton.select(filter === 'favorites');
   }
 
   private render(): void {
@@ -520,29 +573,31 @@ export class Gallery {
       return;
     }
 
+    // Favourites always come first, whatever the sort (the sim's included), as they were when the order was set; a
+    // hidden aircraft among them stays, veiled, until the order is set again.
+    if (this.favoriteIds === null && this.items.length > 0) this.favoriteIds = favoriteAircraftIds(this.items, this.favoriteLiveries);
+    const filter = readFilter(this.memory);
+    const search = this.search ? this.search.value : '';
     const shown = visibleTiles({
       items: this.items,
       liveries: this.favoriteLiveries,
-      favoritesOnly: this.memory.favoritesOnly,
-      hiddenOnly: false,
-      hidden: [],
-      keepIds: [],
-      search: this.search ? this.search.value : '',
+      favoritesOnly: filter === 'favorites',
+      hiddenOnly: filter === 'hidden',
+      hidden: this.hidden,
+      keepIds: this.favoriteIds || [],
+      search,
       translate,
     });
     const choice = this.sortChoice();
     const sorted = choice && choice.local ? sortTiles(shown, choice.local, !!this.memory.sort && this.memory.sort.reversed) : shown;
-    // Favourites always come first, whatever the sort (the sim's included), as they were when the order was set.
-    if (this.favoriteIds === null && this.items.length > 0) this.favoriteIds = favoriteAircraftIds(this.items, this.favoriteLiveries);
     const tiles = favoritesFirst(sorted, this.favoriteIds || []);
+    // The tiles shown (veiled ones included) out of the aircraft of the category tab.
     this.count.textContent = `${tiles.length} / ${this.items.length}`;
     const key = `${view}|${tiles.map((tile) => `${tile.item.variationId}:${tile.livery ? tile.livery.dir : ''}`).join(',')}`;
     const empty =
       tiles.length > 0
         ? ''
-        : this.memory.favoritesOnly && this.favoriteLiveries.length === 0
-          ? 'No favorites yet: click the bookmark on a livery.'
-          : 'No aircraft matches.';
+        : emptyMessage(filter, { favorites: this.favoriteLiveries.length, hidden: this.hidden.length, searching: normalize(search) !== '' });
     if (key === this.cellKey && empty === this.cellEmpty) {
       // Same tiles: their texts, images and state are refreshed in place (the set of tiles is unchanged).
       this.cells.forEach((cell, at) => {
@@ -654,11 +709,22 @@ export class Gallery {
       if (cell && cell.slot === slot && cell.tile.livery) this.removeFavoriteLivery(cell.tile.livery);
     });
     slot.icon.set(true);
+    // An aircraft tile's eye, in the same corner: a click hides the aircraft, or brings it back when it is hidden.
+    const eye = iconToggle(scope, slot.iconHost, 'hidden', () => {
+      const cell = slot.item;
+      if (cell && cell.slot === slot && !cell.tile.livery) this.toggleHidden(cell.tile.item);
+    });
+    const veil = el('div', 'msfs-ui-gal__veil');
+    veil.innerHTML = EYE_SLASH_SVG;
+    veil.style.display = 'none';
+    this.slotExtras.set(slot, { eye, veil });
     createComponent(scope, gallery ? COMPONENTS.fleetTile : COMPONENTS.horizontalTile, slot.cardHost).then(
       (card) => {
         if (scope.disposed) return;
         slot.card = card;
-        // The icon goes inside the card: the pointer on it keeps the card hovered (the sim does the same with its heart).
+        // The veil and the icons go inside the card, the icons last (above the veil): the pointer on them keeps the
+        // card hovered (the sim does the same with its heart).
+        card.element.appendChild(veil);
         card.element.appendChild(slot.iconHost);
         if (this.pool) this.pool.markReady(slot);
         if (!gallery) {
@@ -715,7 +781,11 @@ export class Gallery {
     }
   }
 
-  /** Selection, availability and bookmark of a tile: only a favourite livery tile has one (it removes the favourite). */
+  /**
+   * Selection, availability, icon and veil of a tile. A favourite livery tile (Favorites) has the bookmark (it removes
+   * the favourite); an aircraft tile has the eye, on when the aircraft is hidden. A hidden aircraft kept for its
+   * favourite liveries is veiled, in both kinds of tile.
+   */
   private updateCell(cell: Cell): void {
     const { item, livery } = cell.tile;
     if (cell.card) {
@@ -724,8 +794,15 @@ export class Gallery {
       toggleClass(cell.host, 'is-selected', selected);
       cell.card.disable(!item.isUsable);
     }
-    if (cell.slot) cell.slot.iconHost.style.display = livery ? '' : 'none';
-    toggleClass(cell.host, 'is-without-icon', !livery);
+    const slot = cell.slot;
+    const extras = slot ? this.slotExtras.get(slot) : undefined;
+    if (slot && slot.icon && extras) {
+      slot.icon.element.style.display = livery ? '' : 'none';
+      extras.eye.element.style.display = livery ? 'none' : '';
+      extras.eye.set(isHidden(this.hidden, item));
+      extras.veil.style.display = cell.tile.veiled ? '' : 'none';
+    }
+    toggleClass(cell.host, 'is-veiled', !!cell.tile.veiled);
   }
 
   /** Scrolls to the selected aircraft. */
@@ -759,6 +836,15 @@ export class Gallery {
       });
   }
 
+  /**
+   * An aircraft's eye: hidden, or back when it was. Only the mod's list changes: the selected aircraft stays the sim's
+   * (nothing goes to the configurator). The gallery redraws on the event of the hidden aircraft.
+   */
+  private toggleHidden(item: AircraftItem): void {
+    const next = withHidden(this.hidden, item, !isHidden(this.hidden, item));
+    if (next) saveHidden(next);
+  }
+
   /** The setup panel and the gallery redraw on the event of the favourite liveries. */
   private removeFavoriteLivery(livery: FavoriteLivery): void {
     saveFavoriteLiveries(this.favoriteLiveries.filter((candidate) => candidate !== livery));
@@ -779,4 +865,18 @@ export class Gallery {
   private saveMemory(): void {
     saveData(MEMORY_KEY, this.memory);
   }
+}
+
+/**
+ * The mod's icon before the text of one of the sim's text buttons, in its content row (it takes the text's colour in
+ * every state of the button). The row's own Text, not the one of the shortcut block it also holds.
+ */
+function labelIcon(button: SimComponent, svg: string): void {
+  const content = button.element.querySelector('[name="Content"]');
+  if (!content) return;
+  const text = Array.prototype.filter.call(content.children, (child: Element) => child.getAttribute('name') === 'Text')[0] as Element | undefined;
+  if (!text) return;
+  const icon = el('span', 'msfs-ui-gal__label-icon');
+  icon.innerHTML = svg;
+  content.insertBefore(icon, text);
 }

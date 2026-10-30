@@ -110,6 +110,31 @@ export function visibleTiles(query: TileQuery): Tile[] {
   });
 }
 
+/** The gallery's filter: every aircraft, the favourite liveries (Favorites) or the hidden aircraft (Hidden). */
+export type GalleryFilter = 'all' | 'favorites' | 'hidden';
+
+/** The filter of the gallery's memory; a memory with both flags (never written) reads as Favorites. */
+export function readFilter(memory: { favoritesOnly?: boolean; hiddenOnly?: boolean }): GalleryFilter {
+  if (memory.favoritesOnly) return 'favorites';
+  return memory.hiddenOnly ? 'hidden' : 'all';
+}
+
+/** A click on the Favorites or Hidden button: that filter on and the other off, or off again when it was on. */
+export function toggleFilter(current: GalleryFilter, clicked: 'favorites' | 'hidden'): GalleryFilter {
+  return current === clicked ? 'all' : clicked;
+}
+
+/**
+ * The message of an empty view: `favorites` and `hidden` are the numbers of favourite liveries and hidden aircraft
+ * kept (every category tab), `searching` whether the search has text.
+ */
+export function emptyMessage(filter: GalleryFilter, counts: { favorites: number; hidden: number; searching: boolean }): string {
+  if (filter === 'favorites' && counts.favorites === 0) return 'No favorites yet: click the bookmark on a livery.';
+  // Without a search, an empty Hidden view has nothing hidden in this category tab.
+  if (filter === 'hidden' && (!counts.searching || counts.hidden === 0)) return 'No hidden aircraft: click the eye on an aircraft to hide it.';
+  return 'No aircraft matches.';
+}
+
 /** Sorts made by the mod on the tiles (the sim offers none of them). */
 export type LocalSort = 'name' | 'studio';
 

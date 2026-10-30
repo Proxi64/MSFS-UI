@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { compareNatural, favoriteAircraftIds, favoritesFirst, hasFavoriteLivery, normalize, sortTiles, visibleTiles, type AircraftItem } from '../src/features/aircraft-gallery/tiles.ts';
+import {
+  compareNatural,
+  emptyMessage,
+  favoriteAircraftIds,
+  favoritesFirst,
+  hasFavoriteLivery,
+  normalize,
+  readFilter,
+  sortTiles,
+  toggleFilter,
+  visibleTiles,
+  type AircraftItem,
+} from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
 import { galleryBodyClass, liveryTail, liveryTileSize, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
@@ -106,6 +118,37 @@ describe('hidden aircraft', () => {
     const liveries = [livery('sf50-exec', 'Alpine'), livery('c172', 'Red')];
     const tiles = query({ liveries, favoritesOnly: true });
     assert.deepEqual(tiles.map((tile) => `${tile.item.variationId}:${!!tile.veiled}`), ['sf50-exec:true', 'c172:false']);
+  });
+});
+
+describe('gallery filter', () => {
+  it('reads the remembered filter, Favorites winning when both were stored', () => {
+    assert.equal(readFilter({}), 'all');
+    assert.equal(readFilter({ favoritesOnly: false, hiddenOnly: false }), 'all');
+    assert.equal(readFilter({ favoritesOnly: true }), 'favorites');
+    assert.equal(readFilter({ hiddenOnly: true }), 'hidden');
+    assert.equal(readFilter({ favoritesOnly: true, hiddenOnly: true }), 'favorites');
+  });
+
+  it('turns one filter on and the other off, and the current one off on a second click', () => {
+    assert.equal(toggleFilter('all', 'hidden'), 'hidden');
+    assert.equal(toggleFilter('all', 'favorites'), 'favorites');
+    assert.equal(toggleFilter('favorites', 'hidden'), 'hidden');
+    assert.equal(toggleFilter('hidden', 'favorites'), 'favorites');
+    assert.equal(toggleFilter('hidden', 'hidden'), 'all');
+    assert.equal(toggleFilter('favorites', 'favorites'), 'all');
+  });
+
+  it('explains an empty view', () => {
+    const hint = 'No hidden aircraft: click the eye on an aircraft to hide it.';
+    assert.equal(emptyMessage('hidden', { favorites: 2, hidden: 0, searching: false }), hint);
+    // Hidden aircraft of other category tabs only: none to show here either.
+    assert.equal(emptyMessage('hidden', { favorites: 0, hidden: 3, searching: false }), hint);
+    assert.equal(emptyMessage('hidden', { favorites: 0, hidden: 0, searching: true }), hint);
+    assert.equal(emptyMessage('hidden', { favorites: 0, hidden: 3, searching: true }), 'No aircraft matches.');
+    assert.equal(emptyMessage('favorites', { favorites: 0, hidden: 0, searching: true }), 'No favorites yet: click the bookmark on a livery.');
+    assert.equal(emptyMessage('favorites', { favorites: 1, hidden: 0, searching: true }), 'No aircraft matches.');
+    assert.equal(emptyMessage('all', { favorites: 0, hidden: 0, searching: false }), 'No aircraft matches.');
   });
 });
 
