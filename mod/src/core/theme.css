@@ -7,7 +7,13 @@
  * A feature's own CSS only does layout.
  */
 
-.msfs-ui-panel {
+/*
+ * Every element the mod places on a screen: a panel (msfs-ui-panel, with the sim's card layers), or the root of a
+ * feature drawn on the sim's own background (msfs-ui-root: the gallery, the setup panel). Above the sim's elements,
+ * in the sim's text colour and size; the colours the mod draws itself, once.
+ */
+.msfs-ui-panel,
+.msfs-ui-root {
   position: absolute;
   z-index: 50;
   box-sizing: border-box;
@@ -15,8 +21,23 @@
   --u: calc(var(--unscaledScreenHeight) * 1px / 1080);
   color: var(--colorComplementary1);
   font-size: var(--fontSizeXS);
-  pointer-events: auto;
+  /*
+   * A plain gallery tile's text banner (measured on 1.9.21): the sim's rgb(59, 132, 235) at 30 % over rgba(30, 66,
+   * 118, 0.2); the section headers and the list rows take it (the owner's choice, 2026-10-30).
+   */
+  --msfs-ui-banner: linear-gradient(165deg, rgba(59, 132, 235, 0.3) 0%, rgba(59, 132, 235, 0.3) 100%), linear-gradient(165deg, rgba(30, 66, 118, 0.2) 0%, rgba(30, 66, 118, 0.2) 100%);
+  /*
+   * Behind the thumbnails, the sim's studio backdrop (colours measured on the sim's own thumbnails, 1.9.18): a few
+   * publishers ship a transparent thumbnail (Nemeth Designs' EC-135), which would otherwise show the tile's dark colour.
+   */
+  --msfs-ui-thumbnail-backdrop: linear-gradient(to bottom, rgb(165, 173, 198), rgb(150, 164, 193) 50%, rgb(100, 118, 152));
+  /* The small dark disc under an icon over a thumbnail, so that it reads over a light sky. */
+  --msfs-ui-icon-disc: rgba(10, 16, 26, 0.55);
+  /* An icon on a hovered row, which the sim paints white; darker still under the pointer. */
+  --msfs-ui-icon-on-row: rgba(31, 37, 48, 0.85);
+  --msfs-ui-icon-on-row-hover: #1f2530;
 }
+.msfs-ui-panel { pointer-events: auto; }
 /* Background layers of the sim's cards (FreeFlight_Runways, Flight_Conditions_History_Widget): frosted glass, the
    accessibility layer (the sim's background opacity setting) and a black veil at 20 %. */
 .msfs-ui-panel__blur,
@@ -34,10 +55,7 @@
 .msfs-ui-panel__accessibility { background-color: var(--colorComplementary2); opacity: var(--backgroundOpacity); }
 .msfs-ui-panel__tint { background-color: #00000033; }
 
-/*
- * Section header, text in --fontSizeXS, in the colours of a plain gallery tile's text banner (the owner's choice,
- * 2026-10-30; measured on 1.9.21): the sim's rgb(59, 132, 235) at 30 % over rgba(30, 66, 118, 0.2).
- */
+/* Section header, text in --fontSizeXS, in the colours of a plain gallery tile's text banner. */
 .msfs-ui-header {
   display: flex;
   align-items: center;
@@ -45,7 +63,7 @@
   box-sizing: border-box;
   height: calc(var(--u) * 36);
   padding: 0 calc(var(--u) * 12);
-  background-image: linear-gradient(165deg, rgba(59, 132, 235, 0.3) 0%, rgba(59, 132, 235, 0.3) 100%), linear-gradient(165deg, rgba(30, 66, 118, 0.2) 0%, rgba(30, 66, 118, 0.2) 100%);
+  background-image: var(--msfs-ui-banner);
   flex-shrink: 0;
 }
 .msfs-ui-title { font-size: var(--fontSizeXS); font-weight: 700; white-space: nowrap; }
@@ -71,9 +89,31 @@
 }
 
 /*
+ * The sim's horizontal tile (its marketplace tile) made a list row (msfs-ui-row-tile, on the row's host): its rating
+ * and separator, its price or "Owned" banner and its own heart over the image are hidden (the row's icon is the mod's,
+ * in its top right corner); its image box takes the thumbnails' ratio (720 x 344: the tile's own box is wider and its
+ * "cover" cut the top and bottom of each thumbnail); its title block keeps a 6-unit gap after it and stops before the
+ * row's icon. How the texts sit in the title block is the feature's.
+ */
+.msfs-ui-row-tile [name="Rating_Overview"],
+.msfs-ui-row-tile [name="Details"] [name="Separator"],
+.msfs-ui-row-tile [name="Banner"],
+.msfs-ui-row-tile [name="WishlistBlock"] { display: none !important; }
+.msfs-ui-row-tile [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
+.msfs-ui-row-tile [name="TitleBlock"] {
+  left: calc(var(--u) * 167) !important;
+  right: calc(var(--u) * 40) !important;
+  top: 0 !important;
+  height: 100% !important;
+}
+.msfs-ui-row-tile img[name="Image"] { background-image: var(--msfs-ui-thumbnail-backdrop) !important; }
+.msfs-ui-row-tile:hover .msfs-ui-icon { color: var(--msfs-ui-icon-on-row); }
+.msfs-ui-row-tile:hover .msfs-ui-icon:hover { color: var(--msfs-ui-icon-on-row-hover); }
+
+/*
  * The mod's own icon buttons (core/icon-toggle.ts): an inline SVG in currentColor, filling its host, which the feature's
  * CSS places. Full white (users found them hard to see, 2026-10-30: they were 85 % white, the eye 55 % until hovered);
- * dark on a white hovered list row and, over a thumbnail, a dark disc under them (both in the features' CSS). A favourite's heart is
+ * dark on a white hovered list row (msfs-ui-row-tile) and, over a thumbnail, a dark disc under them (the features' CSS). A favourite's heart is
  * full, white as the others (the owner's choice, 2026-10-30, after the sim's yellow). Children take no pointer events: a
  * click on one would not bubble up.
  */

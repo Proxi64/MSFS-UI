@@ -1,5 +1,5 @@
-// The sim's look for what the sim draws without a component (classes in theme.css: msfs-ui-panel, -header, -title,
-// -value, msfs-ui-compact-tile), and the panels' background and mouse lock.
+// The sim's look for what the sim draws without a component (classes in theme.css: msfs-ui-panel, msfs-ui-root, -header, -title,
+// -value, msfs-ui-compact-tile, msfs-ui-row-tile), and the panels' background and mouse lock.
 
 import type { Scope } from './scope.ts';
 import { el } from './dom.ts';

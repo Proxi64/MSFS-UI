@@ -21,22 +21,10 @@
 .msfs-ui-fav__row:last-child { margin-bottom: 0; }
 .msfs-ui-fav__card { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 /*
- * The marketplace tile, as in the gallery's list view but on its own two lines: the name in its bold Title, then
- * "variant · livery · tail number" in its light Creator. Its rating and separator, price banner and own heart are
- * hidden; the image box takes the thumbnails' ratio (720 x 344); the text stops before the row's heart.
+ * The marketplace tile made a row (core/theme.css, msfs-ui-row-tile), as in the gallery's list view but on its own two
+ * lines: the name in its bold Title, then "variant · livery · tail number" in its light Creator.
  */
-.msfs-ui-fav__row [name="Rating_Overview"],
-.msfs-ui-fav__row [name="Details"] [name="Separator"],
-.msfs-ui-fav__row [name="Banner"],
-.msfs-ui-fav__row [name="WishlistBlock"] { display: none !important; }
-.msfs-ui-fav__row [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
-.msfs-ui-fav__row [name="TitleBlock"] {
-  left: calc(var(--u) * 167) !important;
-  right: calc(var(--u) * 40) !important;
-  top: 0 !important;
-  height: 100% !important;
-  justify-content: center !important;
-}
+.msfs-ui-fav__row [name="TitleBlock"] { justify-content: center !important; }
 /*
  * Smaller than the tile's 18 units (the owner's choice, 2026-10-30): the name a little, the livery line a lot (12, the
  * smallest size of the sim's components; 14 looked as big as the name).
@@ -44,9 +32,6 @@
 .msfs-ui-fav__row [name="Title"] { font-size: calc(var(--u) * 16) !important; }
 /* 6 units between the two lines, centred together in the row: the name goes up, the livery down (the owner's wish). */
 .msfs-ui-fav__row [name="Creator"] { font-size: calc(var(--u) * 12) !important; margin-top: calc(var(--u) * 6) !important; }
-.msfs-ui-fav__row img[name="Image"] {
-  background-image: linear-gradient(to bottom, rgb(165, 173, 198), rgb(150, 164, 193) 50%, rgb(100, 118, 152)) !important;
-}
 
 /* The mod's heart (core/theme.css), in the row's top right corner. */
 .msfs-ui-fav__icon {
@@ -56,6 +41,3 @@
   width: calc(var(--u) * 22);
   height: calc(var(--u) * 22);
 }
-/* Dark on a hovered row, which the sim paints white; darker still under the pointer. */
-.msfs-ui-fav__row:hover .msfs-ui-icon { color: rgba(31, 37, 48, 0.85); }
-.msfs-ui-fav__row:hover .msfs-ui-icon:hover { color: #1f2530; }

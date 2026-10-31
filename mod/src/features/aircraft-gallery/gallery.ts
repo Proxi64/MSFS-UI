@@ -106,7 +106,7 @@ export class Gallery {
   private readonly layoutChoice: Layout;
   /** Side by side layout: the liveries of the current aircraft on the right half (liveries.ts). */
   private liveryColumn: LiveryColumn | null = null;
-  private readonly root = el('div', 'msfs-ui-gal');
+  private readonly root = el('div', 'msfs-ui-root msfs-ui-gal');
   private readonly bar: GalleryBar;
   private readonly body = el('div', 'msfs-ui-gal__body');
   private readonly cells: GalleryCells;

@@ -170,7 +170,7 @@ export class FavoritesPanel {
   private createRow(entry: FavoriteEntry, scope: Scope): void {
     // marquee__trigger: hovering the row scrolls its texts that are too long, as on the sim's own tiles (the engine
     // shows no ellipsis).
-    const host = el('div', 'msfs-ui-fav__row marquee__trigger');
+    const host = el('div', 'msfs-ui-fav__row msfs-ui-row-tile marquee__trigger');
     this.list.appendChild(host);
     this.listItems.push(host);
     const cardHost = el('div', 'msfs-ui-fav__card', host);

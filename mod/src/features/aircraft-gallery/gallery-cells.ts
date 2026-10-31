@@ -191,7 +191,7 @@ export class GalleryCells {
     for (let at = 0; at < tiles.length; at++) {
       const tile = tiles[at]!;
       // marquee__trigger: hovering the tile scrolls its texts that are too long, as on the sim's own tiles.
-      const host = el('div', `${view === 'list' ? 'msfs-ui-gal__row' : 'msfs-ui-gal__tile'} marquee__trigger`);
+      const host = el('div', `${view === 'list' ? 'msfs-ui-gal__row msfs-ui-row-tile' : 'msfs-ui-gal__tile'} marquee__trigger`);
       if (grid) {
         // Two tiles per column, the first on top: a new column for every first one.
         if (columnOf(at).row === 0 || !column) {

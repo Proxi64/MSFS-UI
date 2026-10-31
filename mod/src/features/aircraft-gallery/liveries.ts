@@ -211,7 +211,7 @@ export class LiveryColumn {
     }
     this.cells = items.map((livery) => {
       // marquee__trigger: hovering the tile scrolls its texts that are too long, as on the sim's own tiles.
-      const host = el('div', this.rows ? 'msfs-ui-gal__row msfs-ui-gal__livery-row marquee__trigger' : 'msfs-ui-gal__tile msfs-ui-gal__livery marquee__trigger');
+      const host = el('div', this.rows ? 'msfs-ui-gal__row msfs-ui-row-tile msfs-ui-gal__livery-row marquee__trigger' : 'msfs-ui-gal__tile msfs-ui-gal__livery marquee__trigger');
       this.list.appendChild(host);
       const cell: Cell = { livery, host, slot: null, card: null };
       scope.listen(host, 'mouseenter', () => (this.name.textContent = translate(cell.livery.title)));

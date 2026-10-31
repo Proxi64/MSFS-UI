@@ -4,18 +4,8 @@
  * negative margins (Coherent does not widen the element).
  */
 
-.msfs-ui-gal {
-  position: absolute;
-  z-index: 50;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  /* One unit of the sim's mock-ups (1/1080 of the screen height), from the sim's own variable. */
-  --u: calc(var(--unscaledScreenHeight) * 1px / 1080);
-  color: var(--colorComplementary1);
-  font-size: var(--fontSizeXS);
-  pointer-events: none;
-}
+/* A root of the mod (core/theme.css, msfs-ui-root). */
+.msfs-ui-gal { display: flex; flex-direction: column; pointer-events: none; }
 .msfs-ui-gal__body,
 .msfs-ui-gal__control { pointer-events: auto; }
 
@@ -127,26 +117,12 @@
  */
 .msfs-ui-gal__body .msfs-ui-gal__row { width: var(--aircraft-row-w, 100%); margin-left: var(--aircraft-row-x, 0px); }
 /*
- * The marketplace tile: one line centred in the row, the name in its bold Title, then "- studio - variant" in its
- * light Creator (gallery.ts). Its rating and separator, its price or "Owned" banner and its own heart over the
- * image are hidden: the row's heart is the mod's, in its top right corner.
+ * The marketplace tile made a row (core/theme.css, msfs-ui-row-tile): one line centred in the row, the name in its
+ * bold Title, then "- studio - variant" in its light Creator (gallery-cells.ts). The text is cut before the row's
+ * icon (no ellipsis in the engine; hovering scrolls it).
  */
-.msfs-ui-gal__row [name="Rating_Overview"],
-.msfs-ui-gal__row [name="Details"] [name="Separator"],
-.msfs-ui-gal__row [name="Banner"],
-.msfs-ui-gal__row [name="WishlistBlock"] { display: none !important; }
-/*
- * The image box takes the thumbnails' ratio (720 x 344, all aircraft): the tile's own box is wider and its "cover"
- * cut the top and bottom of each thumbnail. The title block keeps its 6-unit gap after it.
- */
-.msfs-ui-gal__row [name="ImageBlock"] { width: calc(var(--u) * 161) !important; }
-/* The text stops before the row's icon and is cut there (no ellipsis in the engine; hovering scrolls it). */
 .msfs-ui-gal__row [name="TitleBlock"] {
-  left: calc(var(--u) * 167) !important;
-  right: calc(var(--u) * 40) !important;
   overflow: hidden !important;
-  top: 0 !important;
-  height: 100% !important;
   flex-direction: row !important;
   align-items: center !important;
   justify-content: flex-start !important;
@@ -157,14 +133,12 @@
 
 .msfs-ui-gal__card { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 /*
- * A plain list row (aircraft or livery) in the colours of a plain gallery tile's text banner (measured on 1.9.21): the
- * sim's rgb(59, 132, 235) at 30 % over rgba(30, 66, 118, 0.2), instead of the horizontal tile's opaque rgb(36, 41, 52).
- * Its Background is also the one the sim's Selected and Hover states repaint: they keep the sim's colours (is-selected
- * is set by gallery.ts and liveries.ts with the tile's selection).
+ * A plain list row (aircraft or livery) in the colours of a plain gallery tile's text banner (core/theme.css), instead
+ * of the horizontal tile's opaque rgb(36, 41, 52). Its Background is also the one the sim's Selected and Hover states
+ * repaint: they keep the sim's colours (is-selected is set by gallery-cells.ts and liveries.ts with the tile's
+ * selection).
  */
-.msfs-ui-gal__row:not(.is-selected):not(:hover) .msfs-ui-gal__card [name="Background"] {
-  background-image: linear-gradient(165deg, rgba(59, 132, 235, 0.3) 0%, rgba(59, 132, 235, 0.3) 100%), linear-gradient(165deg, rgba(30, 66, 118, 0.2) 0%, rgba(30, 66, 118, 0.2) 100%) !important;
-}
+.msfs-ui-gal__row:not(.is-selected):not(:hover) .msfs-ui-gal__card [name="Background"] { background-image: var(--msfs-ui-banner) !important; }
 /*
  * The tile's third line of text (its Distance, here the studio): its own State_Distance shows it, but the tile's
  * Disabled state hides it again for good, so it is shown here.
@@ -188,15 +162,12 @@
   width: calc(var(--u) * 22);
   height: calc(var(--u) * 22);
 }
-/* Dark on a hovered row, which the sim paints white; darker still under the pointer. */
-.msfs-ui-gal__row:hover .msfs-ui-icon { color: rgba(31, 37, 48, 0.85); }
-.msfs-ui-gal__row:hover .msfs-ui-icon:hover { color: #1f2530; }
 /*
- * Over a thumbnail (a tile of the gallery, of the Default view or of the livery column): a small dark translucent disc
- * under the icon, tight (its host 4 units larger; a larger one looked heavy to the owner), so that it reads over a
- * light sky. Not on a list row, whose blue is dark enough. The same in aircraft-setup.css for its liveries.
+ * Over a thumbnail (a tile of the gallery, of the Default view or of the livery column): the small dark disc under the
+ * icon (core/theme.css), tight (its host 4 units larger; a larger one looked heavy to the owner). Not on a list row,
+ * whose blue is dark enough. The same in aircraft-setup.css for its liveries.
  */
-.msfs-ui-gal__tile .msfs-ui-gal__icon { border-radius: 50%; background-color: rgba(10, 16, 26, 0.55); }
+.msfs-ui-gal__tile .msfs-ui-gal__icon { border-radius: 50%; background-color: var(--msfs-ui-icon-disc); }
 .msfs-ui-gal__tile .msfs-ui-gal__icon .msfs-ui-icon {
   left: calc(var(--u) * 2);
   top: calc(var(--u) * 2);
@@ -238,14 +209,8 @@
   top: calc(50% - var(--u) * 22);
 }
 
-/*
- * Behind the thumbnails, the sim's studio backdrop (colours measured on the sim's own thumbnails, 1.9.18): a few
- * publishers ship a transparent thumbnail (Nemeth Designs' EC-135), which would otherwise show the tile's dark colour.
- */
-.msfs-ui-gal__tile img[name="ImageBlock"],
-.msfs-ui-gal__row img[name="Image"] {
-  background-image: linear-gradient(to bottom, rgb(165, 173, 198), rgb(150, 164, 193) 50%, rgb(100, 118, 152)) !important;
-}
+/* Behind the tiles' thumbnails, the sim's studio backdrop (core/theme.css; the rows' is the row tile's). */
+.msfs-ui-gal__tile img[name="ImageBlock"] { background-image: var(--msfs-ui-thumbnail-backdrop) !important; }
 
 /*
  * Side by side layout: the livery column on the right half (liveries.ts, placed by gallery.ts), a header as in the

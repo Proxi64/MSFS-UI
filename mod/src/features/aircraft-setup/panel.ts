@@ -57,7 +57,7 @@ function launchFlow(event: string): void {
 export class SetupPanel {
   private readonly page: Manipulator;
   private readonly scope: Scope;
-  private readonly root = el('div', 'msfs-ui-setup');
+  private readonly root = el('div', 'msfs-ui-root msfs-ui-setup');
   private readonly variants: VariantsList;
   private readonly liveries: LiveryThumbnails;
   private readonly statistics: StatisticRows;

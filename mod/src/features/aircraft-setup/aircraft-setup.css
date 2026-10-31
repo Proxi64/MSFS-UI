@@ -5,18 +5,12 @@
  * panel's padding stops at the same edges. Gaps of 6 units, no negative margins (Coherent does not widen the element).
  */
 
+/* A root of the mod (core/theme.css, msfs-ui-root). */
 .msfs-ui-setup {
-  position: absolute;
-  z-index: 50;
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   /* At the top only: its blocks as wide as the sim's title block, the last one 6 units above the "Configure" tile. */
   padding: calc(var(--u) * 6) 0 0 0;
-  /* One unit of the sim's mock-ups (1/1080 of the screen height), from the sim's own variable. */
-  --u: calc(var(--unscaledScreenHeight) * 1px / 1080);
-  color: var(--colorComplementary1);
-  font-size: var(--fontSizeXS);
   pointer-events: auto;
 }
 .msfs-ui-setup .msfs-ui-header { margin-bottom: calc(var(--u) * 6); }
@@ -83,8 +77,8 @@
 }
 .msfs-ui-setup__livery:hover .msfs-ui-setup__icon,
 .msfs-ui-setup__livery.is-favorite .msfs-ui-setup__icon { opacity: 1; }
-/* Over the thumbnail, the gallery's small dark disc under the heart (aircraft-gallery.css). */
-.msfs-ui-setup__icon { border-radius: 50%; background-color: rgba(10, 16, 26, 0.55); }
+/* Over the thumbnail, the small dark disc under the heart (core/theme.css), as in the gallery. */
+.msfs-ui-setup__icon { border-radius: 50%; background-color: var(--msfs-ui-icon-disc); }
 .msfs-ui-setup__icon .msfs-ui-icon {
   left: calc(var(--u) * 2);
   top: calc(var(--u) * 2);
