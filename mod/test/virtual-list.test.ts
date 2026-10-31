@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { cellAction, layoutWidth } from '../src/core/virtual-list.ts';
+import { cellAction, layoutWidth, revealPosition } from '../src/core/virtual-list.ts';
 
 describe('cellAction', () => {
   // A list showing 1000 to 2000 px; components made within 300 px of it, kept within 900 px.
@@ -41,5 +41,18 @@ describe('layoutWidth', () => {
     // At 790 px the content is 988 px high and would fit in 990: deciding on the current width would swing.
     assert.equal(contentHeight(790) <= 990, true);
     assert.deepEqual(layoutWidth(800, 10, contentHeight, 990), { width: 790, scrolls: true });
+  });
+});
+
+describe('revealPosition', () => {
+  // Rows of 42 pixels (a variant tile of the setup panel and its gap) in a list 210 high.
+  const step = 42;
+
+  it('scrolls to show a row, centred, within the list', () => {
+    const rows = { count: 20, step };
+    assert.equal(revealPosition(0, rows, 210), 0);
+    assert.equal(revealPosition(10, rows, 210), 10 * step - 84);
+    assert.equal(revealPosition(19, rows, 210), 20 * step - 210, 'the last row ends at the bottom');
+    assert.equal(revealPosition(5, { count: 3, step }, 210), 0, 'a list that fits does not scroll');
   });
 });

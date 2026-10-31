@@ -7,6 +7,7 @@ import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
+import { revealPosition, type Rows } from '../../core/virtual-list.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import {
@@ -20,14 +21,15 @@ import {
 } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries } from '../../sim/favorites.ts';
 import { liveryFolder, TAIL_NUMBER } from '../../sim/liveries.ts';
+import { orderLiveries, type LiveryOrder } from '../../sim/livery-order.ts';
+import { translate } from '../../sim/localization.ts';
 import { cleanTail } from '../../sim/registration.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layout.ts';
-import { store, translate, watch } from '../../sim/store.ts';
+import { store, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
-import { orderLiveries, type LiveryOrder } from './livery-order.ts';
-import { overflows, revealPosition, rowCount, variantsHeight, variantsPerRow, type Rows } from './setup-layout.ts';
+import { overflows, rowCount, variantsHeight, variantsPerRow } from './setup-layout.ts';
 
 interface IdentificationField {
   dataName: string;

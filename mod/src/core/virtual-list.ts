@@ -32,3 +32,18 @@ export function layoutWidth(full: number, bar: number, contentHeightAt: (width: 
   const scrolls = contentHeightAt(full) > listHeight + 0.5;
   return { width: scrolls ? full - bar : full, scrolls };
 }
+
+/** Rows of a list: their number and the height of one row with the gap under it, in pixels. */
+export interface Rows {
+  count: number;
+  step: number;
+}
+
+/**
+ * Scroll position that shows row `row` in a list of `height`, centred when the list scrolls (0 for the first rows).
+ */
+export function revealPosition(row: number, rows: Rows, height: number): number {
+  const max = Math.max(0, rows.count * rows.step - height);
+  const centred = row * rows.step - (height - rows.step) / 2;
+  return Math.round(Math.min(max, Math.max(0, centred)));
+}

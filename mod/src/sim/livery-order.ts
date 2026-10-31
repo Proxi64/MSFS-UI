@@ -2,7 +2,7 @@
 // in the sim's order. The order is set when a variant first appears, then kept: clicking a heart or a livery does not
 // move the thumbnail under the mouse.
 
-import { variationOf } from '../../sim/liveries.ts';
+import { variationOf } from './liveries.ts';
 
 /** The order set for a variant. */
 export interface LiveryOrder {

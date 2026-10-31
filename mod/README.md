@@ -87,7 +87,7 @@ src/
                        side layout), livery-column.ts (pure: split, tile size, tail line), aircraft-gallery.css
                        (layout only)
     aircraft-setup/    index.ts (column width, per layout), panel.ts (the panel, made of sim components),
-                       livery-order.ts (pure), setup-layout.ts (pure: the lists' heights), aircraft-setup.css
+                       setup-layout.ts (pure: the lists' heights), aircraft-setup.css
                        (layout only)
     freeflight-favorites/ index.ts (and the record of aircraft use), panel.ts (the Favorites block on Free
                        Flight, made of sim components), entries.ts (pure: entries, kept order, selection, removal),
@@ -105,10 +105,13 @@ src/
     vault-protocol.ts  the CommBus messages of the vault module (pure; same format as wasm/README.md)
     dom.ts             el, button, loadSvg, uiUnit (one unit of the sim's mock-ups, in px)
     theme.ts, .css     panels built like the sim's cards (blur, accessibility layer, veil; inputLocker),
-                       section headers, compact TileButton hosts; GROUP_GAP (Free Flight's gap between groups)
+                       section headers, compact TileButton hosts
     icons.ts           icons drawn by the mod
+    virtual-list.ts    which cells of a list keep their components, the width it lays out in, the scroll that shows a row (pure)
   sim/
-    store.ts           the sim's data model (UniversalProxy(new ReadableStore())), watch, translate
+    store.ts           the sim's data model (UniversalProxy(new ReadableStore())), watch
+    localization.ts    translate: the sim's translation of a TT: key
+    real-scroll.ts     the sim's scrolling list (<real-scroll>) and its scroll bar's width
     screens.ts         onScreenActive(guid, scope, …): one hook per screen, dispatched to the features;
                        isShown, isOnScreen
     components.ts      createComponent(scope, guid, parent): the sim's own components (see below)
@@ -118,6 +121,9 @@ src/
     vault.ts           the vault module over the CommBus: load, snapshot after each burst of writes, confirmation
     profile-save.ts    the sim's profile saved after the mod's writes (datastorage fallback: it reaches the disk only then)
     selection-layout.ts  flag set by the gallery while it shows the liveries, read by the setup panel
+    freeflight-layout.ts  GROUP_GAP: Free Flight's gap between groups, set by the weather bar, read by the favourites
+    livery-order.ts    order of the livery thumbnails, favourites first, kept while the variant stays (pure)
+    component-pool.ts  the sim's components of a list, recycled from cell to cell
     aircraft-loading.ts  loading an aircraft with its livery, configurator sync, use tracking
     liveries.ts        livery keys and folders, tail numbers per livery (MSFS_UI_LIVERY_TAILS)
     registration.ts    registration of a livery (livery.cfg, name) and choice of the tail number (pure)

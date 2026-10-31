@@ -11,7 +11,8 @@ import { loadData, saveData } from '../core/storage.ts';
 import type { Settings } from '../generated/catalog.ts';
 import { liveryDirectory, liveryKey, loadLiveryTails, saveLiveryTail, TAIL_NUMBER } from '../sim/liveries.ts';
 import { atcIdFromCfg, liveryNameFromCfg, pickRegistration, registrationFromName } from '../sim/registration.ts';
-import { store, translate, watch } from '../sim/store.ts';
+import { translate } from '../sim/localization.ts';
+import { store, watch } from '../sim/store.ts';
 
 /** Maximum length of the field when the sim does not give it (`allowedLength` is 9 on sim 1.9.18). */
 const DEFAULT_MAX_LENGTH = 9;

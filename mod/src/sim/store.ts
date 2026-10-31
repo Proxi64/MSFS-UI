@@ -49,13 +49,6 @@ export async function readArray<T>(node: StoreNode): Promise<T[]> {
   return items;
 }
 
-/** Translates a `TT:…` key with the sim's localisation (the key itself when unknown). */
-export function translate(key: string): string {
-  const top = window.top as unknown as { g_localization?: { Translate(key: string): string } } | null;
-  const localization = top ? top.g_localization : undefined;
-  return (localization && localization.Translate(key)) || key;
-}
-
 // ----- Types of the values read (partial) -----
 
 export interface DataValue {

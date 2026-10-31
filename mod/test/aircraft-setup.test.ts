@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { orderLiveries } from '../src/features/aircraft-setup/livery-order.ts';
-import { overflows, revealPosition, rowCount, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
+import { overflows, rowCount, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
+import { orderLiveries } from '../src/sim/livery-order.ts';
 import {
   favoriteLiveriesOf,
   findFavoriteLivery,
@@ -95,14 +95,6 @@ describe('setup panel layout', () => {
     const height = variantsHeight(500, rows, { count: 0, step: liveryStep });
     assert.equal(height, 90);
     assert.equal(overflows(rows, height), false);
-  });
-
-  it('scrolls to show the selected variant, centred, within the list', () => {
-    const rows = { count: 20, step: variant };
-    assert.equal(revealPosition(0, rows, 210), 0);
-    assert.equal(revealPosition(10, rows, 210), 10 * variant - 84);
-    assert.equal(revealPosition(19, rows, 210), 20 * variant - 210, 'the last row ends at the bottom');
-    assert.equal(revealPosition(5, { count: 3, step: variant }, 210), 0, 'a list that fits does not scroll');
   });
 });
 

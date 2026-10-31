@@ -8,13 +8,15 @@ import { el, uiUnit } from '../../core/dom.ts';
 import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
-import { GROUP_GAP, GROUP_GAP_ATTRIBUTE, panel } from '../../core/theme.ts';
+import { panel } from '../../core/theme.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
-import { store, translate, watch } from '../../sim/store.ts';
+import { GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../sim/freeflight-layout.ts';
+import { translate } from '../../sim/localization.ts';
+import { store, watch } from '../../sim/store.ts';
 import { collectEntries, isCurrentEntry, orderEntries, withoutLivery, type FavoriteEntry } from './entries.ts';
 
 /** The sim's horizontal marketplace tile: its hover handler reads `item.isOwned` (see the gallery). */

@@ -3,11 +3,7 @@
 // element when it needs more. An aircraft with many variants (the iFly 737 MAX makes one per livery) keeps its
 // liveries in view, and the reverse.
 
-/** Rows of a list: their number and the height of one row with the gap under it, in pixels. */
-export interface Rows {
-  count: number;
-  step: number;
-}
+import type { Rows } from '../../core/virtual-list.ts';
 
 /** Rows each list keeps when the other one needs more room. */
 export const KEEP_VARIANT_ROWS = 3;
@@ -45,13 +41,4 @@ export function variantsHeight(room: number, variants: Rows, liveries: Rows): nu
  */
 export function overflows(rows: Rows, height: number): boolean {
   return rows.count * rows.step > height + 1;
-}
-
-/**
- * Scroll position that shows row `row` in a list of `height`, centred when the list scrolls (0 for the first rows).
- */
-export function revealPosition(row: number, rows: Rows, height: number): number {
-  const max = Math.max(0, rows.count * rows.step - height);
-  const centred = row * rows.step - (height - rows.step) / 2;
-  return Math.round(Math.min(max, Math.max(0, centred)));
 }

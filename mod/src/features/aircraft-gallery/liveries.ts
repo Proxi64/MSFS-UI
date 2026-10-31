@@ -6,18 +6,18 @@ import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { iconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
-import { cellAction } from '../../core/virtual-list.ts';
+import { cellAction, revealPosition } from '../../core/virtual-list.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import { chooseLivery, readConfigurator, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryFolder, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
+import { orderLiveries, type LiveryOrder } from '../../sim/livery-order.ts';
+import { translate } from '../../sim/localization.ts';
 import { atcIdFromCfg } from '../../sim/registration.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
-import { store, translate, watch } from '../../sim/store.ts';
-import { orderLiveries, type LiveryOrder } from '../aircraft-setup/livery-order.ts';
-import { revealPosition } from '../aircraft-setup/setup-layout.ts';
+import { store, watch } from '../../sim/store.ts';
 import { LIVERY_COLUMNS, liveryFit, liveryTail } from './livery-column.ts';
 
 /** The sim's horizontal marketplace tile (see the gallery's List view): an owned item makes its hover do nothing more. */
@@ -261,7 +261,11 @@ export class LiveryColumn {
       if (this.poolScope) this.poolScope.dispose();
       const scope = (this.poolScope = this.scope.child());
       const rows = (this.poolRows = this.rows);
-      this.pool = new ComponentPool<Cell>(scope, this.root, (slot, slotScope) => this.createSlot(slot, slotScope, rows));
+      this.pool = new ComponentPool<Cell>(scope, this.root, {
+        cardClass: 'msfs-ui-gal__card',
+        iconClass: 'msfs-ui-gal__icon',
+        create: (slot, slotScope) => this.createSlot(slot, slotScope, rows),
+      });
     }
     return this.pool;
   }

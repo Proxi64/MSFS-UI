@@ -34,7 +34,8 @@ import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layout.ts';
-import { readArray, store, translate, watch } from '../../sim/store.ts';
+import { translate } from '../../sim/localization.ts';
+import { readArray, store, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { barColumns, columnOf, defaultGrid, settleColumn, WheelColumns, type DefaultGrid } from './default-grid.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
@@ -1038,7 +1039,11 @@ export class Gallery {
       if (this.poolScope) this.poolScope.dispose();
       const scope = (this.poolScope = this.scope.child());
       this.poolKind = kind;
-      this.pool = new ComponentPool<Cell>(scope, this.root, (slot, slotScope) => this.createSlot(slot, slotScope, kind === 'tile'));
+      this.pool = new ComponentPool<Cell>(scope, this.root, {
+        cardClass: 'msfs-ui-gal__card',
+        iconClass: 'msfs-ui-gal__icon',
+        create: (slot, slotScope) => this.createSlot(slot, slotScope, kind === 'tile'),
+      });
     }
     return this.pool;
   }

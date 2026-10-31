@@ -7,7 +7,7 @@ import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { log, logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { loadData, saveData } from '../../core/storage.ts';
-import { addPanelLayers, GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../core/theme.ts';
+import { addPanelLayers } from '../../core/theme.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import {
   COMPONENTS,
@@ -22,7 +22,9 @@ import {
 } from '../../sim/components.ts';
 import type { RealScroll } from '../../sim/real-scroll.ts';
 import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
-import { readArray, store, translate, watch, type StoreNode } from '../../sim/store.ts';
+import { GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../sim/freeflight-layout.ts';
+import { translate } from '../../sim/localization.ts';
+import { readArray, store, watch, type StoreNode } from '../../sim/store.ts';
 import type { FlightConditions, FlightConfigurationButton, FlightLocation, TimeInfo, WeatherInfo, WeatherPreset } from './model.ts';
 import { isSimPreset, rememberedPreset } from './presets.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, TIME_MODES, type SentTime, type TimeMode } from './time-of-day.ts';

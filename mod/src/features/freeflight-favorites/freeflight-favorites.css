@@ -56,3 +56,6 @@
   width: calc(var(--u) * 22);
   height: calc(var(--u) * 22);
 }
+/* Dark on a hovered row, which the sim paints white; darker still under the pointer. */
+.msfs-ui-fav__row:hover .msfs-ui-icon { color: rgba(31, 37, 48, 0.85); }
+.msfs-ui-fav__row:hover .msfs-ui-icon:hover { color: #1f2530; }

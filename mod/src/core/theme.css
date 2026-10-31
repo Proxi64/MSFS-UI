@@ -73,7 +73,7 @@
 /*
  * The mod's own icon buttons (core/icon-toggle.ts): an inline SVG in currentColor, filling its host, which the feature's
  * CSS places. Full white (users found them hard to see, 2026-10-30: they were 85 % white, the eye 55 % until hovered);
- * dark on a white hovered list row; over a thumbnail, a dark disc under them (the features' CSS). A favourite's heart is
+ * dark on a white hovered list row and, over a thumbnail, a dark disc under them (both in the features' CSS). A favourite's heart is
  * full, white as the others (the owner's choice, 2026-10-30, after the sim's yellow). Children take no pointer events: a
  * click on one would not bubble up.
  */
@@ -89,7 +89,3 @@
 .msfs-ui-icon svg,
 .msfs-ui-icon svg * { pointer-events: none; }
 .msfs-ui-icon svg { display: block; width: 100%; height: 100%; }
-.msfs-ui-gal__row:hover .msfs-ui-icon,
-.msfs-ui-fav__row:hover .msfs-ui-icon { color: rgba(31, 37, 48, 0.85); }
-.msfs-ui-gal__row:hover .msfs-ui-icon:hover,
-.msfs-ui-fav__row:hover .msfs-ui-icon:hover { color: #1f2530; }

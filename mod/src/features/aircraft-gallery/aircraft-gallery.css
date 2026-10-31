@@ -188,6 +188,9 @@
   width: calc(var(--u) * 22);
   height: calc(var(--u) * 22);
 }
+/* Dark on a hovered row, which the sim paints white; darker still under the pointer. */
+.msfs-ui-gal__row:hover .msfs-ui-icon { color: rgba(31, 37, 48, 0.85); }
+.msfs-ui-gal__row:hover .msfs-ui-icon:hover { color: #1f2530; }
 /*
  * Over a thumbnail (a tile of the gallery, of the Default view or of the livery column): a small dark translucent disc
  * under the icon, tight (its host 4 units larger; a larger one looked heavy to the owner), so that it reads over a

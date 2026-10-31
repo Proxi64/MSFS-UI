@@ -21,12 +21,20 @@ export interface PoolSlot<T> {
   host: HTMLElement | null;
 }
 
+/** How a pool makes its slots: the classes of their two hosts (the list's CSS sizes them), and their components. */
+export interface PoolSlotMaker<T> {
+  readonly cardClass: string;
+  readonly iconClass: string;
+  /** Makes the slot's components in its hosts, once per slot. */
+  create(slot: PoolSlot<T>, scope: Scope): void;
+}
+
 export class ComponentPool<T> {
   private readonly scope: Scope;
   private readonly parking: HTMLElement;
   /** Where new slots make their components, out of sight: a list may drop its hosts meanwhile. */
   private readonly staging: HTMLElement;
-  private readonly create: (slot: PoolSlot<T>, scope: Scope) => void;
+  private readonly maker: PoolSlotMaker<T>;
   private readonly slots: PoolSlot<T>[] = [];
   private readonly free: PoolSlot<T>[] = [];
   /** Slots whose components are made: only these move (the sim refuses a component moved while it sets up). */
@@ -34,13 +42,10 @@ export class ComponentPool<T> {
   /** Slots released while still loading: parked once ready. */
   private readonly pending: PoolSlot<T>[] = [];
 
-  /**
-   * `create` makes the slot's components in its hosts (once per slot); `parent` holds the hidden parking. The slots
-   * are disposed with `scope`.
-   */
-  constructor(scope: Scope, parent: HTMLElement, create: (slot: PoolSlot<T>, scope: Scope) => void) {
+  /** `maker` makes the slots; `parent` holds the hidden parking. The slots are disposed with `scope`. */
+  constructor(scope: Scope, parent: HTMLElement, maker: PoolSlotMaker<T>) {
     this.scope = scope;
-    this.create = create;
+    this.maker = maker;
     this.parking = el('div', 'msfs-ui-pool');
     this.parking.style.display = 'none';
     scope.append(parent, this.parking);
@@ -61,11 +66,11 @@ export class ComponentPool<T> {
     if (at >= 0) {
       slot = this.free.splice(at, 1)[0]!;
     } else {
-      slot = { cardHost: el('div', 'msfs-ui-gal__card'), iconHost: el('div', 'msfs-ui-gal__icon'), card: null, icon: null, item, host };
+      slot = { cardHost: el('div', this.maker.cardClass), iconHost: el('div', this.maker.iconClass), card: null, icon: null, item, host };
       this.slots.push(slot);
       this.staging.appendChild(slot.cardHost);
       this.staging.appendChild(slot.iconHost);
-      this.create(slot, this.scope);
+      this.maker.create(slot, this.scope);
       return slot;
     }
     slot.item = item;
