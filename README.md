@@ -22,6 +22,8 @@ Aircraft selection: the gallery, the list, and the favourites first; the setup p
 
 ![Aircraft list](docs/images/gallery-list.png)
 
+![Aircraft default](docs/images/gallery-default.png)
+
 ![Favourites in the list](docs/images/favorites.png)
 
 ## Repository
