@@ -1,6 +1,8 @@
 // Promise helpers. Coherent GT may never settle some promises (a module that fails to load, a request the sim
 // ignores): every wait the mod depends on is bounded.
 
+import { logError } from './log.ts';
+
 /** Settles like `promise`, or rejects with `message` after `ms`. */
 export function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -15,6 +17,19 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, message: string)
         reject(error);
       },
     );
+  });
+}
+
+/** An answer of the sim: settles like `promise`, or rejects after `ms` with "`what`: no answer after `ms` ms". */
+export function answerWithin<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+  return withTimeout(promise, ms, `${what}: no answer after ${ms} ms`);
+}
+
+/** An answer of the sim, or null when it fails or does not come within `ms`; the failure is logged as `failure`. */
+export function answerOrNull<T>(promise: Promise<T>, ms: number, failure: string): Promise<T | null> {
+  return withTimeout(promise, ms, `no answer after ${ms} ms`).catch((error: unknown) => {
+    logError(failure, error);
+    return null;
   });
 }
 

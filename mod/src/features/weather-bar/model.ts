@@ -1,18 +1,7 @@
-// Values of the sim's data model read by the weather bar (partial types). Paths are listed in compat.json ("symbols").
+// Values of the sim's data model read by the weather bar (partial types; the flight's time is in sim/store.ts, shared
+// with the time wheel). Paths are listed in compat.json ("symbols").
 
 import type { DataValue } from '../../sim/store.ts';
-
-export interface TimeInfo {
-  isLiveTime: boolean;
-  utcTime: DataValue;
-  /** Local time shown (live offset included), in seconds since midnight. */
-  localTime: DataValue;
-  /** Real local time, without the live offset. */
-  localTimeWithoutOffset: DataValue;
-  day: number;
-  month: number;
-  year: number;
-}
 
 export interface WeatherPreset {
   index: number;

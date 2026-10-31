@@ -37,9 +37,14 @@ export function registrationFromName(name: string): string | null {
   return null;
 }
 
+/** `value` in upper case with only what the sim's field accepts: letters, digits and hyphens. */
+function registrationCharacters(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+}
+
 /** Brought to what the sim's field accepts (letters, digits, hyphen, upper case); null if empty or too long. */
 export function sanitizeRegistration(value: string, maxLength: number): string | null {
-  const clean = value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  const clean = registrationCharacters(value);
   return clean && (maxLength <= 0 || clean.length <= maxLength) ? clean : null;
 }
 
@@ -47,6 +52,18 @@ export function sanitizeRegistration(value: string, maxLength: number): string |
 export interface TailCandidate {
   readonly source: string;
   readonly value: string | null | undefined;
+}
+
+/**
+ * A livery's own tail numbers, in the order the mod applies them: the one chosen for the livery, the `atc_id` of its
+ * livery.cfg, a registration recognised in its name (`name`, translated).
+ */
+export function liveryTailCandidates(livery: { chosen: string | undefined; atcId: string | null; name: string | null }): TailCandidate[] {
+  return [
+    { source: 'chosen for this livery', value: livery.chosen },
+    { source: "the livery's atc_id", value: livery.atcId },
+    { source: "the livery's name", value: livery.name ? registrationFromName(livery.name) : null },
+  ];
 }
 
 /** The first candidate, in order, that the field accepts once sanitised; null if none does. */
@@ -60,8 +77,5 @@ export function pickRegistration(candidates: readonly TailCandidate[], maxLength
 
 /** A tail number being typed: letters, digits and hyphens in upper case, cut to the field's length. */
 export function cleanTail(value: string, maxLength: number): string {
-  return value
-    .toUpperCase()
-    .replace(/[^A-Z0-9-]/g, '')
-    .slice(0, maxLength);
+  return registrationCharacters(value).slice(0, maxLength);
 }

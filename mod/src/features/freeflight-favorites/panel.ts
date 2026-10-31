@@ -16,19 +16,13 @@ import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
+import type { RealScroll } from '../../sim/real-scroll.ts';
 import { store, watch } from '../../sim/store.ts';
 import { collectEntries, isCurrentEntry, orderEntries, withoutLivery, type FavoriteEntry } from './entries.ts';
 
 /** The sim's horizontal marketplace tile: its hover handler reads `item.isOwned` (see the gallery). */
 interface HorizontalTileManipulator {
   item?: { isOwned: boolean; isOwnedBySubscription: boolean; isFavorite: boolean };
-}
-
-/** The sim's scrolling list (see the gallery): it scrolls on the wheel and draws its scroll bar. */
-interface RealScroll extends HTMLElement {
-  readonly maxScroll: number;
-  scrollToPosition(position: number): void;
-  updateSizes?(): void;
 }
 
 /** A row on screen and its components once created. */

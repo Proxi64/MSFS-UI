@@ -2,7 +2,7 @@
 // (src/sim/components.ts): icon buttons for the weather presets, choice tiles for the times of day, traffic and
 // multiplayer, tabs and the flight category of the METAR.
 
-import { withTimeout } from '../../core/async.ts';
+import { answerOrNull, answerWithin } from '../../core/async.ts';
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { log, logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
@@ -24,8 +24,8 @@ import type { RealScroll } from '../../sim/real-scroll.ts';
 import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
 import { GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
-import { readArray, store, watch, type StoreNode } from '../../sim/store.ts';
-import type { FlightConditions, FlightConfigurationButton, FlightLocation, TimeInfo, WeatherInfo, WeatherPreset } from './model.ts';
+import { readArray, store, watch, type StoreNode, type TimeInfo } from '../../sim/store.ts';
+import type { FlightConditions, FlightConfigurationButton, FlightLocation, WeatherInfo, WeatherPreset } from './model.ts';
 import { isSimPreset, rememberedPreset } from './presets.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, TIME_MODES, type SentTime, type TimeMode } from './time-of-day.ts';
 import { flightRules, weatherSummary } from './weather-text.ts';
@@ -117,19 +117,6 @@ declare global {
 /** A translated label without its final precision in brackets. */
 function shortLabel(key: string): string {
   return translate(key).replace(/\s*\([^)]*\)\s*$/, '');
-}
-
-/** `promise`, or a rejection naming `what` when the sim does not answer within WEATHER_TIMEOUT_MS. */
-function within<T>(promise: Promise<T>, what: string): Promise<T> {
-  return withTimeout(promise, WEATHER_TIMEOUT_MS, `${what}: no answer after ${WEATHER_TIMEOUT_MS} ms`);
-}
-
-/** The value, or null if the promise rejects or does not settle within `ms`; the failure is logged as `what`. */
-function answerOrNull<T>(promise: Promise<T>, ms: number, what: string): Promise<T | null> {
-  return withTimeout(promise, ms, `no answer after ${ms} ms`).catch((error: unknown) => {
-    logError(what, error);
-    return null;
-  });
 }
 
 interface Section {
@@ -822,7 +809,7 @@ export class WeatherBar {
   private async restore(): Promise<boolean> {
     const memory = loadData<Memory>(MEMORY_KEY, { weather: null, time: null });
     // Read now rather than taken from the watches, which may not have answered yet at the first display.
-    const [time, liveBuffer, liveOffset, departure, weatherIndex] = await within(
+    const [time, liveBuffer, liveOffset, departure, weatherIndex] = await answerWithin(
       Promise.all([
         gameFlight.timeData() as Promise<TimeInfo>,
         gameFlight.isUsingLiveTimeBuffer() as Promise<boolean>,
@@ -830,6 +817,7 @@ export class WeatherBar {
         gameFlight.departure() as Promise<FlightLocation>,
         gameFlight.weatherIndex() as Promise<number>,
       ]),
+      WEATHER_TIMEOUT_MS,
       'the flight conditions',
     );
     if (this.scope.disposed) return false;
@@ -840,9 +828,9 @@ export class WeatherBar {
     this.weatherIndex = weatherIndex;
     const weather = rememberedPreset(this.presets, memory.weather, memory.weatherTitle);
     if (weather && weather.index !== this.weatherIndex) {
-      await within(store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(weather.index)), 'the weather preset');
+      await answerWithin(store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(weather.index)), WEATHER_TIMEOUT_MS, 'the weather preset');
     }
-    if (memory.time) await within(this.applyTime(memory.time), 'the time');
+    if (memory.time) await answerWithin(this.applyTime(memory.time), WEATHER_TIMEOUT_MS, 'the time');
     const restored: string[] = [];
     if (this.settings.traffic) {
       // The conditions are read again: applying the weather may have changed them.
@@ -853,7 +841,7 @@ export class WeatherBar {
         const id = memory[group];
         const target = id ? this.conditionButton(group, id) : undefined;
         if (!target || target.disabled || target.selected) continue;
-        await within(flight.SetFlightConditionConfiguration.request(target.id), `the flight condition ${target.id}`);
+        await answerWithin(flight.SetFlightConditionConfiguration.request(target.id), WEATHER_TIMEOUT_MS, `the flight condition ${target.id}`);
         restored.push(target.id);
       }
     }

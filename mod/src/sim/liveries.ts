@@ -6,6 +6,39 @@ import { loadData, saveData } from '../core/storage.ts';
 /** Translation key and `dataName` of the sim's tail number field (aircraft identification). */
 export const TAIL_NUMBER = 'TT:MENU.AIRCRAFT.TAIL_NUMBER';
 
+/** Length of the tail number field when the sim does not give it (`allowedLength` is 9 on sim 1.9.18). */
+export const DEFAULT_TAIL_LENGTH = 9;
+
+/** A field of the current aircraft's identification (`Game.Aircraft.CurrentIdentification`). */
+export interface IdentificationField {
+  dataName: string;
+  value: string;
+  allowedLength: number;
+}
+
+export interface Identification {
+  identificationInfos?: IdentificationField[];
+}
+
+/** The tail number field of an identification, or undefined. */
+export function tailNumberField(identification: Identification | null | undefined): IdentificationField | undefined {
+  const fields = identification && identification.identificationInfos;
+  return fields ? fields.find((field) => field.dataName === TAIL_NUMBER) : undefined;
+}
+
+/** The longest tail number the field takes: its own length, or DEFAULT_TAIL_LENGTH. */
+export function tailLength(field: IdentificationField | null | undefined): number {
+  return field && field.allowedLength > 0 ? field.allowedLength : DEFAULT_TAIL_LENGTH;
+}
+
+/** The text of a livery's livery.cfg, empty when there is none. */
+export function readLiveryCfg(folder: string): Promise<string> {
+  return fetch(`${folder}/livery.cfg`).then(
+    (response) => (response.ok ? response.text() : ''),
+    () => '',
+  );
+}
+
 /** Storage key: livery key → tail number (mod/README.md, Data stored in the sim). */
 const LIVERY_TAILS_KEY = 'LIVERY_TAILS';
 

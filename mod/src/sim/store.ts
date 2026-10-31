@@ -56,3 +56,16 @@ export interface DataValue {
   valueStr: string;
   unit: string;
 }
+
+/** The flight's time (`Game.CurrentFlight.GameFlight.timeData`), read by the weather bar and the time wheel. */
+export interface TimeInfo {
+  isLiveTime: boolean;
+  utcTime: DataValue;
+  /** Local time shown (live offset included), in seconds since midnight. */
+  localTime: DataValue;
+  /** Real local time, without the live offset. */
+  localTimeWithoutOffset: DataValue;
+  day: number;
+  month: number;
+  year: number;
+}

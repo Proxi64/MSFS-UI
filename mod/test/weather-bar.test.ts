@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { TimeInfo, WeatherInfo, WeatherPreset } from '../src/features/weather-bar/model.ts';
+import type { WeatherInfo, WeatherPreset } from '../src/features/weather-bar/model.ts';
+import type { TimeInfo } from '../src/sim/store.ts';
 import { isSimPreset, rememberedPreset } from '../src/features/weather-bar/presets.ts';
 import { parseDms, sunTimes } from '../src/features/weather-bar/sun.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, SETTLE_MS } from '../src/features/weather-bar/time-of-day.ts';

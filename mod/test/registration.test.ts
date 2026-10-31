@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { atcIdFromCfg, liveryNameFromCfg, pickRegistration, registrationFromName, sanitizeRegistration } from '../src/sim/registration.ts';
+import { atcIdFromCfg, liveryNameFromCfg, liveryTailCandidates, pickRegistration, registrationFromName, sanitizeRegistration } from '../src/sim/registration.ts';
 
 const CFG = [
   '[VERSION]',
@@ -90,5 +90,22 @@ describe('pickRegistration', () => {
 
   it('gives null when nothing fits', () => {
     assert.equal(pickRegistration(candidates(null, null, null, ''), 9), null);
+  });
+});
+
+describe('liveryTailCandidates', () => {
+  it('gives the chosen number, then the atc_id, then a registration in the name, in that order', () => {
+    const own = liveryTailCandidates({ chosen: 'F-ABCD', atcId: 'N561AJ', name: 'Air France F-GKXA' });
+    assert.deepEqual(own, [
+      { source: 'chosen for this livery', value: 'F-ABCD' },
+      { source: "the livery's atc_id", value: 'N561AJ' },
+      { source: "the livery's name", value: 'F-GKXA' },
+    ]);
+  });
+
+  it('lets the tail number feature end with its default, after the livery\'s own', () => {
+    const own = liveryTailCandidates({ chosen: undefined, atcId: null, name: 'House colors' });
+    assert.deepEqual(pickRegistration(own.concat([{ source: 'default', value: 'ASXGS' }]), 9), { registration: 'ASXGS', source: 'default' });
+    assert.equal(pickRegistration(own, 9), null, 'the livery column shows no number then');
   });
 });

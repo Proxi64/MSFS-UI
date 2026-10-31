@@ -7,6 +7,7 @@ import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
+import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { revealPosition, type Rows } from '../../core/virtual-list.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
@@ -20,7 +21,7 @@ import {
   type ConfiguratorState,
 } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries } from '../../sim/favorites.ts';
-import { liveryFolder, TAIL_NUMBER } from '../../sim/liveries.ts';
+import { liveryFolder, TAIL_NUMBER, tailLength, tailNumberField, type Identification, type IdentificationField } from '../../sim/liveries.ts';
 import { orderLiveries, type LiveryOrder } from '../../sim/livery-order.ts';
 import { translate } from '../../sim/localization.ts';
 import { cleanTail } from '../../sim/registration.ts';
@@ -30,12 +31,6 @@ import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layou
 import { store, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { overflows, rowCount, variantsHeight, variantsPerRow } from './setup-layout.ts';
-
-interface IdentificationField {
-  dataName: string;
-  value: string;
-  allowedLength: number;
-}
 
 /** The sim's livery button (ImageButtonLiveryManipulator). */
 interface LiveryButtonManipulator {
@@ -74,8 +69,6 @@ function removeAll(hosts: readonly HTMLElement[]): void {
   }
 }
 
-/** Length of the field when the sim does not give it. */
-const DEFAULT_TAIL_LENGTH = 9;
 const RELOAD_DELAY_MS = 80;
 /** Livery thumbnails: three per row, in the proportions of the sim's thumbnails (about 2:1). */
 const LIVERY_COLUMNS = 3;
@@ -182,7 +175,7 @@ export class SetupPanel {
   mount(): void {
     const scope = this.scope;
     // As the sim's panels: the mouse does not go through the panel (core/theme.ts).
-    this.root.setAttribute('data-input-group', 'inputLocker');
+    this.root.setAttribute('data-input-group', PANEL_INPUT_GROUP);
     const tailHost = this.build();
     scope.append(this.page.elt, this.root);
     scope.add(() => this.restoreStatistics());
@@ -212,7 +205,7 @@ export class SetupPanel {
     const reload = () => this.scheduleReload();
     watch(scope, configurator.Details, reload);
     watch(scope, aircraft.CurrentAircraft, reload);
-    watch<{ identificationInfos?: IdentificationField[] } | null>(scope, aircraft.CurrentIdentification, (identification) => this.onIdentification(identification));
+    watch<Identification | null>(scope, aircraft.CurrentIdentification, (identification) => this.onIdentification(identification));
     // A gallery heart removed also removes the aircraft's favourite liveries.
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, reload);
     scope.add(() => clearTimeout(this.reloadTimer));
@@ -629,14 +622,13 @@ export class SetupPanel {
 
   // ----- Tail number -----
 
-  private onIdentification(identification: { identificationInfos?: IdentificationField[] } | null): void {
-    const fields = identification && identification.identificationInfos;
-    this.tailInfo = (fields && fields.filter((field) => field.dataName === TAIL_NUMBER)[0]) || null;
+  private onIdentification(identification: Identification | null): void {
+    this.tailInfo = tailNumberField(identification) || null;
     if (this.tail) this.tail.value = this.tailInfo ? this.tailInfo.value : '';
   }
 
   private maxTailLength(): number {
-    return this.tailInfo && this.tailInfo.allowedLength > 0 ? this.tailInfo.allowedLength : DEFAULT_TAIL_LENGTH;
+    return tailLength(this.tailInfo);
   }
 
   private selectedLiveryId(): string | null {

@@ -13,6 +13,7 @@ import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { HEART_SVG, EYE_SLASH_SVG } from '../../core/icons.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
+import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { cellAction, layoutWidth, type Extent } from '../../core/virtual-list.ts';
 import { loadData, saveData } from '../../core/storage.ts';
 import type { Settings } from '../../generated/catalog.ts';
@@ -280,7 +281,7 @@ export class Gallery {
     const scope = this.scope;
     this.build();
     // The gaps between the tiles must not let the mouse through to the scene (core/theme.ts).
-    this.body.setAttribute('data-input-group', 'inputLocker');
+    this.body.setAttribute('data-input-group', PANEL_INPUT_GROUP);
     scope.append(this.page.elt, this.root);
     if (this.layoutChoice === 'sideBySide') {
       this.liveryColumn = new LiveryColumn(scope, this.root);

@@ -98,7 +98,7 @@ src/
     scope.ts           Scope: every change is undone (patch, listen, onEngine, interval, timeout, append)
     runtime.ts         root scope, window.__msfsUiRuntime, injectStyle
     config.ts          import of /msfs-ui/config.js, fallback to the defaults
-    async.ts           withTimeout: every wait on the sim is bounded
+    async.ts           withTimeout, answerWithin, answerOrNull: every wait on the sim is bounded
     settings.ts        validation of the settings (pure, same rules as MsfsUi.Core SettingsNormalizer)
     log.ts             [msfs-ui] log, one string per call
     storage.ts         the mod's data, keys MSFS_UI_*: an in-memory copy over the vault, or datastorage as the fallback
@@ -109,7 +109,7 @@ src/
     icons.ts           icons drawn by the mod
     virtual-list.ts    which cells of a list keep their components, the width it lays out in, the scroll that shows a row (pure)
   sim/
-    store.ts           the sim's data model (UniversalProxy(new ReadableStore())), watch
+    store.ts           the sim's data model (UniversalProxy(new ReadableStore())), watch; the types of values read (DataValue, TimeInfo)
     localization.ts    translate: the sim's translation of a TT: key
     real-scroll.ts     the sim's scrolling list (<real-scroll>) and its scroll bar's width
     screens.ts         onScreenActive(guid, scope, …): one hook per screen, dispatched to the features;
@@ -125,8 +125,9 @@ src/
     livery-order.ts    order of the livery thumbnails, favourites first, kept while the variant stays (pure)
     component-pool.ts  the sim's components of a list, recycled from cell to cell
     aircraft-loading.ts  loading an aircraft with its livery, configurator sync, use tracking
-    liveries.ts        livery keys and folders, tail numbers per livery (MSFS_UI_LIVERY_TAILS)
-    registration.ts    registration of a livery (livery.cfg, name) and choice of the tail number (pure)
+    liveries.ts        livery keys and folders, tail numbers per livery (MSFS_UI_LIVERY_TAILS),
+                       the tail number field (tailNumberField, tailLength), livery.cfg (readLiveryCfg)
+    registration.ts    registration of a livery (livery.cfg, name) and the order of its tail numbers (liveryTailCandidates, pure)
   generated/           catalog.ts, written by the build
 types/Global/          hand-written types of the sim's readable modules
 build/                 build.ts, catalog.ts, checks.ts

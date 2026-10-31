@@ -6,13 +6,14 @@ import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { iconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
+import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { cellAction, revealPosition } from '../../core/virtual-list.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import { chooseLivery, readConfigurator, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
-import { liveryDirectory, liveryFolder, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
+import { DEFAULT_TAIL_LENGTH, liveryDirectory, liveryFolder, liveryKey, loadLiveryTails, readLiveryCfg } from '../../sim/liveries.ts';
 import { orderLiveries, type LiveryOrder } from '../../sim/livery-order.ts';
 import { translate } from '../../sim/localization.ts';
 import { atcIdFromCfg } from '../../sim/registration.ts';
@@ -57,8 +58,6 @@ const ROW_STEP = 77 + 6;
 /** Components are created for the tiles within this distance of the visible part, and kept within the second, in layout units. */
 const CREATE_MARGIN = 300;
 const KEEP_MARGIN = 600;
-/** Length of the sim's tail number field (`allowedLength` on sim 1.9.18). */
-const TAIL_LENGTH = 9;
 
 const aircraft = store.Game.Aircraft;
 
@@ -104,7 +103,7 @@ export class LiveryColumn {
     this.list.className = 'msfs-ui-gal__livery-list';
     this.root.appendChild(this.list);
     // As the sim's panels: the mouse does not go through the column to the scene (core/theme.ts).
-    this.root.setAttribute('data-input-group', 'inputLocker');
+    this.root.setAttribute('data-input-group', PANEL_INPUT_GROUP);
     this.root.style.display = 'none';
     scope.append(parent, this.root);
 
@@ -330,7 +329,7 @@ export class LiveryColumn {
   private tail(livery: ConfiguratorLivery, tails: Record<string, string>): string {
     const key = this.keyOf(livery);
     const atcId = this.atcIds.get(key);
-    return liveryTail(tails[key], atcId === undefined ? null : atcId, translate(livery.title), TAIL_LENGTH);
+    return liveryTail(tails[key], atcId === undefined ? null : atcId, translate(livery.title), DEFAULT_TAIL_LENGTH);
   }
 
   /** Reads the `atc_id` of a livery's livery.cfg once; its tile shows it when it comes. */
@@ -339,11 +338,7 @@ export class LiveryColumn {
     const key = this.keyOf(livery);
     if (this.atcIds.has(key)) return;
     this.atcIds.set(key, null);
-    fetch(`${liveryDirectory(livery.imageUrl)}/livery.cfg`)
-      .then(
-        (response) => (response.ok ? response.text() : ''),
-        () => '',
-      )
+    readLiveryCfg(liveryDirectory(livery.imageUrl))
       .then((cfg) => {
         const atcId = atcIdFromCfg(cfg);
         if (this.scope.disposed || !atcId) return;

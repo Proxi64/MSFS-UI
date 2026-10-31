@@ -5,7 +5,7 @@
 // - otherwise: sets the departure time (`SetDepartureTime`, local seconds); "Now" goes back to the real time.
 
 import { parseDms, sunTimes } from './sun.ts';
-import type { TimeInfo } from './model.ts';
+import type { TimeInfo } from '../../sim/store.ts';
 
 export type TimeMode = 'now' | 'dawn' | 'day' | 'dusk' | 'night';
 export type DayMoment = Exclude<TimeMode, 'now'>;

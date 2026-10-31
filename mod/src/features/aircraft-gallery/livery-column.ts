@@ -2,7 +2,7 @@
 // (tested by test/aircraft-gallery.test.ts). The gallery is cut in two columns: the aircraft on the left, the liveries
 // of the current aircraft on the right, two large tiles per row; the bar is cut the same way (gallery.ts).
 
-import { pickRegistration, registrationFromName } from '../../sim/registration.ts';
+import { liveryTailCandidates, pickRegistration } from '../../sim/registration.ts';
 
 /** Proportions of the sim's livery thumbnails (720 × 344): the tile's image is never cut. */
 const THUMBNAIL_RATIO = 344 / 720;
@@ -100,18 +100,11 @@ export function lastColumnSpan(tile: { columns: number; width: number }, margin:
 }
 
 /**
- * The tail number of a livery as the mod would apply it (features/tail-number.ts): the one chosen for it, the
- * `atc_id` of its livery.cfg, a registration in its name; '' when none fits the field.
+ * The tail number of a livery as the mod would apply it (features/tail-number.ts, the same candidates): the one
+ * chosen for it, the `atc_id` of its livery.cfg, a registration in its name; '' when none fits the field.
  */
 export function liveryTail(chosen: string | undefined, atcId: string | null, title: string, maxLength: number): string {
-  const pick = pickRegistration(
-    [
-      { source: 'chosen for this livery', value: chosen },
-      { source: "the livery's atc_id", value: atcId },
-      { source: "the livery's name", value: registrationFromName(title) },
-    ],
-    maxLength,
-  );
+  const pick = pickRegistration(liveryTailCandidates({ chosen, atcId, name: title }), maxLength);
   return pick ? pick.registration : '';
 }
 

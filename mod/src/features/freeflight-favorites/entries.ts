@@ -19,10 +19,15 @@ export interface FavoriteEntry {
   usedAt: number;
 }
 
+/** The id of a favourite livery's entry. */
+function entryId(favorite: FavoriteLivery): string {
+  return `livery:${favorite.variationId}|${favorite.dir}`;
+}
+
 /** One entry per favourite livery, in the order stored. */
 export function collectEntries(liveries: readonly FavoriteLivery[]): FavoriteEntry[] {
   return liveries.map((favorite) => ({
-    id: `livery:${favorite.variationId}|${favorite.dir}`,
+    id: entryId(favorite),
     variationId: favorite.variationId,
     name: (favorite.displayName || favorite.variationId).trim(),
     creator: (favorite.creator || '').trim(),
@@ -59,5 +64,5 @@ export function isCurrentEntry(entry: FavoriteEntry, current: { variationId: str
 
 /** The favourite liveries without the one of this entry. */
 export function withoutLivery(liveries: readonly FavoriteLivery[], entry: FavoriteEntry): FavoriteLivery[] {
-  return liveries.filter((favorite) => `livery:${favorite.variationId}|${favorite.dir}` !== entry.id);
+  return liveries.filter((favorite) => entryId(favorite) !== entry.id);
 }

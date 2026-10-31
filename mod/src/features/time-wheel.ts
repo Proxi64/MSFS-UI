@@ -7,18 +7,12 @@ import { log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import type { Settings } from '../generated/catalog.ts';
 import { onScreenActive, SCREENS } from '../sim/screens.ts';
-import { store, watch, type DataValue } from '../sim/store.ts';
+import { store, watch, type TimeInfo } from '../sim/store.ts';
 
 const WIDGET = '[name="Flight_Conditions_History_Widget"]';
 const DAY = 86400;
 /** Notches closer than this build on the value aimed at, not on the value read (which may lag behind). */
 const BURST_MS = 1500;
-
-interface TimeInfo {
-  isLiveTime: boolean;
-  /** Local time shown (live offset included), in seconds since midnight. */
-  localTime: DataValue;
-}
 
 export function timeWheel(settings: Settings['timeWheel'], scope: Scope): void {
   const flight = store.Game.CurrentFlight;
