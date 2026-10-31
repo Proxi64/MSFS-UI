@@ -31,6 +31,11 @@ export function setVariable(style: CSSStyleDeclaration, name: string, value: str
   if (style.getPropertyValue(name) !== value) style.setProperty(name, value);
 }
 
+/** Sets a style property only when its value changes (the layout passes write them every 250 ms). */
+export function setStyle(style: CSSStyleDeclaration, property: 'marginLeft' | 'width', value: string): void {
+  if (style[property] !== value) style[property] = value;
+}
+
 /** Sets a class when `on` is true and removes it otherwise. */
 export function toggleClass(element: Element, className: string, on: boolean): void {
   if (on) element.classList.add(className);

@@ -85,7 +85,9 @@ src/
                        moved), time-of-day.ts, sun.ts, weather-text.ts, presets.ts (pure), bar-layout.ts (pure:
                        presets grid, groups gap, presets list), model.ts (types),
                        weather-bar.css (layout only)
-    aircraft-gallery/  gallery.ts (gallery, list and Default, made of sim components), default-grid.ts (pure: the Default view's two rows, column width and settling), tiles.ts (pure: search, favourites
+    aircraft-gallery/  gallery.ts (gallery, list and Default: memory, sorts, data, layout), gallery-bar.ts, gallery-cells.ts
+                       (its bar and its pooled tiles, made of sim components), default-columns.ts (Default on whole columns),
+                       default-grid.ts (pure: the Default view's two rows, column width and settling), tiles.ts (pure: search, favourites
                        tiles, hidden aircraft, filters, favourites first, Name and Studio sorts), liveries.ts (the livery column of the side by
                        side layout), livery-column.ts (pure: split, aircraft and livery tile sizes, tail line), aircraft-gallery.css
                        (layout only)
