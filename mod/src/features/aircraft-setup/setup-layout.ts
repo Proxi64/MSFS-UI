@@ -5,6 +5,14 @@
 
 import type { Rows } from '../../core/virtual-list.ts';
 
+/**
+ * Layout units, as in aircraft-setup.css: height of a variant tile, gap between tiles, the panel's padding at the top
+ * only (its blocks as wide as the sim's title block, the last one 6 units above the sim's "Configure" tile).
+ */
+export const VARIANT_HEIGHT = 36;
+export const GAP = 6;
+export const PADDING_TOP = 6;
+
 /** Rows each list keeps when the other one needs more room. */
 export const KEEP_VARIANT_ROWS = 3;
 export const KEEP_LIVERY_ROWS = 2;

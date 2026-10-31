@@ -87,7 +87,8 @@ src/
                        tiles, hidden aircraft, filters, favourites first, Name and Studio sorts), liveries.ts (the livery column of the side by
                        side layout), livery-column.ts (pure: split, aircraft and livery tile sizes, tail line), aircraft-gallery.css
                        (layout only)
-    aircraft-setup/    index.ts (column width, per layout), panel.ts (the panel, made of sim components),
+    aircraft-setup/    index.ts (column width, per layout), panel.ts (the panel: placement, rooms, data), variants.ts,
+                       livery-thumbnails.ts, statistics.ts, tail-field.ts (its parts, made of sim components),
                        setup-layout.ts (pure: the lists' heights, thumbnails, statistics), aircraft-setup.css
                        (layout only)
     freeflight-favorites/ index.ts (and the record of aircraft use), panel.ts (the Favorites block on Free
