@@ -79,9 +79,11 @@ src/
   features.ts          registry: feature id → start function
   features/            one feature per file (or folder), named after its id
     fast-menus/        index.ts (patches) and timing.ts (pure timing rules)
-    weather-bar/       index.ts, bar.ts (the bar, made of sim components; it also places the sim's search
-                       field), time-of-day.ts, sun.ts, weather-text.ts, presets.ts (pure), bar-layout.ts (pure: presets grid,
-                       groups gap, presets list), model.ts (types),
+    weather-bar/       index.ts, bar.ts (the bar: the model followed, memory, the column laid out), time-section.ts,
+                       presets-section.ts, metar-section.ts, conditions-section.ts (its sections, made of sim
+                       components), section.ts, right-column.ts (the sim's cards behind tabs, its search field
+                       moved), time-of-day.ts, sun.ts, weather-text.ts, presets.ts (pure), bar-layout.ts (pure:
+                       presets grid, groups gap, presets list), model.ts (types),
                        weather-bar.css (layout only)
     aircraft-gallery/  gallery.ts (gallery, list and Default, made of sim components), default-grid.ts (pure: the Default view's two rows, column width and settling), tiles.ts (pure: search, favourites
                        tiles, hidden aircraft, filters, favourites first, Name and Studio sorts), liveries.ts (the livery column of the side by

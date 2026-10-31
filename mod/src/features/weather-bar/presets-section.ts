@@ -1,0 +1,201 @@
+// The weather bar's presets (bar.ts): the sim's presets in a grid of its icon buttons (Live on two cells, in a tile),
+// the presets added by other packages in the sim's dropdown under it (the owner's choice, 2026-10-30), the name of the
+// preset in the header.
+
+import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
+import type { Scope } from '../../core/scope.ts';
+import {
+  COMPONENTS,
+  DROPDOWN_EDGE,
+  DROPDOWN_ITEM,
+  DROPDOWN_PADDING,
+  type DropdownItem,
+  type DropdownManipulator,
+  type SimComponent,
+} from '../../sim/components.ts';
+import { translate } from '../../sim/localization.ts';
+import type { RealScroll } from '../../sim/real-scroll.ts';
+import { readArray, store } from '../../sim/store.ts';
+import { GAP, presetCellSizes, presetListSize, type PresetCell } from './bar-layout.ts';
+import type { WeatherPreset } from './model.ts';
+import { isSimPreset, rememberedPreset } from './presets.ts';
+import { run, shortLabel, type MakeComponent, type Section } from './section.ts';
+
+/** The live weather preset (its title in the sim's list), and the cells of the preset grid per row (as in the CSS). */
+const LIVE_PRESET = 'TT:MENU.WEATHERTYPE_0DYNAMIC';
+const PRESETS_PER_ROW = 6;
+/**
+ * The presets added by other packages, in the sim's dropdown under the grid: its list (sizes in sim/components.ts)
+ * opens downwards when at least LIST_LEAST items fit there (sizeList).
+ */
+const LIST_LEAST = 3;
+
+export interface PresetEvents {
+  /** A preset was clicked and applied. */
+  chosen(preset: WeatherPreset): void;
+}
+
+export class PresetsSection {
+  private readonly scope: Scope;
+  private readonly events: PresetEvents;
+  private presets: WeatherPreset[] = [];
+  private readonly buttons = new Map<number, SimComponent>();
+  /** The hosts of the preset grid: first cell and number of cells of each (laid out by `layout`). */
+  private readonly cells: (PresetCell & { host: HTMLElement })[] = [];
+  /**
+   * The dropdown of the added presets (none without them), its items by preset index, the index it shows (-1: its
+   * title, no added preset chosen; null: not drawn yet).
+   */
+  private list: SimComponent | null = null;
+  private readonly items = new Map<number, DropdownItem>();
+  private listShown: number | null = null;
+  private name: HTMLElement | null = null;
+  private index = -1;
+
+  constructor(scope: Scope, events: PresetEvents) {
+    this.scope = scope;
+    this.events = events;
+  }
+
+  /** Reads the sim's presets (those enabled), before `build`. */
+  async load(): Promise<void> {
+    this.presets = (await readArray<WeatherPreset>(store.Game.Weather.FlightConditions.PresetList)).filter((preset) => preset && preset.enabled);
+  }
+
+  build(weather: Section, component: MakeComponent): void {
+    this.name = weather.value;
+    const grid = el('div', 'msfs-ui-wx__grid', weather.body);
+    let cell = 0;
+    // The sim's presets in the grid; the added ones (often hundreds, without their icons) in the dropdown under it.
+    for (const preset of this.presets.filter(isSimPreset)) {
+      // Live: the tile of the traffic buttons, "Live" written on it, two cells wide (the owner's choice, 2026-10-30).
+      const live = preset.title === LIVE_PRESET;
+      const span = live ? 2 : 1;
+      const host = el('div', live ? 'msfs-ui-wx__icon msfs-ui-compact-tile' : 'msfs-ui-wx__icon', grid);
+      this.cells.push({ host, start: cell, span });
+      cell += span;
+      this.scope.listen(host, 'mouseenter', () => {
+        if (this.name) this.name.textContent = translate(preset.title);
+      });
+      this.scope.listen(host, 'mouseleave', () => this.render());
+      const onReady = (created: SimComponent) => {
+        this.buttons.set(preset.index, created);
+        created.onClick(this.scope, () => run('the weather could not be changed', this.choose(preset)));
+      };
+      if (live) component(COMPONENTS.tileButton, host, { Title: shortLabel('TT:GENERIC.LIVE') }, onReady);
+      else component(COMPONENTS.iconButtonSquared, host, { Icon: preset.iconUrl }, onReady);
+    }
+    const added = this.presets.filter((preset) => !isSimPreset(preset));
+    if (added.length > 0) {
+      for (const preset of added) {
+        this.items.set(preset.index, {
+          title: preset.title,
+          subtitle: '',
+          coma: '',
+          selectedCallback: () => run('the weather could not be changed', this.choose(preset)),
+        });
+      }
+      const host = el('div', 'msfs-ui-wx__presets', weather.body);
+      component(COMPONENTS.dropdown, host, {}, (created) => {
+        this.list = created;
+        const manipulator = created.manipulator<DropdownManipulator>();
+        if (manipulator) manipulator.setEmptyTitle(translate('TT:MENU.FLIGHTCONDITION.PRESETS'));
+        // Once the click has opened the list (the sim's handler runs first).
+        created.onClick(this.scope, () => this.scope.timeout(() => this.scrollList(), 0));
+      });
+    }
+  }
+
+  /** The sim's preset now in force. */
+  show(index: number): void {
+    this.index = index;
+    this.render();
+  }
+
+  /** The preset read at once by the restore of the last choice (the watch may not have answered yet). */
+  adopt(index: number): void {
+    this.index = index;
+  }
+
+  /** The preset remembered (presets.ts: by title when the indexes moved), if any. */
+  remembered(index: number | null, title: string | null | undefined): WeatherPreset | undefined {
+    return rememberedPreset(this.presets, index, title);
+  }
+
+  render(): void {
+    this.buttons.forEach((button, index) => button.select(index === this.index));
+    const preset = this.presets.find((candidate) => candidate.index === this.index);
+    if (this.name) this.name.textContent = preset ? translate(preset.title) : '';
+    // The dropdown shows the added preset chosen, else its title; its items are given again only when that changes.
+    const list = this.list;
+    const manipulator = list ? list.manipulator<DropdownManipulator>() : null;
+    const item = this.items.get(this.index);
+    const shown = item ? this.index : -1;
+    if (manipulator && shown !== this.listShown) {
+      this.listShown = shown;
+      manipulator.setData(Array.from(this.items.values()), item);
+    }
+  }
+
+  /**
+   * The preset grid in whole pixels, `width` wide: PRESETS_PER_ROW cells per row, GAP units between them (rounded down,
+   * as the engine does for the other gaps; bar-layout.ts).
+   */
+  layout(width: number, unit: number): void {
+    const sizes = presetCellSizes(width, Math.floor(GAP * unit), PRESETS_PER_ROW, this.cells);
+    this.cells.forEach(({ host }, at) => {
+      const size = sizes[at]!;
+      const style = host.style;
+      style.width = `${size.width}px`;
+      style.marginRight = `${size.marginRight}px`;
+      style.marginTop = `${size.marginTop}px`;
+    });
+  }
+
+  /**
+   * The list of the added presets opens downwards, exactly to the bottom of the `panel`'s last buttons (multiplayer's),
+   * inside the panel (lower, it would pass under the search field), the sim's own scroll for the items that do not
+   * fit. Whole items at rest: the room they leave goes into the list's top padding (--msfs-ui-presets-top). With fewer
+   * than LIST_LEAST items there (traffic sections turned off), it opens upwards, to the top of the column (`columnTop`,
+   * in the window).
+   */
+  sizeList(columnTop: number, unit: number, panel: HTMLElement): void {
+    const list = this.list;
+    const host = list ? list.element.parentElement : null;
+    if (!list || !host || panel.style.display === 'none') return;
+    const box = host.getBoundingClientRect();
+    const sized = presetListSize(
+      { count: this.items.size, below: (panel.getBoundingClientRect().bottom - box.bottom) / unit, above: (box.top - columnTop) / unit, unit },
+      { item: DROPDOWN_ITEM, edge: DROPDOWN_EDGE, padding: DROPDOWN_PADDING },
+      LIST_LEAST,
+    );
+    toggleClass(host, 'is-up', sized.up);
+    list.set('List_Size', sized.size.toFixed(2));
+    setVariable(host.style, '--msfs-ui-presets-top', `${Math.floor(sized.padding * unit)}px`);
+  }
+
+  /**
+   * Opened, the list of the added presets shows its first items, or the chosen one at its top: the sim kept the
+   * position of an earlier opening, in the middle of an item after a change of resolution (measured 2026-10-30). The
+   * position is a whole number of items, by the items' spacing on the screen, so that they stay whole.
+   */
+  private scrollList(): void {
+    const list = this.list ? this.list.element.querySelector<HTMLElement>('[name="List"]') : null;
+    const scroll = list ? list.querySelector<RealScroll>('real-scroll') : null;
+    if (!list || !scroll || window.getComputedStyle(list).display === 'none') return;
+    const tops = Array.prototype.slice
+      .call(list.querySelectorAll('virtual-list-wrapper'))
+      .map((slot: HTMLElement) => slot.getBoundingClientRect())
+      .filter((box: DOMRect) => box.height > 0)
+      .map((box: DOMRect) => box.top)
+      .sort((a: number, b: number) => a - b);
+    const step = tops.length > 1 ? tops[1]! - tops[0]! : DROPDOWN_ITEM * uiUnit();
+    const chosen = Array.from(this.items.keys()).indexOf(this.index);
+    scroll.scrollToPosition(Math.min(scroll.maxScroll, Math.max(0, chosen) * step));
+  }
+
+  private async choose(preset: WeatherPreset): Promise<void> {
+    await store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(preset.index));
+    this.events.chosen(preset);
+  }
+}

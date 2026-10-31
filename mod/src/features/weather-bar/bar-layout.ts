@@ -2,6 +2,9 @@
 // gap between the groups of Free Flight's right column, the height of the dropdown of the added presets. bar.ts
 // measures the page and writes the results.
 
+/** Gap between the bar's tiles, and the least gap between the column's groups, in layout units (as in weather-bar.css). */
+export const GAP = 6;
+
 /** A cell of the presets grid: its first column (counted over the rows) and the number of columns it spans. */
 export interface PresetCell {
   start: number;
