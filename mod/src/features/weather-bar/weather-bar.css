@@ -10,9 +10,8 @@
 .msfs-ui-wx.is-blocked .msfs-ui-wx__section { pointer-events: none; }
 /*
  * As the blocks of the mod's other pages (the owner's wish, 2026-10-30): each section's content as wide as its header,
- * 6 units under it; between the sections, the gap of the left column under the aircraft button (bar.ts,
- * spaceSections); the panel as high as its content, ending on its last buttons (it was stretched down to the map
- * buttons, the sections sharing the free space: 28 units around each content).
+ * 6 units under it, the section ending on its last buttons. Each section is a card with its own background layers
+ * (section.ts), 6 units apart (bar.ts, spaceSections): the panel has none, so every gap shows the map.
  */
 .msfs-ui-wx__body { padding: calc(var(--u) * 6) 0 0 0; }
 /* align-items: a one-line flex-wrap container stretches its items in Coherent (align-content does not apply). */
@@ -60,26 +59,8 @@
   background-image: linear-gradient(165deg, var(--colorPrimary) 0%, var(--colorGradient) 100%) !important;
 }
 
-/*
- * The sim's "Search location" field, moved under the bar (the owner's wish, 2026-10-30): its block is marked and placed
- * by bar.ts (placeSearch). As high as the times of day, 36 units (SEARCH_HEIGHT; the sim draws
- * it 30 high), in the sim's unit (--u is the mod's own, not defined on the sim's elements). Its results list, 400 units
- * high, opens upwards over the bar: downwards it would leave the screen.
- */
-.msfs-ui-wx-search {
-  top: var(--msfs-ui-search-top) !important;
-  left: var(--msfs-ui-search-left) !important;
-  width: var(--msfs-ui-search-width) !important;
-  /* Above the mod's panels (50, core/theme.css): its results open over the bar. */
-  z-index: 51;
-}
-.msfs-ui-wx-search.is-hidden { display: none !important; }
-.msfs-ui-wx-search,
-.msfs-ui-wx-search [name="Search_Input"] { height: calc(var(--unscaledScreenHeight) * 36px / 1080) !important; }
-.msfs-ui-wx-search [name="Results"] { top: auto !important; bottom: 100% !important; }
-
 /* Tabs Weather / Airport, as the tab row of the sim's runway card (gradient from black at 20 %); its height is set by
-   bar.ts (TAB_ROW), which also places the panel and the sim's card under it. */
+   right-column.ts (TAB_ROW), bar.ts places it and the bar or the sim's card under it. */
 .msfs-ui-wx-tabs {
   display: flex;
   align-items: center;
@@ -88,15 +69,23 @@
 }
 .msfs-ui-wx-tabs__tab { position: relative; flex-grow: 1; flex-basis: 0; height: calc(var(--u) * 30); }
 .msfs-ui-wx-tabs__tab + .msfs-ui-wx-tabs__tab { margin-left: calc(var(--u) * 6); }
+/* The card's tab without a card: the sim's TextTab has no Disabled state, so it is dimmed as the blocked bar. */
+.msfs-ui-wx-tabs__tab.is-inactive { opacity: 0.4; pointer-events: none; }
 
 /* METAR: airport and flight category in the header, weather lines in the body. */
 .msfs-ui-wx__icao { font-weight: 700; }
 .msfs-ui-wx__rules { position: relative; width: calc(var(--u) * 60); height: calc(var(--u) * 24); margin-left: calc(var(--u) * 8); }
+/*
+ * Text ends the card 6 units under its last line, as far as above its first (the owner, 2026-10-31: ending on the
+ * line's box, the METAR looked cut; the other sections end on buttons, which fill to the edge).
+ */
+.msfs-ui-wx__body--text { padding-bottom: calc(var(--u) * 6); }
 /* Its lines 12 units in, as the headers' texts. */
 .msfs-ui-wx__line { padding: 0 calc(var(--u) * 12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .msfs-ui-wx__line--sim { margin-top: calc(var(--u) * 6); opacity: 0.7; }
 
 /* The panel as high as its sections. */
 .msfs-ui-wx { display: flex; flex-direction: column; }
-.msfs-ui-wx__section { display: flex; flex-direction: column; flex-shrink: 0; }
+/* Positioned: its background layers fill it (core/theme.css). */
+.msfs-ui-wx__section { position: relative; display: flex; flex-direction: column; flex-shrink: 0; }
 .msfs-ui-wx__body { display: flex; flex-direction: column; }

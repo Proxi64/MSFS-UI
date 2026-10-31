@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { WeatherInfo, WeatherPreset } from '../src/features/weather-bar/model.ts';
 import type { TimeInfo } from '../src/sim/store.ts';
-import { groupGap, presetCellSizes, presetListSize } from '../src/features/weather-bar/bar-layout.ts';
+import { presetCellSizes, presetListSize } from '../src/features/weather-bar/bar-layout.ts';
 import { memoryFrom } from '../src/features/weather-bar/memory.ts';
 import { isSimPreset, rememberedPreset } from '../src/features/weather-bar/presets.ts';
 import { parseDms, sunTimes } from '../src/features/weather-bar/sun.ts';
@@ -220,12 +220,6 @@ describe('weather bar layout', () => {
   it('gives the pixels left over to the first cells of each row', () => {
     const cells = Array.from({ length: 6 }, (_, at) => ({ start: at, span: 1 }));
     assert.deepEqual(presetCellSizes(588, 8, 6, cells).map((cell) => cell.width), [92, 92, 91, 91, 91, 91]);
-  });
-
-  it('shares the free room of the column evenly between the groups, never under the minimum', () => {
-    assert.equal(groupGap(600, { fixed: 100, spaced: [50, 50, 50] }, 8), 70);
-    assert.equal(groupGap(603, { fixed: 100, spaced: [50, 50, 50] }, 8), 71, 'rounded to the nearest pixel');
-    assert.equal(groupGap(200, { fixed: 100, spaced: [50, 50, 50] }, 8), 8);
   });
 
   describe('the list of the added presets', () => {

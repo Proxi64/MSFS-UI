@@ -6,6 +6,11 @@
  */
 
 .msfs-ui-fav { display: flex; flex-direction: column; }
+/*
+ * The sim's search field above the block (the mod's panels are at z-index 50, core/theme.css): its results, 400 units
+ * high under it, show over the rows from their first frame; panel.ts hides the block at its next layout pass.
+ */
+[name="Searchblock"] { z-index: 51; }
 /* While an aircraft loads, only the list is dimmed and inactive: the block keeps the mouse lock (core/theme.ts). */
 .msfs-ui-fav.is-loading .msfs-ui-fav__list { opacity: 0.6; pointer-events: none; }
 .msfs-ui-fav__list { position: relative; flex-grow: 1; min-height: 0; }

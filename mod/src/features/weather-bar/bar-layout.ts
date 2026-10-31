@@ -1,8 +1,7 @@
 // Sizes of the weather bar, without the sim (tested by test/weather-bar.test.ts): the presets grid in whole pixels, the
-// gap between the groups of Free Flight's right column, the height of the dropdown of the added presets. bar.ts
-// measures the page and writes the results.
+// height of the dropdown of the added presets. bar.ts measures the page and writes the results.
 
-/** Gap between the bar's tiles, and the least gap between the column's groups, in layout units (as in weather-bar.css). */
+/** Gap between the bar's tiles, and between its blocks (the tabs, the sections), in layout units (as in weather-bar.css). */
 export const GAP = 6;
 
 /** A cell of the presets grid: its first column (counted over the rows) and the number of columns it spans. */
@@ -33,26 +32,6 @@ export function presetCellSizes(width: number, gap: number, perRow: number, cell
     for (let at = column; at < column + span; at++) size += base + (at < extra ? 1 : 0);
     return { width: size, marginRight: column + span >= perRow ? 0 : gap, marginTop: start >= perRow ? gap : 0 };
   });
-}
-
-/** The blocks of the right column, in pixels: those with a gap after them, and the rest of its height. */
-export interface ColumnBlocks {
-  /** Heights counted without a gap of their own (the search field, a card's tab row with the gap under it). */
-  fixed: number;
-  /** One height per block followed by a gap (each section shown, or the sim's card on its tab). */
-  spaced: readonly number[];
-}
-
-/**
- * The gap between the groups of the column, in pixels: its `free` room (from the widget down to the map buttons) less
- * its blocks, shared evenly by the gap under the widget, one after each spaced block and the one above the map buttons;
- * never under `minimum`. Rounded to the nearest pixel: rounded down, the room left over all went under the search
- * field (48 pixels there, 43 between the others at 1440 lines).
- */
-export function groupGap(free: number, blocks: ColumnBlocks, minimum: number): number {
-  const gaps = 2 + blocks.spaced.length;
-  const total = blocks.spaced.reduce((sum, height) => sum + height, blocks.fixed);
-  return Math.max(minimum, Math.round((free - total) / gaps));
 }
 
 /** The sim's dropdown in layout units (sim/components.ts): an item with its gap, the edge above and below, the padding. */

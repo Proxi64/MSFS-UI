@@ -1,5 +1,5 @@
-// The Favorites block on Free Flight, under the sim's aircraft button (or its "Search location" field while that one
-// is still under it), as wide as the button:
+// The Favorites block on Free Flight, under the sim's "Search location" field, in its own place under the aircraft
+// button (or under the button while the sim does not show the field), as wide as the button:
 // a card like the sim's (background layers, no header), its rows in the sim's scrolling list, each row the sim's
 // horizontal tile (as the gallery's list view) with the mod's heart at its end. One row per favourite livery: a click
 // loads the aircraft with it; the heart removes the favourite.
@@ -13,8 +13,8 @@ import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, markOwned, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
-import { isShown, type Manipulator } from '../../sim/screens.ts';
-import { GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../sim/freeflight-layout.ts';
+import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
+import { GROUP_GAP } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
 import type { RealScroll } from '../../sim/real-scroll.ts';
 import { store, watch } from '../../sim/store.ts';
@@ -30,6 +30,8 @@ interface Row {
 
 const AIRCRAFT_BUTTON = '[name="FreeFlight_AircraftButton"]';
 const SEARCH = '[name="Search"]';
+/** The search field's results list, shown under it while there are results. */
+const SEARCH_RESULTS = '[name="Searchblock"] [name="Results"]';
 /** Layout units: room kept at the bottom of the screen (the sim's buttons). The gap above the block: see GROUP_GAP. */
 const BOTTOM_ROOM = 110;
 /** Layout units: row and gap between rows (as in the CSS); no header (the owner's choice, 2026-10-30). */
@@ -54,8 +56,6 @@ export class FavoritesPanel {
   private order: string[] | null = null;
   private current = { variationId: '', livery: '' };
   private loading = false;
-  /** Height of the search field when closed, in layout units: higher, it shows its results. */
-  private searchHeight = 0;
 
   constructor(page: Manipulator, scope: Scope) {
     this.page = page;
@@ -94,26 +94,20 @@ export class FavoritesPanel {
     }
     const rect = button.getBoundingClientRect();
     const unit = uiUnit();
-    // Under the aircraft button (the weather bar moves the search field to the right column: the owner's wish,
-    // 2026-10-30), or under the search field while it is still there, under the button (the weather bar turned off).
+    // Under the sim's search field, in its own place under the button, or under the button while the sim does not show it.
     const search = this.page.elt.querySelector(SEARCH);
     const searchRect = isShown(search) ? search.getBoundingClientRect() : null;
     const under = searchRect && searchRect.left < rect.right && searchRect.right > rect.left && searchRect.top >= rect.bottom ? searchRect : null;
-    if (under) {
-      // In layout units: a change of resolution in the session (window, full screen) changes the pixels, not the units
-      // (measured 2026-10-30: from 1080 to 2160 lines, the closed search was twice the remembered height, the block hidden).
-      const searchHigh = under.height / unit;
-      if (!this.searchHeight || searchHigh < this.searchHeight) this.searchHeight = searchHigh;
-      if (searchHigh > this.searchHeight * 1.5) {
-        this.root.style.display = 'none';
-        return;
-      }
+    // Its results open over the block, which they would cover in part (the owner, 2026-10-31: a cut row showed under
+    // the list): hidden meanwhile. The results are the field's sibling, the field keeps its height, and the list keeps
+    // the `disabled` class while open (measured 2026-10-31).
+    if (under && isOnScreen(this.page.elt.querySelector<HTMLElement>(SEARCH_RESULTS))) {
+      this.root.style.display = 'none';
+      return;
     }
     const origin = this.page.elt.getBoundingClientRect();
-    // Under the search field, the sim's own gap above it; otherwise the weather bar's gap when it runs (it fills its
-    // column), so that both columns match.
-    const shared = Number(this.page.elt.getAttribute(GROUP_GAP_ATTRIBUTE));
-    const gap = under ? under.top - rect.bottom : shared > 0 ? shared : Math.floor(GROUP_GAP * unit);
+    // The sim's own gap: the one above the search field, or GROUP_GAP.
+    const gap = under ? under.top - rect.bottom : Math.floor(GROUP_GAP * unit);
     const top = Math.round((under ? under.bottom : rect.bottom) - origin.top + gap);
     const available = Math.floor(origin.height - BOTTOM_ROOM * unit - top);
     // As high as its rows, up to the whole rows that fit in the room left: the sim's list then scrolls, and the block

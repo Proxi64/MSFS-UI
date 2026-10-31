@@ -1,35 +1,31 @@
 // The weather and time bar on Free Flight, under the sim's Flight Conditions widget, made of the sim's own components
 // (src/sim/components.ts): the times of day (time-section.ts), the weather presets (presets-section.ts), the METAR
 // (metar-section.ts), traffic and multiplayer (conditions-section.ts). The bar follows the sim's model, remembers the
-// last choice, and lays Free Flight's right column out, with the sim's cards and search field (right-column.ts).
+// last choice, and lays Free Flight's right column out, with the sim's cards behind tabs (right-column.ts).
 
 import { answerOrNull, answerWithin } from '../../core/async.ts';
 import { el, uiUnit } from '../../core/dom.ts';
 import { log, logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { loadData, saveData } from '../../core/storage.ts';
-import { addPanelLayers } from '../../core/theme.ts';
+import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import { createComponent } from '../../sim/components.ts';
 import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
-import { GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../sim/freeflight-layout.ts';
+import { GROUP_GAP } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
 import { store, watch, type TimeInfo } from '../../sim/store.ts';
-import { GAP, groupGap } from './bar-layout.ts';
+import { GAP } from './bar-layout.ts';
 import { CONDITION_GROUPS, ConditionsSection } from './conditions-section.ts';
 import { MetarSection } from './metar-section.ts';
 import { memoryFrom, type Memory } from './memory.ts';
 import type { FlightConditions, FlightLocation } from './model.ts';
 import { PresetsSection } from './presets-section.ts';
-import { RightColumn, TAB_ROW, type Tab } from './right-column.ts';
+import { RightColumn } from './right-column.ts';
 import { createSection, type MakeComponent, type Section } from './section.ts';
 import { TimeSection } from './time-section.ts';
 
 const MEMORY_KEY = 'WEATHER_BAR';
-/** The sim's map buttons: the bottom of the room the column may take. */
-const MAP_BUTTONS = '[name="Worldmap_Filters"]';
-/** Height of the search field, in layout units (as in weather-bar.css: the times of day's). */
-const SEARCH_HEIGHT = 36;
 /** Longest wait for a request of the restore. */
 const WEATHER_TIMEOUT_MS = 4000;
 const WIDGET = '[name="Flight_Conditions_History_Widget"]';
@@ -77,7 +73,6 @@ export class WeatherBar {
     this.scope.append(this.page.elt, this.panel);
     this.scope.append(this.page.elt, this.column.tabs);
     this.scope.add(() => this.column.releaseCard());
-    this.scope.add(() => this.page.elt.removeAttribute(GROUP_GAP_ATTRIBUTE));
     // The model is followed at once, so that clicks and the restore never act on default values; the components
     // load in parallel and each one is drawn from the model as soon as it is ready.
     this.watchModel();
@@ -137,13 +132,15 @@ export class WeatherBar {
       );
     };
 
-    addPanelLayers(this.panel);
+    // Each section is a card of its own (section.ts): the panel only keeps the mouse, its gaps included.
+    this.panel.setAttribute('data-input-group', PANEL_INPUT_GROUP);
     this.column.build(component);
-    // Times of day first, titled "Today" (the owner's choice, 2026-10-30): the sim's widget above shows the time.
+    // Times of day first, titled "Today" (the owner's choice, 2026-10-30): the sim's widget above shows the time. The
+    // METAR last (the owner's choice, 2026-10-31): it shows with a departure and moves nothing above it.
     this.times.build(this.section(translate('TT:WEATHER.TODAY')).body, component);
     this.presets.build(this.section('Weather'), component);
-    if (this.metar) this.metar.build(this.section('METAR'), component);
     if (this.traffic) this.traffic.build((title) => this.section(title), component);
+    if (this.metar) this.metar.build(this.section('METAR'), component);
     return pending;
   }
 
@@ -161,11 +158,12 @@ export class WeatherBar {
   // ----- Layout -----
 
   /**
-   * Under the Flight Conditions widget, across its width; hidden when the widget is (another panel is open). When an
-   * airport or a traffic aircraft is selected, the sim shows its card (right-column.ts) in the same place, and the
-   * column cannot hold both: tabs appear under the widget (Weather, and Airport or Traffic), the card is moved down by
-   * as much, and only the element of the chosen tab is visible. A panel of the map buttons (MAP_PANELS) takes the place
-   * as in the sim: the bar and its tabs are hidden while it is open, the card back in its own place.
+   * Under the Flight Conditions widget, across its width; hidden when the widget is (another panel is open). Every
+   * block at a place that does not depend on what the column shows (the owner's wish, 2026-10-31: they moved at each
+   * selection): the tabs GROUP_GAP under the widget (where the sim draws its own cards, level with the search field
+   * under the aircraft button), then GAP under them the bar, or the sim's card when an airport or a traffic aircraft is
+   * selected and its tab chosen (right-column.ts); GAP between the sections. A panel of the map buttons (MAP_PANELS)
+   * takes the place as in the sim: the bar and its tabs are hidden while it is open, the card back in its own place.
    */
   private layout(): void {
     const anchor = this.page.elt.querySelector(WIDGET);
@@ -190,70 +188,26 @@ export class WeatherBar {
     const rect = anchor.getBoundingClientRect();
     const unit = uiUnit();
     const style = this.panel.style;
-    style.display = '';
-    style.left = `${rect.left - origin.left}px`;
-    style.width = `${rect.width}px`;
+    const left = `${rect.left - origin.left}px`;
+    const width = `${rect.width}px`;
+    style.left = left;
+    style.width = width;
     this.presets.layout(Math.floor(rect.width), unit);
 
-    const card = this.column.visibleCard();
-    const tab = this.column.shownTab(card);
-
-    // The same gap under the widget, between the blocks, above and under the search field (the owner's wish,
-    // 2026-10-30), given to the page's other column.
-    const gap = this.groupGap(rect.bottom, unit, card ? card.element : null, tab);
+    // Gaps in whole pixels, as the engine draws the others.
+    const gap = Math.floor(GAP * unit);
     this.spaceSections(gap);
-    if (this.page.elt.getAttribute(GROUP_GAP_ATTRIBUTE) !== String(gap)) this.page.elt.setAttribute(GROUP_GAP_ATTRIBUTE, String(gap));
-    let top = rect.bottom - origin.top + gap;
-    const left = rect.left - origin.left;
-    // The search field under the last block of the column (the bar or the sim's card) when it fits above the map
-    // buttons with at least GAP under it; otherwise back in the sim's own place, under the aircraft button.
-    const searchUnder = (bottom: number) => {
-      const buttons = this.page.elt.querySelector(MAP_BUTTONS);
-      const limit = isShown(buttons) ? buttons.getBoundingClientRect().top - origin.top - Math.floor(GAP * unit) : origin.height;
-      const searchTop = bottom + gap;
-      this.column.placeSearch(searchTop + Math.floor(SEARCH_HEIGHT * unit) <= limit ? { top: searchTop, left, width: rect.width } : 'home');
-    };
-    const panelBottom = () => top + this.panel.getBoundingClientRect().height;
-
-    if (!card) {
-      this.column.hideTabs();
-      style.top = `${top}px`;
-      searchUnder(panelBottom());
-      this.presets.sizeList(rect.top, unit, this.panel);
-      return;
-    }
-    // Tabs under the widget, then the sim's card (moved down) or the bar, depending on the tab.
-    this.column.showTabs(card, { left: style.left, width: style.width, top });
-    top += (TAB_ROW + GAP) * unit;
-    this.column.holdCard(card.element, top + origin.top);
-    card.element.style.visibility = tab === 'airport' ? '' : 'hidden';
+    const card = this.column.visibleCard();
+    const tabsTop = rect.bottom - origin.top + Math.floor(GROUP_GAP * unit);
+    const top = tabsTop + this.column.showTabs(card, { left, width, top: tabsTop }) + gap;
+    const tab = this.column.shownTab();
+    if (card) {
+      this.column.holdCard(card.element, top + origin.top);
+      card.element.style.visibility = tab === 'airport' ? '' : 'hidden';
+    } else this.column.releaseCard();
     style.display = tab === 'weather' ? '' : 'none';
     style.top = `${top}px`;
-    searchUnder(tab === 'weather' ? panelBottom() : card.element.getBoundingClientRect().bottom - origin.top);
     this.presets.sizeList(rect.top, unit, this.panel);
-  }
-
-  /**
-   * In pixels, the gap between the groups of the column: its free room down to the map buttons shared evenly, under
-   * the widget, between the blocks shown, above and under the search field (the owner's choice, 2026-10-30). Every
-   * block shown counts: the tab row of a sim's card (with the GAP under it), the sections (the METAR when a departure
-   * shows it) or, on the Airport tab, the card. A fuller column narrows the gap, down to GAP, rather than push the
-   * search field out (code review of 2026-10-30: the METAR, not counted, hid it whenever a departure was set).
-   */
-  private groupGap(widgetBottom: number, unit: number, card: HTMLElement | null, tab: Tab): number {
-    const buttons = this.page.elt.querySelector(MAP_BUTTONS);
-    if (!isShown(buttons)) return Math.floor(GROUP_GAP * unit);
-    const fixed = Math.floor(SEARCH_HEIGHT * unit) + (card ? (TAB_ROW + GAP) * unit : 0);
-    const spaced: number[] = [];
-    if (card && tab === 'airport') spaced.push(card.getBoundingClientRect().height);
-    else {
-      const sections = this.panel.querySelectorAll<HTMLElement>('.msfs-ui-wx__section');
-      for (let at = 0; at < sections.length; at++) {
-        const high = sections[at]!.getBoundingClientRect().height;
-        if (high !== 0) spaced.push(high);
-      }
-    }
-    return groupGap(buttons.getBoundingClientRect().top - widgetBottom, { fixed, spaced }, Math.floor(GAP * unit));
   }
 
   /** `gap` pixels above every section but the first (a hidden one, the METAR, takes no room). */

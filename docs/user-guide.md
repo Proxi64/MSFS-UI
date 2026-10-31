@@ -78,11 +78,11 @@ Everything the mod shows is made of the sim's own components (tiles, buttons, ta
 
 ### Weather and time bar
 
-**Where:** Free Flight, right column, under the sim's *Flight Conditions* widget, then the sim's *Search location* field, which the bar moves under its last section (its results open upwards, over the bar). The gap between the widget and the bar, between the sections and around the search field is the same, and fills the column down to the map buttons (it narrows when the METAR or an airport card's tabs show); the favourites on the left start at the same height, with the same gap.
+**Where:** Free Flight, right column, under the sim's *Flight Conditions* widget. Every block keeps its place whatever is selected on the map: two tabs first, **Weather** and **Airport**, level with the sim's *Search location* field in the left column, then the bar's sections, each a card of its own, the METAR last.
 
-When an airport (or an aircraft of the traffic) is selected on the map, the sim shows its card in the same column. Two tabs then appear under the widget, **Weather** and **Airport** (or **Traffic**): only the chosen one shows, and the search field goes under it. Without such a card, the tabs disappear.
+When an airport (or an aircraft of the traffic) is selected on the map, the sim shows its card in the same column: the second tab, **Airport** (or **Traffic**), shows it in the bar's place; **Weather** brings the bar back. Without such a card, that tab is dimmed.
 
-The map buttons under the column (*Legend*, *Map Layers*, *World Map display*) open their panel in the same place: the bar and the search field step aside while it is open, and come back when it is closed with its button.
+The map buttons under the column (*Legend*, *Map Layers*, *World Map display*) open their panel in the same place: the bar and its tabs step aside while it is open, and come back when it is closed with its button.
 
 | Section | Content |
 |---|---|
@@ -115,7 +115,7 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 ### Favourites on Free Flight
 
-**Where:** Free Flight, left column, under the aircraft button, as wide as it (the weather bar moves *Search location* to the right column; with the bar turned off, the block stays under the search field and hides while it shows its results).
+**Where:** Free Flight, left column, under the sim's *Search location* field, as wide as the aircraft button; hidden while the search shows its results.
 
 - One row per **favourite livery** (the heart of the liveries in the aircraft selection). No favourite: no block.
 - As many whole rows as fit above the screen's bottom buttons; the others scroll.
@@ -206,9 +206,7 @@ A number is remembered for the current livery as soon as you change the tail num
 | Home: *Sim not found* | Neither Steam nor the Microsoft Store installation was found | **Choose folders…** |
 | The left column of the aircraft selection is empty | The current aircraft became invalid (a choice sent to a released configurator) | Click an aircraft in the gallery; otherwise leave and reopen the screen |
 | A favourite does not load (*not in the list*) | The aircraft is not in the category tab chosen in the aircraft selection | Choose the *All* tab |
-| The Favorites block disappears on Free Flight (weather bar turned off) | *Search location*, under the aircraft button, shows its results | Normal: it comes back when the results close |
-| *Search location* is not shown on Free Flight | A map panel (*Legend*, *Map Layers*, *World Map display*) fills the right column | Close the panel with its button |
-| *Search location* is back under the aircraft, on the left | An airport card on the **Airport** tab leaves no room for it in the right column | Normal: it goes back under the bar on the **Weather** tab |
+| The Favorites block disappears on Free Flight | *Search location*, under the aircraft button, shows its results | Normal: it comes back when the results close |
 | Hundreds of arrow buttons in the weather bar (before 2.0.2) | A package adds weather presets whose icons the sim does not have | Update: the added presets are in the **Presets** dropdown |
 | METAR shows *No METAR* | No answer from the sim within 4 s, or no station | Choose the departure again |
 | *Ceiling 400 ft* instead of a cloud cover | Out of Live weather, the sim's METAR keeps the ceiling but not the cover | Normal |

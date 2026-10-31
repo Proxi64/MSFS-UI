@@ -32,6 +32,7 @@ export class MetarSection {
   }
 
   build(metar: Section, component: MakeComponent): void {
+    metar.body.classList.add('msfs-ui-wx__body--text');
     const icao = el('span', 'msfs-ui-wx__icao', metar.value);
     const rules = el('div', 'msfs-ui-wx__rules', metar.value);
     component(COMPONENTS.flightRules, rules, {}, (created) => (this.rulesBadge = created));
