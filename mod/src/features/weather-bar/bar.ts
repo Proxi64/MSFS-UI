@@ -18,23 +18,12 @@ import { store, watch, type TimeInfo } from '../../sim/store.ts';
 import { GAP, groupGap } from './bar-layout.ts';
 import { CONDITION_GROUPS, ConditionsSection } from './conditions-section.ts';
 import { MetarSection } from './metar-section.ts';
+import { memoryFrom, type Memory } from './memory.ts';
 import type { FlightConditions, FlightLocation } from './model.ts';
 import { PresetsSection } from './presets-section.ts';
 import { RightColumn, TAB_ROW, type Tab } from './right-column.ts';
 import { createSection, type MakeComponent, type Section } from './section.ts';
 import { TimeSection } from './time-section.ts';
-import type { TimeMode } from './time-of-day.ts';
-
-/** The last choice, remembered when `remember` is on (mod/README.md, Data stored in the sim). */
-interface Memory {
-  weather: number | null;
-  /** Title of the weather preset, which finds it again when the indexes move (presets.ts, rememberedPreset). */
-  weatherTitle?: string | null;
-  time: TimeMode | null;
-  /** Id of the button chosen (`AIRTRAFFICAI`…), per group. */
-  airtraffic?: string | null;
-  multiplayer?: string | null;
-}
 
 const MEMORY_KEY = 'WEATHER_BAR';
 /** The sim's map buttons: the bottom of the room the column may take. */
@@ -277,12 +266,12 @@ export class WeatherBar {
 
   private save(change: Partial<Memory>): void {
     if (!this.settings.remember) return;
-    saveData(MEMORY_KEY, Object.assign(loadData<Memory>(MEMORY_KEY, { weather: null, time: null }), change));
+    saveData(MEMORY_KEY, Object.assign(memoryFrom(loadData<unknown>(MEMORY_KEY, null)), change));
   }
 
   /** Applies the last choice; false when the screen closed before (nothing was applied). Every wait is bounded. */
   private async restore(): Promise<boolean> {
-    const memory = loadData<Memory>(MEMORY_KEY, { weather: null, time: null });
+    const memory = memoryFrom(loadData<unknown>(MEMORY_KEY, null));
     // Read now rather than taken from the watches, which may not have answered yet at the first display.
     const [time, liveBuffer, liveOffset, departure, weatherIndex] = await answerWithin(
       Promise.all([

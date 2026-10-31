@@ -9,6 +9,7 @@ import {
   resetSessionStorage,
   saveData,
   setStorageBackend,
+  storedObject,
   type StorageBackend,
 } from '../src/core/storage.ts';
 
@@ -249,5 +250,12 @@ describe('storage', () => {
     assert.deepEqual(moveSessionWrites(vaultOf(copy)), { moved: ['X'], kept: ['FAVORITE_LIVERIES'] });
     assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"a"}]');
     assert.equal(copy.get('MSFS_UI_X'), '1');
+  });
+});
+
+describe('stored values', () => {
+  it('reads an object, nothing else', () => {
+    assert.deepEqual(storedObject({ a: 1 }), { a: 1 });
+    for (const value of [null, undefined, [], 'text', 3, true]) assert.equal(storedObject(value), null);
   });
 });

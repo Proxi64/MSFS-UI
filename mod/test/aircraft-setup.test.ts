@@ -10,6 +10,8 @@ import {
   MAX_USES,
   saveFavoriteLiveries,
   withUse,
+  favoriteLiveriesFrom,
+  usesFrom,
   type FavoriteLivery,
 } from '../src/sim/favorites.ts';
 import { cleanTail } from '../src/sim/registration.ts';
@@ -180,5 +182,29 @@ describe('cleanTail', () => {
     assert.equal(cleanTail('f-abcd', 9), 'F-ABCD');
     assert.equal(cleanTail('n 561_aj!', 9), 'N561AJ');
     assert.equal(cleanTail('ABCDEFGHIJK', 9), 'ABCDEFGHI');
+  });
+});
+
+describe('favourite liveries and uses read from the storage', () => {
+  const red = { variationId: 'v1', dir: 'simobjects/a/red', title: 'Red', image: 'r.png' };
+
+  it('keeps the well-formed favourite liveries, their optional fields when they have their type', () => {
+    const full = { ...red, displayName: 'Phenom 300E', creator: 'FSReborn', variation: 'Manchester', usedAt: 1000 };
+    assert.deepEqual(favoriteLiveriesFrom([full, red]), [full, red]);
+    assert.deepEqual(favoriteLiveriesFrom([{ ...red, displayName: 7, usedAt: 'today' }]), [red]);
+  });
+
+  it('drops a favourite without its variant, folder, title or image, and a value that is not a list', () => {
+    assert.deepEqual(favoriteLiveriesFrom([null, 'red', { ...red, dir: undefined }, { ...red, title: 3 }, red]), [red]);
+    assert.deepEqual(favoriteLiveriesFrom({ 0: red }), []);
+  });
+
+  it('keeps the uses with a date, their livery when it is well-formed', () => {
+    const livery = { dir: 'simobjects/a/red', title: 'Red', image: 'r.png' };
+    assert.deepEqual(usesFrom({ v1: { livery, usedAt: 5 }, v2: { livery: { dir: 3 }, usedAt: 6 }, v3: { usedAt: 'now' }, v4: null }), {
+      v1: { livery, usedAt: 5 },
+      v2: { usedAt: 6 },
+    });
+    assert.deepEqual(usesFrom([{ usedAt: 5 }]), {});
   });
 });

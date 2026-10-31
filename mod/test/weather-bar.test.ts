@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import type { WeatherInfo, WeatherPreset } from '../src/features/weather-bar/model.ts';
 import type { TimeInfo } from '../src/sim/store.ts';
 import { groupGap, presetCellSizes, presetListSize } from '../src/features/weather-bar/bar-layout.ts';
+import { memoryFrom } from '../src/features/weather-bar/memory.ts';
 import { isSimPreset, rememberedPreset } from '../src/features/weather-bar/presets.ts';
 import { parseDms, sunTimes } from '../src/features/weather-bar/sun.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, SETTLE_MS } from '../src/features/weather-bar/time-of-day.ts';
@@ -242,5 +243,22 @@ describe('weather bar layout', () => {
       assert.deepEqual(presetListSize({ count: 10, below: 100, above: 300, unit: 1 }, metrics, 3), { up: true, size: 273, padding: 6 });
       assert.deepEqual(presetListSize({ count: 10, below: 100, above: 0, unit: 1 }, metrics, 3), { up: true, size: 42, padding: 6 });
     });
+  });
+});
+
+describe('the weather bar memory in the storage', () => {
+  it('keeps each choice that has its type', () => {
+    const stored = { weather: 3, weatherTitle: 'TT:MENU.WEATHERTYPE_2CLEAR', time: 'dusk', airtraffic: 'AIRTRAFFICAI', multiplayer: 'MULTIPLAYEROFF' };
+    assert.deepEqual(memoryFrom(stored), stored);
+  });
+
+  it('drops a wrong time, which would be a NaN departure time sent to the sim, and a wrong preset', () => {
+    assert.deepEqual(memoryFrom({ weather: 'clear', time: 'evening', airtraffic: 7 }), { weather: null, time: null });
+    assert.deepEqual(memoryFrom({ weather: -1, time: null }), { weather: null, time: null });
+    assert.deepEqual(memoryFrom({ weather: Number.NaN }), { weather: null, time: null });
+  });
+
+  it('gives no choice for a value that is not a memory', () => {
+    for (const stored of [null, [], 'dusk', 4]) assert.deepEqual(memoryFrom(stored), { weather: null, time: null });
   });
 });

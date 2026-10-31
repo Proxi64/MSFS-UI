@@ -1,7 +1,7 @@
 // Liveries as the mod identifies them, and the tail numbers chosen per livery. The sim's "Tail number" field is
 // global: without this memory, the last number typed would end up on every aircraft.
 
-import { loadData, saveData } from '../core/storage.ts';
+import { loadData, saveData, storedObject } from '../core/storage.ts';
 
 /** Translation key and `dataName` of the sim's tail number field (aircraft identification). */
 export const TAIL_NUMBER = 'TT:MENU.AIRCRAFT.TAIL_NUMBER';
@@ -97,7 +97,19 @@ export function liveryDirectory(thumbnailPath: string): string {
 }
 
 export function loadLiveryTails(): Record<string, string> {
-  return loadData<Record<string, string>>(LIVERY_TAILS_KEY, {});
+  return liveryTailsFrom(loadData<unknown>(LIVERY_TAILS_KEY, {}));
+}
+
+/** The tail numbers per livery of a stored value: those that are text. */
+export function liveryTailsFrom(stored: unknown): Record<string, string> {
+  const tails: Record<string, string> = {};
+  const entries = storedObject(stored);
+  if (!entries) return tails;
+  for (const key of Object.keys(entries)) {
+    const tail = entries[key];
+    if (typeof tail === 'string') tails[key] = tail;
+  }
+  return tails;
 }
 
 export function saveLiveryTail(liveryPath: string, tail: string): void {

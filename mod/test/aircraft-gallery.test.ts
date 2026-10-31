@@ -16,6 +16,7 @@ import {
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
+import { galleryMemoryFrom } from '../src/features/aircraft-gallery/memory.ts';
 import { aircraftEdges, aircraftRowWidth, aircraftTileSize, lastColumnSpan, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
@@ -366,5 +367,19 @@ describe('gallery body class', () => {
     assert.equal(galleryBodyClass('gallery', false), 'msfs-ui-gal__body is-gallery');
     // The Default view's grid (gallery.ts): never side by side.
     assert.equal(galleryBodyClass('grid', false), 'msfs-ui-gal__body is-grid');
+  });
+});
+describe('the gallery memory in the storage', () => {
+  it('keeps each field that has its type', () => {
+    const stored = { view: 'list', favoritesOnly: true, hiddenOnly: false, sort: { option: 'studio', reversed: true } };
+    assert.deepEqual(galleryMemoryFrom(stored), stored);
+  });
+
+  it('gives the Gallery view without filter or sort for a wrong value, and drops what it does not know', () => {
+    assert.deepEqual(galleryMemoryFrom({ view: 'grid', favoritesOnly: 'yes', hiddenOnly: 1, sort: { option: 3 }, lastView: 'stock' }), {
+      view: 'gallery',
+      favoritesOnly: false,
+    });
+    for (const stored of [null, [], 'list']) assert.deepEqual(galleryMemoryFrom(stored), { view: 'gallery', favoritesOnly: false });
   });
 });

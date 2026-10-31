@@ -4,7 +4,7 @@
 // Aircraft are identified by `variationId` (stable); `aircraftId` may change when an aircraft is installed.
 
 import { log } from '../core/log.ts';
-import { deleteData, loadData, saveData } from '../core/storage.ts';
+import { deleteData, loadData, saveData, storedObject } from '../core/storage.ts';
 import { liveryFolder, liveryKey, variationOf } from './liveries.ts';
 
 /** A favourite livery, for one variant. */
@@ -58,7 +58,33 @@ export function dropFavoriteAircraft(): number {
 }
 
 export function loadFavoriteLiveries(): FavoriteLivery[] {
-  return loadData<FavoriteLivery[]>(FAVORITE_LIVERIES_KEY, []);
+  return favoriteLiveriesFrom(loadData<unknown>(FAVORITE_LIVERIES_KEY, []));
+}
+
+/** The favourite liveries of a stored value: only the well-formed ones, their optional fields when they have their type. */
+export function favoriteLiveriesFrom(stored: unknown): FavoriteLivery[] {
+  if (!Array.isArray(stored)) return [];
+  const favorites: FavoriteLivery[] = [];
+  for (const item of stored as unknown[]) {
+    const entry = storedObject(item);
+    if (!entry || !isString(entry.variationId) || !isString(entry.dir) || !isString(entry.title) || !isString(entry.image)) continue;
+    const favorite: FavoriteLivery = { variationId: entry.variationId, dir: entry.dir, title: entry.title, image: entry.image };
+    if (isString(entry.displayName)) favorite.displayName = entry.displayName;
+    if (isString(entry.creator)) favorite.creator = entry.creator;
+    if (isString(entry.variation)) favorite.variation = entry.variation;
+    if (isTime(entry.usedAt)) favorite.usedAt = entry.usedAt;
+    favorites.push(favorite);
+  }
+  return favorites;
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+/** A date as stored (`Date.now()`), 0 for never. */
+function isTime(value: unknown): value is number {
+  return typeof value === 'number' && isFinite(value) && value >= 0;
 }
 
 export function saveFavoriteLiveries(favorites: FavoriteLivery[]): void {
@@ -138,7 +164,24 @@ export function withFavoriteLivery(
 }
 
 export function loadUses(): AircraftUses {
-  return loadData<AircraftUses>(USES_KEY, {});
+  return usesFrom(loadData<unknown>(USES_KEY, {}));
+}
+
+/** The uses of a stored value: those with a date, their livery when it is well-formed. */
+export function usesFrom(stored: unknown): AircraftUses {
+  const uses: AircraftUses = {};
+  const entries = storedObject(stored);
+  if (!entries) return uses;
+  for (const variationId of Object.keys(entries)) {
+    const entry = storedObject(entries[variationId]);
+    if (!entry || !isTime(entry.usedAt)) continue;
+    const livery = storedObject(entry.livery);
+    uses[variationId] =
+      livery && isString(livery.dir) && isString(livery.title) && isString(livery.image)
+        ? { livery: { dir: livery.dir, title: livery.title, image: livery.image }, usedAt: entry.usedAt }
+        : { usedAt: entry.usedAt };
+  }
+  return uses;
 }
 
 export function saveUses(uses: AircraftUses): void {

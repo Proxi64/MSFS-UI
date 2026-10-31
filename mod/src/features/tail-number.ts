@@ -46,7 +46,8 @@ export function tailNumber(_settings: Settings['tailNumber'], scope: Scope): voi
   /** Values we have just written, not to be taken for the user's. */
   const ownWrites: { value: string; at: number }[] = [];
   let liveryChangedAt = 0;
-  let baseTail = loadData<string>(BASE_TAIL_KEY, '');
+  const storedBase = loadData<unknown>(BASE_TAIL_KEY, '');
+  let baseTail = typeof storedBase === 'string' ? storedBase : '';
 
   const isOwnWrite = (value: string) => ownWrites.some((write) => write.value === value && Date.now() - write.at < OWN_WRITE_MS);
 

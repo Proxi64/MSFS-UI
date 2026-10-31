@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
-import { liveryDirectory, liveryFolder, liveryKey, loadLiveryTails, matchLivery, saveLiveryTail, variationOf } from '../src/sim/liveries.ts';
+import { liveryDirectory, liveryFolder, liveryKey, liveryTailsFrom, loadLiveryTails, matchLivery, saveLiveryTail, variationOf } from '../src/sim/liveries.ts';
 
 const FOLDER = 'coui://html_ui/VFS/SimObjects/Airplanes/Microsoft_SF50/liveries/microsoft/Apex_Corso_Red';
 const KEY = 'simobjects/airplanes/microsoft_sf50/liveries/microsoft/apex_corso_red';
@@ -68,5 +68,13 @@ describe('liveries', () => {
     };
     saveLiveryTail(`${FOLDER}/`, 'N561AJ');
     assert.deepEqual(loadLiveryTails(), { other: 'F-ABCD', [KEY]: 'N561AJ' });
+  });
+});
+
+describe('tail numbers per livery in the storage', () => {
+  it('keeps the tail numbers that are text, and nothing of another value', () => {
+    assert.deepEqual(liveryTailsFrom({ a: 'F-TEST', b: 3, c: null, d: '' }), { a: 'F-TEST', d: '' });
+    assert.deepEqual(liveryTailsFrom(['F-TEST']), {});
+    assert.deepEqual(liveryTailsFrom('F-TEST'), {});
   });
 });

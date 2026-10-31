@@ -30,6 +30,7 @@ import { columnOf, defaultGrid } from './default-grid.ts';
 import { GalleryBar, type SortView } from './gallery-bar.ts';
 import { axisOf, GalleryCells, type View } from './gallery-cells.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
+import { galleryMemoryFrom, type GalleryMemory } from './memory.ts';
 import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, aircraftTileSize, galleryBodyClass, lastColumnSpan, splitColumns } from './livery-column.ts';
 import {
   accumulateKept,
@@ -47,16 +48,6 @@ import {
 } from './tiles.ts';
 
 type Layout = Settings['aircraftGallery']['layout'];
-
-interface GalleryMemory {
-  view: View;
-  /** The Favorites filter; never together with `hiddenOnly` (readFilter). */
-  favoritesOnly: boolean;
-  /** The Hidden filter: only the hidden aircraft (absent before 2.0.0). */
-  hiddenOnly?: boolean;
-  /** Sort: the id of one of SORTS; absent: the sim's order, unchanged. */
-  sort?: { option: string; reversed: boolean } | null;
-}
 
 /**
  * The sorts offered, in this order. Name and Studio are made by the mod on the tiles (the sim offers neither); Max Range is the sim's (`SetAircraftSortingOption`, "!" prefix for the reverse order), offered
@@ -143,7 +134,7 @@ export class Gallery {
   private hidden: HiddenAircraft[] = loadHidden();
   /** The aircraft under the mouse (`aircraftId`), whose name the left column's header shows; null: the selected one. */
   private hoveredId: number | null = null;
-  private readonly memory: GalleryMemory = loadMemory();
+  private readonly memory: GalleryMemory = galleryMemoryFrom(loadData<unknown>(MEMORY_KEY, null));
   /** Current aircraft (variant and livery, as `liveryKey`): selection of the livery tiles. */
   private current = { variationId: '', livery: '' };
   private loading = false;
@@ -626,11 +617,4 @@ export class Gallery {
   private saveMemory(): void {
     saveData(MEMORY_KEY, this.memory);
   }
-}
-
-/** The gallery's memory; the `lastView` of 2.0.1's development builds (a filter clicked in the sim's grid) is dropped. */
-function loadMemory(): GalleryMemory {
-  const memory = loadData<GalleryMemory & { lastView?: unknown }>(MEMORY_KEY, { view: 'gallery', favoritesOnly: false });
-  delete memory.lastView;
-  return memory;
 }

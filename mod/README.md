@@ -203,6 +203,7 @@ Since 2.0 the mod keeps its data in the **vault**: the `msfs-ui.wasm` module of 
 | `MSFS_UI_AIRCRAFT_USES` | Per `variationId`: last livery (folder, title, thumbnail) and date of use; 60 variants at most | Recorded at each change of aircraft |
 | `MSFS_UI_LIVERY_TAILS` | Per livery folder (lower case, for example `simobjects/airplanes/microsoft_sf50/liveries/microsoft/apex_corso_red`): the tail number chosen | Changes of the tail number field |
 | `MSFS_UI_BASE_TAIL` | Default tail number: the sim's field the first time the mod reads it while the key is empty | Recorded once, or set by hand |
+A stored value is not trusted: each reader keeps only what has its type (`storedObject`, `core/storage.ts`; the favourite liveries and the uses in `sim/favorites.ts`, the tail numbers in `sim/liveries.ts`, the hidden aircraft in `sim/hidden.ts`, the memories in `weather-bar/memory.ts` and `aircraft-gallery/memory.ts`), so that a damaged value (another version, a write cut short) gives defaults instead of a wrong value sent to the sim.
 
 Aircraft are identified by `variationId` (stable); `aircraftId` may change when an aircraft is installed, so the mod looks it up when loading.
 

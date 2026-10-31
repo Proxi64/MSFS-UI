@@ -157,7 +157,10 @@ export function resetSessionStorage(): void {
   memoryLogged = false;
 }
 
-/** The value stored under `MSFS_UI_<key>`, or `fallback` when absent or unreadable. */
+/**
+ * The value stored under `MSFS_UI_<key>`, or `fallback` when absent or unreadable. The value is the parsed JSON as it
+ * was stored, not checked: its reader keeps only what has the right type (`storedObject`, sim/hidden.ts).
+ */
 export function loadData<T>(key: string, fallback: T): T {
   try {
     const raw = backend.get(STORAGE_PREFIX + key);
@@ -174,4 +177,9 @@ export function saveData(key: string, value: unknown): void {
 
 export function deleteData(key: string): void {
   backend.remove(STORAGE_PREFIX + key);
+}
+
+/** A stored value as a JSON object (not null, not an array), or null: the start of a reader's checks. */
+export function storedObject(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
