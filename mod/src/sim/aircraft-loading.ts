@@ -36,6 +36,10 @@ const RECORD_DELAY_MS = 1500;
  * loading would never end, and the lists that wait for it (Free Flight favourites, gallery) would stay inactive.
  */
 const ANSWER_TIMEOUT_MS = 5000;
+/** Wait for the configurator to take the aircraft asked directly, before going through the sim's list. */
+const DIRECT_CHANGE_MS = 1500;
+/** Longest wait for the configurator to take the aircraft or the variant asked through its list. */
+const CHANGE_TIMEOUT_MS = 3000;
 /** Longest wait for the configurator's liveries to be those of the variant just loaded. */
 const LIVERIES_TIMEOUT_MS = 1500;
 
@@ -88,7 +92,7 @@ export async function loadAircraft(variationId: string, use?: AircraftUse): Prom
 
   // 1. Directly.
   await answerWithin(configurator.SetAircraftForConfigurator.request(`${details.aircraftId}||${details.variationIndex}`), ANSWER_TIMEOUT_MS, 'the change of aircraft');
-  const loaded = await waitFor(() => configuratorIs((ref) => ref.variationId === variationId), 1500);
+  const loaded = await waitFor(() => configuratorIs((ref) => ref.variationId === variationId), DIRECT_CHANGE_MS);
   // No `!await …`: Coherent GT does not load a module with an operator before `await`.
   if (!loaded) {
     // 2. Otherwise through the entry of the sim's list for this aircraft (unless the configurator is already on it).
@@ -97,14 +101,14 @@ export async function loadAircraft(variationId: string, use?: AircraftUse): Prom
       const entry = (await answerWithin(readArray<AircraftRef>(aircraft.AircraftList), ANSWER_TIMEOUT_MS, 'the aircraft list')).filter((item) => item && sameAircraft(item))[0];
       if (!entry) throw new Error(`${details.displayName} is not in the list (category tab?)`);
       await answerWithin(configurator.SetAircraftForConfigurator.request(`${entry.aircraftId}||${entry.variationIndex}`), ANSWER_TIMEOUT_MS, 'the change of aircraft');
-      const switched = await waitFor(() => configuratorIs(sameAircraft), 3000);
+      const switched = await waitFor(() => configuratorIs(sameAircraft), CHANGE_TIMEOUT_MS);
       if (!switched) throw new Error('the sim did not change the aircraft in time');
     }
     // 3. Then the variant.
     const onVariant = await configuratorIs((ref) => ref.variationId === variationId);
     if (!onVariant) {
       await answerWithin(configurator.SelectItem.request(variationId), ANSWER_TIMEOUT_MS, 'the change of variant');
-      const changed = await waitFor(() => configuratorIs((ref) => ref.variationId === variationId), 3000);
+      const changed = await waitFor(() => configuratorIs((ref) => ref.variationId === variationId), CHANGE_TIMEOUT_MS);
       if (!changed) throw new Error('the sim did not change the variant in time');
     }
   }

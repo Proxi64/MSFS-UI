@@ -4,7 +4,7 @@
 import { CATALOG, type Settings } from '../generated/catalog.ts';
 import { withTimeout } from './async.ts';
 import { describeError } from './log.ts';
-import { defaultSettings, resolveSettings } from './settings.ts';
+import { defaultSettings, resolveSettings, type SettingsValues } from './settings.ts';
 
 export const CONFIG_URL = '/msfs-ui/config.js';
 
@@ -26,16 +26,23 @@ export async function loadSettings(): Promise<LoadedSettings> {
     module = await withTimeout(import(CONFIG_URL + '?t=' + Date.now()), LOAD_TIMEOUT_MS, `no answer after ${LOAD_TIMEOUT_MS} ms`);
   } catch (error) {
     return {
-      settings: defaultSettings(CATALOG) as unknown as Settings,
+      settings: asSettings(defaultSettings(CATALOG)),
       source: 'defaults',
       problems: [`${CONFIG_URL} could not be loaded (${describeError(error)})`],
     };
   }
   const resolved = resolveSettings(module.default, CATALOG);
   return {
-    settings: resolved.values as unknown as Settings,
+    settings: asSettings(resolved.values),
     source: resolved.allDefaults ? 'defaults' : 'config.js',
     problems: resolved.problems,
   };
 }
 
+/**
+ * Values resolved against CATALOG (every feature, every option, all valid) as the type generated from the same
+ * features.json: the catalogue's generic shape and the generated one describe the same data.
+ */
+function asSettings(values: SettingsValues): Settings {
+  return values as unknown as Settings;
+}

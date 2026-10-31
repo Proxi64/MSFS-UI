@@ -28,7 +28,8 @@ class BuildError extends Error {
   }
 }
 
-function fail(step: string, details: string[]): void {
+/** Stops the build at `step` when it found anything wrong (`details`); goes on otherwise. */
+function failOnAny(step: string, details: string[]): void {
   if (details.length > 0) throw new BuildError(step, details);
 }
 
@@ -44,7 +45,7 @@ function validateSchema(name: string, schemaName: string, data: unknown): void {
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   const validate = ajv.compile(readJson<object>(join('schema', schemaName)));
   if (!validate(data)) {
-    fail(`${name} does not match ${schemaName}`, (validate.errors || []).map((e) => `${name}${e.instancePath || ''}: ${e.message || 'invalid'}`));
+    failOnAny(`${name} does not match ${schemaName}`, (validate.errors || []).map((e) => `${name}${e.instancePath || ''}: ${e.message || 'invalid'}`));
   }
 }
 
@@ -72,7 +73,7 @@ function typecheck(project: string): void {
   const tsc = join(MOD_DIR, 'node_modules', 'typescript', 'bin', 'tsc');
   const result = spawnSync(process.execPath, [tsc, '-p', join(MOD_DIR, project), '--pretty', 'false'], { encoding: 'utf8' });
   const output = `${result.stdout || ''}${result.stderr || ''}`.trim();
-  if (result.status !== 0) fail(`type errors (${project})`, output ? output.split('\n') : [`tsc exited with ${result.status}`]);
+  if (result.status !== 0) throw new BuildError(`type errors (${project})`, output ? output.split('\n') : [`tsc exited with ${result.status}`]);
 }
 
 async function bundle(release: boolean): Promise<string> {
@@ -97,7 +98,7 @@ async function bundle(release: boolean): Promise<string> {
     loader: { '.css': 'text' },
     define: { __MSFS_UI_BUILD__: JSON.stringify(builtAt) },
   });
-  fail('esbuild warnings', result.warnings.map((warning) => warning.text));
+  failOnAny('esbuild warnings', result.warnings.map((warning) => warning.text));
   return result.outputFiles[0]!.text;
 }
 
@@ -107,23 +108,23 @@ async function main(): Promise<void> {
   const compat = readJson<CompatJson>('compat.json');
   validateSchema('features.json', 'features.schema.json', catalog);
   validateSchema('compat.json', 'compat.schema.json', compat);
-  fail('features.json is inconsistent', checkCatalog(catalog));
+  failOnAny('features.json is inconsistent', checkCatalog(catalog));
   const version = readJson<{ version: string }>('package.json').version;
-  if (version !== catalog.modVersion) fail('versions differ', [`package.json has ${version}, features.json has modVersion ${catalog.modVersion}`]);
+  if (version !== catalog.modVersion) throw new BuildError('versions differ', [`package.json has ${version}, features.json has modVersion ${catalog.modVersion}`]);
 
   writeIfChanged(GENERATED, generateCatalogModule(catalog));
   const sources = readSources();
   const modules = checkFeatureModules(catalog, sources);
-  fail('feature modules do not match features.json', modules.errors);
-  fail('the sources use the sim beyond compat.json', checkSimReferences(compat, sources));
-  fail('invalid characters in the sources', checkSourceCharacters(sources));
+  failOnAny('feature modules do not match features.json', modules.errors);
+  failOnAny('the sources use the sim beyond compat.json', checkSimReferences(compat, sources));
+  failOnAny('invalid characters in the sources', checkSourceCharacters(sources));
 
   typecheck('tsconfig.json');
   typecheck('tsconfig.node.json');
 
   const release = process.argv.includes('--release');
   const code = await bundle(release);
-  fail('the module would not load in Coherent GT', checkModuleSyntax(code));
+  failOnAny('the module would not load in Coherent GT', checkModuleSyntax(code));
   mkdirSync(dirname(OUT_FILE), { recursive: true });
   writeFileSync(OUT_FILE, code);
 

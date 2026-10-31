@@ -8,12 +8,16 @@ export function log(message: string): void {
 }
 
 export function logError(message: string, error?: unknown): void {
-  const detail = error === undefined ? '' : describeError(error, true);
+  const detail = error === undefined ? '' : describeErrorWithStack(error);
   console.error(`${LOG_TAG} ${message}${detail ? `: ${detail}` : ''}`);
 }
 
-/** Readable text of a thrown value; with `stack`, the stack trace follows the message. */
-export function describeError(error: unknown, stack = false): string {
-  if (error instanceof Error) return stack && error.stack ? `${error.message}\n${error.stack}` : error.message;
-  return String(error);
+/** Readable text of a thrown value. */
+export function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** Readable text of a thrown value, its stack trace after the message (the log's errors). */
+function describeErrorWithStack(error: unknown): string {
+  return error instanceof Error && error.stack ? `${error.message}\n${error.stack}` : describeError(error);
 }

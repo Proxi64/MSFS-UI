@@ -57,109 +57,143 @@ export interface OpenOptions {
  * answers late is logged and its vault given to `onLate`, which moves the session to it.
  */
 export function openVault(scope: Scope, options: OpenOptions = {}): Promise<OpenResult> {
-  const timeoutMs = options.timeoutMs === undefined ? DEFAULT_TIMEOUT_MS : options.timeoutMs;
-  const onLate = options.onLate;
-  const onState = options.onState;
-  return new Promise<OpenResult>((resolve) => {
-    const requestId = 1 + Math.floor(Math.random() * 1000000000);
-    const startedAt = Date.now();
-    let settled = false;
-    let registered = false;
-    // After the time-out, the listener stays (until the scope ends) to tell a late module from a missing one.
-    let watchingLate = false;
-    let retry: ReturnType<typeof setInterval> | undefined;
-    let giveUp: ReturnType<typeof setTimeout> | undefined;
-    let vault: VaultImpl | undefined;
+  return new Promise<OpenResult>((resolve) => new VaultOpening(scope, options, resolve).start());
+}
 
-    const stopWaiting = () => {
-      if (retry !== undefined) clearInterval(retry);
-      if (giveUp !== undefined) clearTimeout(giveUp);
-      retry = undefined;
-      giveUp = undefined;
-    };
+/** One opening of the vault (openVault): its request, its wait for the module, then its late answer if any. */
+class VaultOpening {
+  private readonly scope: Scope;
+  private readonly timeoutMs: number;
+  private readonly onLate: OpenOptions['onLate'];
+  private readonly onState: OpenOptions['onState'];
+  private readonly resolve: (result: OpenResult) => void;
+  private readonly requestId = 1 + Math.floor(Math.random() * 1000000000);
+  private readonly startedAt = Date.now();
+  private settled = false;
+  private registered = false;
+  /** After the time-out, the listener stays (until the scope ends) to tell a late module from a missing one. */
+  private watchingLate = false;
+  private retryTimer: ReturnType<typeof setInterval> | undefined;
+  private giveUpTimer: ReturnType<typeof setTimeout> | undefined;
+  private vault: VaultImpl | undefined;
 
-    const unregister = () => {
-      if (!registered) return;
-      registered = false;
-      try {
-        engine.off('EVENT_FROM_VIEW_LISTENER', onEvent);
-      } catch (error) {
-        logError('the vault listener could not be removed', error);
-      }
-    };
+  constructor(scope: Scope, options: OpenOptions, resolve: (result: OpenResult) => void) {
+    this.scope = scope;
+    this.timeoutMs = options.timeoutMs === undefined ? DEFAULT_TIMEOUT_MS : options.timeoutMs;
+    this.onLate = options.onLate;
+    this.onState = options.onState;
+    this.resolve = resolve;
+  }
 
-    const finish = (result: VaultImpl | null, reason: string, keepListening = false) => {
-      if (settled) return;
-      settled = true;
-      stopWaiting();
-      if (!result && keepListening && registered) watchingLate = true;
-      else if (!result) unregister();
-      resolve({ vault: result, reason });
-      if (registered && onState) sendToModule(VAULT_EVENTS.status, String(requestId));
-    };
-
-    const onEvent: Handler = (listener, eventName, payload) => {
-      // Other add-ons' events arrive many times per second: dropped first.
-      if (String(listener).toUpperCase() !== LISTENER) return;
-      if (typeof eventName !== 'string' || eventName.indexOf('MSFS_UI_VAULT_') !== 0) return;
-      const text = typeof payload === 'string' ? payload : '';
-      if (eventName === VAULT_EVENTS.loaded) {
-        const loaded = decodeLoaded(text);
-        if (!loaded || loaded.requestId !== requestId) return;
-        if (settled) {
-          if (!watchingLate) return;
-          // Late: the features already read the sim storage; `onLate` moves the session to the vault.
-          watchingLate = false;
-          const afterMs = Date.now() - startedAt;
-          const late = onLate ? parseSnapshot(loaded.text) : null;
-          if (!onLate || !late) {
-            unregister();
-            log(`the vault module answered after ${afterMs} ms; this session's data stays in the sim storage`);
-            if (onLate) onLate(null, afterMs);
-            return;
-          }
-          // Kept listening: its SAVED answers.
-          vault = new VaultImpl(late, loaded.seq);
-          log(`the vault module answered after ${afterMs} ms`);
-          onLate(vault, afterMs);
-          return;
-        }
-        const copy = parseSnapshot(loaded.text);
-        if (!copy) {
-          finish(null, 'the vault snapshot is unreadable');
-          return;
-        }
-        vault = new VaultImpl(copy, loaded.seq);
-        finish(vault, '');
-      } else if (eventName === VAULT_EVENTS.saved) {
-        const saved = decodeSaved(text);
-        if (saved && vault) vault.saved(saved.seq, saved.status);
-      } else if (eventName === VAULT_EVENTS.state) {
-        const state = decodeState(text);
-        if (state && state.requestId === requestId && onState) onState(state.state);
-      }
-    };
-
+  start(): void {
     try {
-      engine.on('EVENT_FROM_VIEW_LISTENER', onEvent);
-      registered = true;
+      engine.on('EVENT_FROM_VIEW_LISTENER', this.onEvent);
+      this.registered = true;
       // On an already disposed scope, this runs at once and settles the promise.
-      scope.add(() => {
-        if (vault) vault.dispose();
-        unregister();
-        finish(null, 'the mod was unloaded');
+      this.scope.add(() => {
+        if (this.vault) this.vault.dispose();
+        this.unregister();
+        this.finish(null, 'the mod was unloaded');
       });
-      if (settled) return;
+      if (this.settled) return;
       engine.trigger('ADD_VIEW_LISTENER', LISTENER, window.location.pathname);
       // The timers first: an answer arriving inside the first call settles the promise and stops them.
-      const sendLoad = () => sendToModule(VAULT_EVENTS.load, String(requestId));
-      retry = setInterval(sendLoad, LOAD_RETRY_MS);
-      giveUp = setTimeout(() => finish(null, `the vault module did not answer within ${timeoutMs} ms`, true), timeoutMs);
+      const sendLoad = () => sendToModule(VAULT_EVENTS.load, String(this.requestId));
+      this.retryTimer = setInterval(sendLoad, LOAD_RETRY_MS);
+      this.giveUpTimer = setTimeout(() => this.giveUp(`the vault module did not answer within ${this.timeoutMs} ms`), this.timeoutMs);
       sendLoad();
     } catch (error) {
-      finish(null, `the CommBus is not available: ${describeError(error)}`);
+      this.finish(null, `the CommBus is not available: ${describeError(error)}`);
     }
-  });
+  }
+
+  private readonly onEvent: Handler = (listener, eventName, payload) => {
+    // Other add-ons' events arrive many times per second: dropped first.
+    if (String(listener).toUpperCase() !== LISTENER) return;
+    if (typeof eventName !== 'string' || eventName.indexOf('MSFS_UI_VAULT_') !== 0) return;
+    const text = typeof payload === 'string' ? payload : '';
+    if (eventName === VAULT_EVENTS.loaded) {
+      this.onLoaded(text);
+    } else if (eventName === VAULT_EVENTS.saved) {
+      const saved = decodeSaved(text);
+      if (saved && this.vault) this.vault.saved(saved.seq, saved.status);
+    } else if (eventName === VAULT_EVENTS.state) {
+      const state = decodeState(text);
+      if (state && state.requestId === this.requestId && this.onState) this.onState(state.state);
+    }
+  };
+
+  /** The module's snapshot, for this request: the vault, or a late answer after the time-out. */
+  private onLoaded(text: string): void {
+    const loaded = decodeLoaded(text);
+    if (!loaded || loaded.requestId !== this.requestId) return;
+    if (this.settled) {
+      if (this.watchingLate) this.onLateAnswer(loaded.text, loaded.seq);
+      return;
+    }
+    const copy = parseSnapshot(loaded.text);
+    if (!copy) {
+      this.finish(null, 'the vault snapshot is unreadable');
+      return;
+    }
+    this.vault = new VaultImpl(copy, loaded.seq);
+    this.finish(this.vault, '');
+  }
+
+  /** Late: the features already read the sim storage; `onLate` moves the session to the vault. */
+  private onLateAnswer(text: string, seq: number): void {
+    this.watchingLate = false;
+    const afterMs = Date.now() - this.startedAt;
+    const late = this.onLate ? parseSnapshot(text) : null;
+    if (!this.onLate || !late) {
+      this.unregister();
+      log(`the vault module answered after ${afterMs} ms; this session's data stays in the sim storage`);
+      if (this.onLate) this.onLate(null, afterMs);
+      return;
+    }
+    // Kept listening: its SAVED answers.
+    this.vault = new VaultImpl(late, seq);
+    log(`the vault module answered after ${afterMs} ms`);
+    this.onLate(this.vault, afterMs);
+  }
+
+  /** The wait ended without the vault: no vault for now, the listener kept for a late answer. */
+  private giveUp(reason: string): void {
+    if (this.settled) return;
+    if (this.registered) this.watchingLate = true;
+    this.settle(null, reason);
+  }
+
+  /** The wait ended with the vault, or for good without it. */
+  private finish(result: VaultImpl | null, reason: string): void {
+    if (this.settled) return;
+    if (!result) this.unregister();
+    this.settle(result, reason);
+  }
+
+  private settle(result: VaultImpl | null, reason: string): void {
+    this.settled = true;
+    this.stopWaiting();
+    this.resolve({ vault: result, reason });
+    if (this.registered && this.onState) sendToModule(VAULT_EVENTS.status, String(this.requestId));
+  }
+
+  private stopWaiting(): void {
+    if (this.retryTimer !== undefined) clearInterval(this.retryTimer);
+    if (this.giveUpTimer !== undefined) clearTimeout(this.giveUpTimer);
+    this.retryTimer = undefined;
+    this.giveUpTimer = undefined;
+  }
+
+  private unregister(): void {
+    if (!this.registered) return;
+    this.registered = false;
+    try {
+      engine.off('EVENT_FROM_VIEW_LISTENER', this.onEvent);
+    } catch (error) {
+      logError('the vault listener could not be removed', error);
+    }
+  }
 }
 
 /** The key/value copy of a stored snapshot; an empty text is an empty copy, null when it is unreadable. */

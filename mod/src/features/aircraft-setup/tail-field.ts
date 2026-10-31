@@ -29,13 +29,13 @@ export class TailNumberField {
 
   mount(host: HTMLElement): void {
     // Leaving the screen while typing sends the value too (registered first: runs after the field is gone).
-    this.scope.add(() => this.commit(false));
+    this.scope.add(() => this.commit());
     createTextField(this.scope, host, {
       plain: true,
       onEnter: () => (this.edit = { livery: this.selectedLivery(), value: this.field ? this.field.value : '' }),
       onChange: (value) => this.onTyped(value),
-      onSubmit: () => this.commit(true),
-      onLeave: () => this.commit(false),
+      onSubmit: () => this.commitAndKeepEditing(),
+      onLeave: () => this.commit(),
     }).then(
       (field) => {
         this.field = field;
@@ -57,15 +57,28 @@ export class TailNumberField {
     if (this.edit) this.edit.value = clean;
   }
 
-  /**
-   * Sends the tail number when the field is left or on Enter, not while typing: each value sent is kept for the
-   * livery (tail-number.ts), so partial values would be kept too. A value typed for a livery that is no longer
-   * selected is dropped. `stillEditing` (Enter): the field keeps the keyboard, so a later change is sent too.
-   */
-  private commit(stillEditing: boolean): void {
+  /** The field left, or the screen closed: the value typed is sent and the edit ends. */
+  private commit(): void {
     const edit = this.edit;
     if (!edit) return;
-    this.edit = stillEditing ? { livery: edit.livery, value: edit.value } : null;
+    this.edit = null;
+    this.send(edit);
+  }
+
+  /** Enter: the value typed is sent; the field keeps the keyboard, so a later change is sent too. */
+  private commitAndKeepEditing(): void {
+    const edit = this.edit;
+    if (!edit) return;
+    this.edit = { livery: edit.livery, value: edit.value };
+    this.send(edit);
+  }
+
+  /**
+   * Sends the tail number of an edit, when the field is left or on Enter, not while typing: each value sent is kept for
+   * the livery (tail-number.ts), so partial values would be kept too. A value typed for a livery that is no longer
+   * selected is dropped.
+   */
+  private send(edit: { livery: string | null; value: string }): void {
     if (!this.info) return;
     const value = cleanTail(edit.value, tailLength(this.info));
     if (edit.livery !== this.selectedLivery()) {

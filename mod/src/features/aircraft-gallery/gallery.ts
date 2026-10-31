@@ -76,6 +76,12 @@ const SORTS: SortChoice[] = [
 ];
 
 const MEMORY_KEY = 'AIRCRAFT_GALLERY';
+/**
+ * Around the tiles, in layout units (aircraft-gallery.css): TILE_SIDE on each side of a tile, TILE_GAP under each row;
+ * the side by side layout's two columns TILE_GAP apart.
+ */
+const TILE_SIDE = 6;
+const TILE_GAP = 12;
 /** Room left on the right of the tiles for the sim's scroll bar, in layout units. */
 const SCROLL_BAR_ROOM = 24;
 /** The sim's scroll bar until the list's own is measured: 10 pixels at 1440 lines (measured on 1.9.21), in layout units. */
@@ -384,8 +390,8 @@ export class Gallery {
       return;
     }
     // Side by side: three aircraft and two liveries per row, all of the same width (livery-column.ts).
-    const gap = Math.round(12 * unit);
-    const halves = this.liveryColumn ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, 6 * unit) : null;
+    const gap = Math.round(TILE_GAP * unit);
+    const halves = this.liveryColumn ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, TILE_SIDE * unit) : null;
     toggleClass(this.body, 'is-side-by-side', !!halves);
     setStyle(this.body.style, 'width', halves ? `${halves.left}px` : '');
     // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
@@ -403,7 +409,7 @@ export class Gallery {
       barWidth,
       (listWidth) => {
         const tile = tileAt(listWidth);
-        return Math.ceil(tiles / tile.columns) * (tile.height + 12 * unit);
+        return Math.ceil(tiles / tile.columns) * (tile.height + TILE_GAP * unit);
       },
       this.cells.list.getBoundingClientRect().height,
     );
@@ -411,7 +417,7 @@ export class Gallery {
     // List rows: one width whether the list scrolls or not (the bar's room kept; its width measured once it shows).
     const rowWidth = aircraftRowWidth(halves ? halves.left : Math.round(rect.width), SCROLL_BAR_ROOM * unit, barWidth || Math.round(SCROLL_BAR_WIDTH * unit));
     // The rows on the tiles' edges (the bar does not move between the two views).
-    const edges = aircraftEdges(tile, 6 * unit, rowWidth);
+    const edges = aircraftEdges(tile, TILE_SIDE * unit, rowWidth);
     setVariable(style, '--aircraft-row-x', `${edges.left}px`);
     setVariable(style, '--aircraft-row-w', `${edges.rowRight - edges.left}px`);
     setVariable(style, '--tile-w', `${tile.width}px`);
@@ -422,7 +428,7 @@ export class Gallery {
     this.bar.placeLine(halves ? '' : `${edges.left}px`, halves ? '' : `${edges.right - edges.left}px`);
     // Side by side, the bar's first part on the aircraft tiles' edges (Hidden and Favorites over the last column), its
     // second on the livery column.
-    this.bar.layout(halves ? { start: edges, filters: lastColumnSpan(tile, 6 * unit), end: { left: halves.left + gap, width: halves.right } } : null, unit);
+    this.bar.layout(halves ? { start: edges, filters: lastColumnSpan(tile, TILE_SIDE * unit), end: { left: halves.left + gap, width: halves.right } } : null, unit);
     if (halves) {
       const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
       this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
