@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
 using MsfsUi.App.Services;
 using MsfsUi.Core;
-using MsfsUi.Core.Coherent;
 using MsfsUi.Core.Features;
 using MsfsUi.Core.Packaging;
 using MsfsUi.Core.Settings;
@@ -21,7 +20,7 @@ public sealed partial class FeaturesViewModel : ObservableObject
     private readonly ModResources _mod;
     private readonly SettingsStore _store;
     private readonly PackageInstaller _installer;
-    private readonly CoherentInspector _inspector;
+    private readonly ModReloader _reloader;
     private readonly SimSession _session;
     private readonly IDialogService _dialogs;
     private readonly ILogger<FeaturesViewModel> _logger;
@@ -36,12 +35,12 @@ public sealed partial class FeaturesViewModel : ObservableObject
     /// </summary>
     private bool _savedByNewerVersion;
 
-    public FeaturesViewModel(ModResources mod, SettingsStore store, PackageInstaller installer, CoherentInspector inspector, SimSession session, IDialogService dialogs, ILogger<FeaturesViewModel> logger)
+    public FeaturesViewModel(ModResources mod, SettingsStore store, PackageInstaller installer, ModReloader reloader, SimSession session, IDialogService dialogs, ILogger<FeaturesViewModel> logger)
     {
         _mod = mod;
         _store = store;
         _installer = installer;
-        _inspector = inspector;
+        _reloader = reloader;
         _session = session;
         _dialogs = dialogs;
         _logger = logger;
@@ -202,18 +201,7 @@ public sealed partial class FeaturesViewModel : ObservableObject
         {
             case NextStep.ReloadMod:
                 // The package is updated whatever happens here: a failed reload is a warning, not a failed Apply.
-                string? reloadError;
-                try
-                {
-                    var reload = await _inspector.ReloadModAsync();
-                    reloadError = reload.Ok ? null : reload.Error ?? string.Empty;
-                }
-                catch (InspectorUnavailableException ex)
-                {
-                    LogReloadFailed(ex);
-                    reloadError = ex.Message;
-                }
-
+                var reloadError = await _reloader.ReloadAfterInstallAsync();
                 if (reloadError is null)
                 {
                     ShowMessage(InfoBarSeverity.Success, Strings.Get("FeaturesApplied"), Strings.Get("FeaturesAppliedReloaded"));
@@ -284,8 +272,4 @@ public sealed partial class FeaturesViewModel : ObservableObject
     private partial void LogApplied();
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The feature settings could not be applied")]
-    private partial void LogApplyFailed(Exception exception);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Settings applied, but the mod could not be reloaded in the sim")]
-    private partial void LogReloadFailed(Exception exception);
-}
+    private partial void LogApplyFailed(Exception exception);}

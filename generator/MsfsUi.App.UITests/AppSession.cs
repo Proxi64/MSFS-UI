@@ -19,14 +19,18 @@ internal sealed class AppSession : IDisposable
 
     private readonly Process _process;
 
-    private AppSession(string root, Process process, AutomationElement window)
+    private AppSession(string root, Process process, AutomationElement window, string version)
     {
         Root = root;
         _process = process;
         Window = window;
+        Version = version;
     }
 
     public string Root { get; }
+
+    /// <summary>The started app's version (its product version, without a source revision), as its pages show it.</summary>
+    public string Version { get; }
 
     public string DataRoot => Path.Combine(Root, "data");
 
@@ -71,7 +75,7 @@ internal sealed class AppSession : IDisposable
                 () => AutomationElement.RootElement.FindFirst(TreeScope.Children, new PropertyCondition(AutomationElement.ProcessIdProperty, process.Id)),
                 "the main window",
                 DefaultTimeout);
-            return new AppSession(root, process, window);
+            return new AppSession(root, process, window, ProductVersion(exe));
         }
         catch
         {
@@ -246,6 +250,13 @@ internal sealed class AppSession : IDisposable
         }
 
         return null;
+    }
+
+    private static string ProductVersion(string exe)
+    {
+        var version = FileVersionInfo.GetVersionInfo(exe).ProductVersion ?? string.Empty;
+        var plus = version.IndexOf('+', StringComparison.Ordinal);
+        return plus < 0 ? version : version[..plus];
     }
 
     private static string Json(string text) => System.Text.Json.JsonSerializer.Serialize(text);

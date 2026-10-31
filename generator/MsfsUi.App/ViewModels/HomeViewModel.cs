@@ -22,15 +22,17 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
     private readonly SimSession _session;
     private readonly PackageInstaller _installer;
     private readonly CoherentInspector _inspector;
+    private readonly ModReloader _reloader;
     private readonly SettingsStore _store;
     private readonly IDialogService _dialogs;
     private readonly ILogger<HomeViewModel> _logger;
 
-    public HomeViewModel(SimSession session, PackageInstaller installer, CoherentInspector inspector, SettingsStore store, IDialogService dialogs, ILogger<HomeViewModel> logger)
+    public HomeViewModel(SimSession session, PackageInstaller installer, CoherentInspector inspector, ModReloader reloader, SettingsStore store, IDialogService dialogs, ILogger<HomeViewModel> logger)
     {
         _session = session;
         _installer = installer;
         _inspector = inspector;
+        _reloader = reloader;
         _store = store;
         _dialogs = dialogs;
         _logger = logger;
@@ -271,24 +273,13 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         BusyText = _ownBusyText ?? _session.PackageOperation ?? string.Empty;
     }
 
-    /// <summary>
-    /// The sim runs and only re-reads the files: the mod is reloaded at once. The package is installed whatever
-    /// happens here: a reload that fails, or an inspector that does not answer, is a warning, not a failed install.
-    /// </summary>
+    /// <summary>The sim runs and only re-reads the files: the mod is reloaded at once (a failure is a warning).</summary>
     private async Task<(string Text, InfoBarSeverity Severity)> ReloadAfterInstallAsync()
     {
-        try
-        {
-            var reload = await _inspector.ReloadModAsync();
-            return reload.Ok
-                ? (Strings.Get("HomeNextReloaded"), InfoBarSeverity.Success)
-                : (Strings.Format("HomeNextReloadFailed", reload.Error), InfoBarSeverity.Warning);
-        }
-        catch (InspectorUnavailableException ex)
-        {
-            LogReloadFailed(ex);
-            return (Strings.Format("HomeNextReloadFailed", ex.Message), InfoBarSeverity.Warning);
-        }
+        var error = await _reloader.ReloadAfterInstallAsync();
+        return error is null
+            ? (Strings.Get("HomeNextReloaded"), InfoBarSeverity.Success)
+            : (Strings.Format("HomeNextReloadFailed", error), InfoBarSeverity.Warning);
     }
 
     private void ShowMessage(InfoBarSeverity severity, string title, string text)
@@ -377,9 +368,6 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{Action}")]
     private partial void LogActionFailed(string action, Exception exception);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Package installed, but the mod could not be reloaded in the sim")]
-    private partial void LogReloadFailed(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Folders chosen by hand: Community {Community}, fs-base-ui {FsBaseUi}")]
     private partial void LogFoldersChosen(string community, string fsBaseUi);

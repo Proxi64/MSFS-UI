@@ -84,6 +84,7 @@ public partial class App : Application
         services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(5) });
         services.AddSingleton(string.IsNullOrWhiteSpace(inspectorHost) ? new CoherentInspectorOptions() : new CoherentInspectorOptions { Host = inspectorHost });
         services.AddSingleton<CoherentInspector>();
+        services.AddSingleton<ModReloader>();
         services.AddSingleton<CompatibilityChecker>();
         services.AddSingleton<SettingsStore>();
 
