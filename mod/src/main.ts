@@ -77,9 +77,9 @@ function moduleNote(): string {
 }
 
 /**
- * The data in the vault from now on: into a vault that never saved anything (the first start of 2.0) the data of 1.x
- * comes over from the sim storage, then the changes this session made there before a late answer, except where the
- * vault's value is newer than the one they were made from (logged). Returns the keys moved.
+ * The data in the vault from now on: into a vault that never saved anything the mod's data comes over from the sim storage
+ * (1.x's, or a session's without a working vault), then the changes this session made there before a late answer, except
+ * where the vault's value is newer than the one they were made from (logged). Returns the keys moved.
  */
 function useVault(vault: Vault, lateMs?: number): string[] {
   const backend = vault.backend();

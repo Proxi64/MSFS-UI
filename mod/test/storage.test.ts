@@ -124,7 +124,7 @@ describe('storage', () => {
     }
   });
 
-  it('copies the keys of 1.x from datastorage into a backend, keeping what the backend has', () => {
+  it("copies the mod's keys from datastorage into a backend, keeping what the backend has", () => {
     const data = fakePage();
     data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]');
     data.set('MSFS_UI_LIVERY_TAILS', '{"a":"F-ABCD"}');
@@ -135,8 +135,17 @@ describe('storage', () => {
     assert.deepEqual(copyFromDatastorage(backend), ['FAVORITE_LIVERIES', 'LIVERY_TAILS']);
     assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"a"}]');
     assert.equal(copy.get('MSFS_UI_BASE_TAIL'), '"KEPT"');
-    assert.equal(copy.has('MSFS_UI_OTHER'), false, 'only the keys of 1.x');
+    assert.equal(copy.has('MSFS_UI_OTHER'), false, "only the mod's keys");
     assert.equal(data.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"a"}]', 'datastorage left as it was');
+  });
+
+  it('copies the hidden aircraft too: 2.0 kept them in datastorage while its vault module failed', () => {
+    const data = fakePage();
+    data.set('MSFS_UI_HIDDEN_AIRCRAFT', '[{"displayName":"C172","creator":"Asobo"}]');
+    const copy = new Map<string, string>();
+    const backend: StorageBackend = { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
+    assert.deepEqual(copyFromDatastorage(backend), ['HIDDEN_AIRCRAFT']);
+    assert.equal(copy.get('MSFS_UI_HIDDEN_AIRCRAFT'), '[{"displayName":"C172","creator":"Asobo"}]');
   });
 
   it('copies nothing without a datastorage', () => {

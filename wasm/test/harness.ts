@@ -36,6 +36,12 @@ export interface LoadOptions {
   /** `loseReads` and `refuseOpens` from the start (module_init reads at once). */
   loseReads?: string[];
   refuseOpens?: string[];
+  /**
+   * An `fsIOOpenRead` that fails (it returns 0, as for a missing file) still calls its callback later, on file 0 with
+   * no byte read: what the sim does (2026-10-31: the module of 2.0.1 to 2.0.3 died in a job the sim's report names
+   * "file 0" at every start with missing files, and runs since its callbacks of failed opens are ignored).
+   */
+  callbackFailedOpens?: boolean;
 }
 
 const OPEN_FLAGS = { RDONLY: 1, WRONLY: 2, RDWR: 4, CREAT: 8, TRUNC: 16 };
@@ -100,7 +106,10 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
     fsIOOpenRead(pathPointer: number, flags: number, offset: number, count: number, callback: number, user: number) {
       const path = text(pathPointer);
       const file = disk.get(path);
-      if (file === undefined || count > file.length || refuseOpens.has(path)) return 0n;
+      if (file === undefined || count > file.length || refuseOpens.has(path)) {
+        if (options.callbackFailedOpens) enqueue(() => call(callback, 0n, 0, offset, 0, user));
+        return 0n;
+      }
       const handle = open(path, flags, false);
       const run = (task: () => void) => (loseReads.delete(path) ? lost.push(task) : enqueue(task));
       run(() => {

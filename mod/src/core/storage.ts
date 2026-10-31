@@ -94,16 +94,19 @@ export function setStorageBackend(next: StorageBackend | null): void {
   backend = next || datastorageBackend;
 }
 
-/** The keys 1.x kept in `datastorage` (mod/README.md, Data stored in the sim), copied into a new vault. */
-const KEYS_OF_1X = ['FAVORITE_LIVERIES', 'LIVERY_TAILS', 'AIRCRAFT_USES', 'BASE_TAIL', 'WEATHER_BAR', 'WEATHER_BAR_TAB', 'AIRCRAFT_GALLERY'];
+/**
+ * The keys the mod keeps in `datastorage` when it has no vault (mod/README.md, Data stored in the sim), copied into a new
+ * vault: those of 1.x, and the hidden aircraft of 2.0, kept there while the vault module of 2.0.1 to 2.0.3 failed.
+ */
+const DATASTORAGE_KEYS = ['FAVORITE_LIVERIES', 'LIVERY_TAILS', 'AIRCRAFT_USES', 'BASE_TAIL', 'WEATHER_BAR', 'WEATHER_BAR_TAB', 'AIRCRAFT_GALLERY', 'HIDDEN_AIRCRAFT'];
 
 /**
- * Copies into `target` the keys of 1.x found in `datastorage`, except those `target` already has; `datastorage` is
- * left as it was. Returns the keys copied (without the prefix).
+ * Copies into `target` the mod's keys found in `datastorage`, except those `target` already has; `datastorage` is left
+ * as it was. Returns the keys copied (without the prefix).
  */
 export function copyFromDatastorage(target: StorageBackend): string[] {
   const copied: string[] = [];
-  for (const key of KEYS_OF_1X) {
+  for (const key of DATASTORAGE_KEYS) {
     const value = datastorageBackend.get(STORAGE_PREFIX + key);
     if (value === undefined || target.get(STORAGE_PREFIX + key) !== undefined) continue;
     target.set(STORAGE_PREFIX + key, value);

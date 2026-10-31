@@ -5,6 +5,7 @@
 #include <MSFS/MSFS.h>
 #include <MSFS/MSFS_CommBus.h>
 #include <MSFS/MSFS_IO.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -344,13 +345,17 @@ static int g_startupPending = 0;
 static int g_startupPhase = 0; // 1: heads, 2: data
 static int g_startupAttempts = 0;
 
-// A start-up read in flight. A restart closes its file and marks it stale: a late callback then changes nothing.
-struct Ticket {
-  Slot* slot;
+// The start-up read in flight of each slot. Its callback gets the read's number, never a pointer: the sim also calls
+// back reads the module no longer awaits (a read dropped by a restart; a read whose open failed, on file 0, as for a
+// missing file: 2.0.1 to 2.0.3 freed a ticket there that the callback then used, and died at every start with an
+// empty `work` folder, 2026-10-31). A callback whose number is no longer awaited changes nothing, and nothing is ever
+// freed in a callback.
+struct AwaitedRead {
+  unsigned int id; // 0: none
   FsIOFile file;
-  bool stale;
 };
-static Ticket* g_tickets[2] = {nullptr, nullptr}; // the read in flight of each slot
+static AwaitedRead g_reads[2] = {{0, FS_IO_ERROR_FILE}, {0, FS_IO_ERROR_FILE}};
+static unsigned int g_lastReadId = 0;
 // A read of the file could be launched once: the file is there (a later failure to open it is not "no file").
 static bool g_headSeen[2] = {false, false};
 static bool g_dataSeen[2] = {false, false};
@@ -416,36 +421,40 @@ static void endStartupOperation() {
 // it, so it stays pending until the next restart rather than leaving out the newest snapshot.
 static void launchRead(Slot* slot, const char* path, int count, FsIOFileReadCallback callback, bool* seen) {
   g_startupPending++;
-  Ticket* ticket = (Ticket*)malloc(sizeof(Ticket));
-  FsIOFile file = FS_IO_ERROR_FILE;
-  if (ticket != nullptr) {
-    ticket->slot = slot;
-    ticket->stale = false;
-    file = fsIOOpenRead(path, FsIOOpenFlag_RDONLY, 0, count, callback, ticket);
-    ticket->file = file;
-  }
+  if (++g_lastReadId == 0) g_lastReadId = 1;
+  unsigned int id = g_lastReadId;
+  AwaitedRead* awaited = &g_reads[slot->index];
+  // Awaited before the open: its callback may come before fsIOOpenRead returns.
+  awaited->id = id;
+  awaited->file = FS_IO_ERROR_FILE;
+  FsIOFile file = fsIOOpenRead(path, FsIOOpenFlag_RDONLY, 0, count, callback, (void*)(uintptr_t)id);
   if (file == FS_IO_ERROR_FILE) {
-    free(ticket);
+    if (awaited->id == id) awaited->id = 0;
     if (!*seen) g_startupPending--;
     return;
   }
+  if (awaited->id == id) awaited->file = file; // else it has already called back
   *seen = true;
-  g_tickets[slot->index] = ticket;
   g_readsLaunched++;
 }
 
-// The slot of a read callback; null when a restart dropped that read (its file is already closed).
-static Slot* claim(void* user) {
-  Ticket* ticket = (Ticket*)user;
-  Slot* slot = ticket->stale ? nullptr : ticket->slot;
-  if (slot != nullptr) g_tickets[slot->index] = nullptr;
-  free(ticket);
-  if (slot != nullptr) g_readsEnded++;
-  return slot;
+// The slot whose awaited read this callback ends; null for a read no longer awaited (dropped by a restart, its file
+// already closed) or whose open failed (file 0), which the sim may still call back.
+static Slot* claim(FsIOFile file, void* user) {
+  unsigned int id = (unsigned int)(uintptr_t)user;
+  if (id == 0 || file == FS_IO_ERROR_FILE) return nullptr;
+  for (int i = 0; i < 2; i++) {
+    if (g_reads[i].id != id) continue;
+    g_reads[i].id = 0;
+    g_reads[i].file = FS_IO_ERROR_FILE;
+    g_readsEnded++;
+    return &g_slots[i];
+  }
+  return nullptr;
 }
 
 static void onHeadRead(FsIOFile file, char* buf, int offset, int read, void* user) {
-  Slot* slot = claim(user);
+  Slot* slot = claim(file, user);
   if (slot == nullptr) return;
   if (read == HEAD_SIZE && memcmp(buf, "MSFSUI-VAULT 1 ", 15) == 0 && buf[25] == ' ' && buf[36] == ' ' && buf[45] == ' ' &&
       buf[HEAD_SIZE - 1] == '\n') {
@@ -463,7 +472,7 @@ static void onHeadRead(FsIOFile file, char* buf, int offset, int read, void* use
 }
 
 static void onDataRead(FsIOFile file, char* buf, int offset, int read, void* user) {
-  Slot* slot = claim(user);
+  Slot* slot = claim(file, user);
   if (slot == nullptr) return;
   if (read == slot->length) {
     memcpy(slot->data, buf, (size_t)read);
@@ -504,10 +513,10 @@ static void startupHeadPhase() {
 // The start-up read again from the heads: the reads in flight are dropped (closed, their callbacks ignored).
 static void restartStartup() {
   for (int i = 0; i < 2; i++) {
-    if (g_tickets[i] != nullptr) {
-      g_tickets[i]->stale = true; // freed by its callback, if it ever comes
-      fsIOClose(g_tickets[i]->file);
-      g_tickets[i] = nullptr;
+    if (g_reads[i].id != 0) {
+      // No longer awaited: its callback, if it ever comes, is ignored.
+      if (g_reads[i].file != FS_IO_ERROR_FILE) fsIOClose(g_reads[i].file);
+      g_reads[i] = AwaitedRead{0, FS_IO_ERROR_FILE};
     }
     free(g_slots[i].data);
     g_slots[i] = Slot{i, false, 0, 0, 0, nullptr, false};

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.4 (2026-10-31)
+
+- **The vault works at the first start again**: since 2.0.1, the module that keeps your favourites, tail numbers and last choices stopped at every start of the sim when its files did not exist yet (a first install) or when only one of its two files had been written (a single change saved). The mod then kept your data in the sim's own storage, as in 1.x, instead of the vault. Fixed: the module starts in every case. If your vault was still empty, your data moves into it at the next start, the hidden aircraft included. If it had one save from 2.0.0, the vault keeps that save: the changes made since then in 2.0.3 are to be done again.
+- **Updating**: as for 2.0.3, delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, then open the app and click **Generate and install**, and restart the sim (the vault module is read only at its start).
+
 ## 2.0.3 (2026-10-31)
 
 - **A tidy folder**: `MSFS-UI-GENERATOR` now shows three items, `MSFS-UI-GENERATOR.exe` (a small launcher: run it as before), `LICENSE.txt` and an `app` folder with the app and its files, instead of almost 400. Keep them together.

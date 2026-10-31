@@ -31,6 +31,29 @@ test('answers an empty vault', { skip }, async () => {
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['7\n0\n']);
 });
 
+test('starts on missing files when the sim still calls back their failed opens', { skip }, async () => {
+  // 2.0.1 to 2.0.3 died at every start of the sim with an empty `work` folder (2026-10-31): the callback of a failed
+  // open used a ticket the module had already freed.
+  const disk = newDisk();
+  const vault = await loadVault(disk, { callbackFailedOpens: true });
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  vault.send('MSFS_UI_VAULT_STATUS', 's');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n0\n']);
+  assert.ok(answers(vault, 'MSFS_UI_VAULT_STATE')[0]!.includes('\nreads 0 0\n'), 'a failed open is no read');
+  vault.send('MSFS_UI_VAULT_SAVE', '1\n{"a":"1"}');
+  await vault.settle();
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['1\nok']);
+
+  // Slot a written, slot b still missing: its failed opens call back again at the next start.
+  const again = await loadVault(disk, { callbackFailedOpens: true });
+  await again.settle();
+  again.send('MSFS_UI_VAULT_LOAD', 'q');
+  again.send('MSFS_UI_VAULT_STATUS', 's');
+  assert.deepEqual(answers(again, 'MSFS_UI_VAULT_LOADED'), ['q\n1\n{"a":"1"}']);
+  assert.ok(answers(again, 'MSFS_UI_VAULT_STATE')[0]!.includes('\nreads 2 2\n'), answers(again, 'MSFS_UI_VAULT_STATE')[0]);
+});
+
 test('saves, then loads after a restart', { skip }, async () => {
   const disk = newDisk();
   const vault = await loadVault(disk);
