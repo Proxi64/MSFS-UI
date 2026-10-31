@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.6 (2026-10-31)
+
+Coming from 2.0.3: this version includes 2.0.4 and 2.0.5 (see below), among them **the vault works at the first start again**.
+
+- **Free Flight: nothing moves any more**: the blocks of the right column moved at each click on the map (an airport selected, set as departure, its Airport tab). Every block now keeps its place: the **Weather** and **Airport** tabs are always there (Airport dimmed while no airport is selected), then *Today*, *Weather*, *Air traffic*, *Multiplayer*, and the **METAR last**, so that it moves nothing when a departure shows it. Each section is a card of its own, with the map visible in every gap.
+- **Search location back in its own place**, under the aircraft on the left, level with the tabs on the right; the favourites hide while its results are open (the results opened under them).
+- **The METAR no longer looks cut**: its card ends with the same room under its text as above it.
+- **Microsoft Store: the sim found wherever it is installed**: the app looked for a Store sim only in an `XboxGames` folder, and a sim installed in `C:\Program Files\WindowsApps` had to be set by hand with **Choose folders…**. It now asks Windows where the sim is installed. If you had chosen the folders by hand, click **Use detected folders** on the Home page.
+- **Updating**: delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, then open the app and click **Generate & install**. Coming from 2.0.3, restart the sim (the fixed vault module of 2.0.4 is read only at its start); coming from 2.0.4 or 2.0.5, the app reloads the mod in the running sim.
+
 ## 2.0.5 (2026-10-31)
 
 Coming from 2.0.3: this version includes the fix of 2.0.4, **the vault works at the first start again** (see below).
