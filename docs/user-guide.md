@@ -17,7 +17,7 @@ Developed on MSFS 2024 1.9.18 and tested on 1.9.21 (Steam), base UI package `fs-
 
 ## Install and first run
 
-1. Copy the `MSFS-UI-GENERATOR` folder anywhere and run `MSFS-UI-GENERATOR.exe`. Nothing else needs installing: .NET and the Windows App SDK ship with it.
+1. Copy the `MSFS-UI-GENERATOR` folder anywhere and run `MSFS-UI-GENERATOR.exe`. Nothing else needs installing: .NET and the Windows App SDK ship with it. Since 2.0.3 the folder holds only that exe (a small launcher), `LICENSE.txt` and an `app` folder with the app itself and its files: keep them together. To update from an earlier version, delete the old folder first (its files would stay beside the new ones; your settings are elsewhere, in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`).
 2. The **Home** page finds the sim (Steam or Microsoft Store). If it does not, **Choose folders…** asks for the Community folder, then for the sim's `fs-base-ui` folder.
 3. **Generate & install** puts the `msfs-ui` package in Community.
 4. Start (or restart) the sim: it reads a new package only at start-up.

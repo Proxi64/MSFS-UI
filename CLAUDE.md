@@ -9,7 +9,7 @@ A personal mod of the MSFS 2024 main menu (Steam, sim 1.9.21, `fs-base-ui` 0.1.1
 - **wasm/**: the vault, a WASM module of the `msfs-ui` package that keeps the mod's data in files of its `work` folder (2.0; protocol and file format in `wasm/README.md`).
 - `docs/` (user guide, development, sim reference, next steps, feature ideas, `images/` for the README's screenshots), `tools/msfs-sdk-mcp` (MCP server: the MSFS 2024 SDK and SimConnect, declared in `.mcp.json`), `tools/make-icon.ps1` (the app's icon), `.claude/skills/msfs-wasm` (skill for the sim's WASM modules: use it for any work on the 2.0 module, its build, its CommBus messages or its files), `build-release.ps1` (the release; output in `release/`, ignored by Git).
 - `LICENSE`: MIT, © 2026 Proxi64 (also in `mod/package.json` and `tools/msfs-sdk-mcp`); the README opens with a disclaimer (not affiliated with Microsoft or Asobo, use at your own risk) and ends with the licence.
-- The C# projects keep their internal names (`MsfsUi.App`, `MsfsUi.Core`, `MsfsUi.Core.Tests`, `MsfsUi.App.UITests`, `MsfsUi.DevTool`).
+- The C# projects keep their internal names (`MsfsUi.App`, `MsfsUi.Core`, `MsfsUi.Core.Tests`, `MsfsUi.App.UITests`, `MsfsUi.DevTool`, `MsfsUi.Launcher`: the release folder's native launcher, since 2.0.3 the app itself is in its `app\` folder).
 
 ## Language
 
@@ -25,7 +25,7 @@ dotnet test generator/MsfsUi.slnx                # Core tests + UI tests (they o
 dotnet test generator/MsfsUi.slnx --filter "TestCategory!=UI"
 winapp run generator/MsfsUi.App/MsfsUi.App.csproj --detach --json
 pwsh -File wasm/build.ps1                        # the vault module: build, checks, node tests (needs MSFS2024_SDK)
-pwsh -File build-release.ps1                     # release\MSFS-UI-GENERATOR\ + zip (mod in release mode, every test, publish)
+pwsh -File build-release.ps1                     # release\MSFS-UI-GENERATOR\ (launcher, LICENSE.txt, app\) + zip (mod in release mode, every test, publish; needs VS C++ tools)
 
 $dev = "generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe"
 & $dev install [--settings file]                 # package with mod/dist/main.js + generated config.js
@@ -118,6 +118,7 @@ The original plan, `%USERPROFILE%\.claude\plans\jaunty-foraging-allen.md` (steps
 | 2.0-2 | Hidden aircraft (branch `hidden-aircraft`; design and plan in `docs/superpowers/`): a slashed eye on every aircraft tile and row hides it, a **Hidden** filter brings the hidden ones back (`MSFS_UI_HIDDEN_AIRCRAFT`, `hiddenOnly` in the gallery memory); the owner's bookmark with a star replaces every heart (the mod's own SVG icons); the bar split over the two columns in the side by side layout; livery rows inside their column. Checked in the sim |
 | 2.0.1 | Users' feedback on 2.0.0 (branch `v2.0.1`, docs/next-steps.md 1c): the vault's lost start-up read (measured, fixed in the module and the mod; a late vault keeps its newer values), then the search position, the Default view drawn by the mod in the sim's layout (bar, filters, sorts; whole columns), a more visible bookmark, no empty Free Flight block; merged into `main`; release 2.0.1 built on 2026-10-30 (SHA-256 in docs/next-steps.md), not published yet |
 | 2.0.2 | Version 2.0.2 (2026-10-30, branch `v2.0.2` fast-forwarded into `main`; docs/next-steps.md 1f and 1g): the owner's polish of the aircraft selection and the setup panel, hearts again, every screen checked at the common resolutions (`tools/resolution-check/`), then Free Flight as one page (search field moved to the right column, favourites under the aircraft button, *Today* first, one gap between all groups filling the column) and the weather presets of other packages in a dropdown; with 2.0.1 (never published). Release built (217 MB / 82 MB, SHA-256 in docs/next-steps.md), checked without personal data, not published yet |
+| 2.0.3 | A tidy release folder (branch `v2.0.3`, docs/next-steps.md 1h): `MSFS-UI-GENERATOR.exe` (the native launcher, `MsfsUi.Launcher`), `LICENSE.txt` and `app\` (the app, WinUI's strings in English only: 85 language folders left out); the release script checks that the launcher starts the app. Release built on 2026-10-31 (215 MB / 81 MB, SHA-256 in docs/next-steps.md), checked without personal data, not published yet |
 | **6** | Next: new features, from 6a (A1, favourite and recent airports); order, design and open questions in [docs/next-steps.md](docs/next-steps.md) |
 
 The package installed in Community is a 2.0.2 development build of 2026-10-30 (`msfs-ui-dev install`, the app's settings: side by side layout); release 2.0.2 built on 2026-10-30, not published yet (2.0.1, built the same day, never published: 2.0.2 replaces it); release 2.0.0 published on flightsim.to; before it, the published 1.0.1, validated in the sim on 2026-10-19 (163/163 compatibility checks, every feature working).

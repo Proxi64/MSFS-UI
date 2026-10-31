@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The release folder's launcher (Program.cs): a small native exe (NativeAOT, no .NET to load) at the top of the
+       folder, which starts the app kept with all its files in the app folder beside it. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>MsfsUi.Launcher</RootNamespace>
+    <AssemblyName>MSFS-UI-GENERATOR</AssemblyName>
+    <ApplicationIcon>..\MsfsUi.App\Assets\AppIcon.ico</ApplicationIcon>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- The MessageBoxW import marshals its strings with generated code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The documentation file stays generated (IDE0005 needs it, Directory.Build.props), not published beside the exe. -->
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+    <!-- No symbols in the release: the native linker would write the build machine's paths (the user's folder) into
+         the exe and its .pdb, which PathMap does not reach. -->
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
+  </PropertyGroup>
+</Project>

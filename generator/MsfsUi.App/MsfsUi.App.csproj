@@ -73,6 +73,15 @@
     <EmbeddedResource Include="$(MenuModFolder)features.json" LogicalName="MsfsUi.Mod.features.json" Visible="false" />
     <EmbeddedResource Include="$(MenuModFolder)compat.json" LogicalName="MsfsUi.Mod.compat.json" Visible="false" />
   </ItemGroup>
+  <!-- The app is in English only: of WinUI's own translated strings (one folder per language, two .mui files each, 85
+       folders and 3.4 MB on 2026-10-31), only en-us is published. They are files of the Windows App SDK, not .NET
+       satellite assemblies: SatelliteResourceLanguages does not filter them. -->
+  <Target Name="PublishEnglishUiStringsOnly" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.mui' and !$([System.String]::Copy('%(RelativePath)').StartsWith('en-us\', System.StringComparison.OrdinalIgnoreCase))" />
+    </ItemGroup>
+  </Target>
+
   <Target Name="CheckMenuModBuilt" BeforeTargets="PrepareForBuild">
     <Error Condition="!Exists('$(MenuModFolder)dist\main.js')" Text="mod\dist\main.js is missing: run `npm run check` in mod first (the app embeds the built mod)." />
     <Error Condition="!Exists('$(VaultModuleFile)')" Text="wasm\dist\msfs-ui.wasm is missing: run `pwsh -File wasm/build.ps1` first (the app embeds the vault module)." />

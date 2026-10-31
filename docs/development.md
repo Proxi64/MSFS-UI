@@ -23,6 +23,7 @@ Inside `generator/` (solution `MsfsUi.slnx`):
 | `MsfsUi.Core.Tests` | MSTest tests of the library; they never touch the sim or the real Community folder |
 | `MsfsUi.App.UITests` | UI tests: the built app driven through Windows UI Automation on an isolated profile |
 | `MsfsUi.DevTool` | `msfs-ui-dev`, the developer's console over `MsfsUi.Core` (not shipped) |
+| `MsfsUi.Launcher` | The release folder's `MSFS-UI-GENERATOR.exe` (2.0.3): a native exe (NativeAOT, about 1.6 MB) that starts `app\MSFS-UI-GENERATOR.exe` with its arguments and ends, or says why it could not |
 
 The mod's own layout, build and conventions are in [mod/README.md](../mod/README.md).
 
@@ -185,9 +186,13 @@ pwsh -File build-release.ps1 [-SkipUiTests]
 It stops at the first failure:
 1. the mod: `npm ci`, `npm run check`, then `node build/build.ts --release` (the module without its source map, which the app embeds);
 2. the app: `dotnet build` of the whole solution in Release, then every test (UI tests included unless `-SkipUiTests`; they run the Release app);
-3. `dotnet publish` of `MsfsUi.App` (profile `win-x64`: self-contained, unpackaged, ReadyToRun) to `release\MSFS-UI-GENERATOR\`, with `LICENSE` as `LICENSE.txt`;
-4. a check that no file of the release holds the path of the user's folder (in text and UTF-16): it would show the user's name;
-5. the zip `release\MSFS-UI-GENERATOR-<version>.zip`.
+3. `dotnet publish` of `MsfsUi.App` (profile `win-x64`: self-contained, unpackaged, ReadyToRun) to `release\MSFS-UI-GENERATOR\app\`; of WinUI's translated strings, only `en-us` (the app is in English: the `PublishEnglishUiStringsOnly` target of `MsfsUi.App.csproj` leaves out 85 language folders, 3.4 MB; they are files of the Windows App SDK, which `SatelliteResourceLanguages` does not filter);
+4. `dotnet publish` of `MsfsUi.Launcher` (NativeAOT, no symbols: the native linker would write the machine's paths) to `release\MSFS-UI-GENERATOR\`, with `LICENSE` as `LICENSE.txt`: the folder shows these three items only (the owner's choice, 2.0.3). NativeAOT links with Visual Studio's C++ tools (the *Desktop development with C++* workload), found through `vswhere`, which the script puts on the PATH;
+5. a check that the launcher starts the app: on an isolated profile as the UI tests, the launcher must end with code 0 and the app from `app\` show its window within 30 s (then closed);
+6. a check that no file of the release holds the path of the user's folder (in text and UTF-16): it would show the user's name;
+7. the zip `release\MSFS-UI-GENERATOR-<version>.zip`.
+
+The app does not depend on its own location (no path built from its exe), so it runs the same from `app\`; the launcher passes its arguments and starts it in its own folder.
 
 A GitHub release: tag `v<version>` (`v1.2.0` and later; the first one, `1.0.1`, has no `v`) on `main`, the notes from `CHANGELOG.md` with the installation steps and the zip's SHA-256, and the zip attached. The owner pushes and publishes (GitHub Desktop, the GitHub site); GitHub shows the SHA-256 of each attached file, to compare with the local zip.
 

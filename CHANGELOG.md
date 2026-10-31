@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.3 (2026-10-31)
+
+- **A tidy folder**: `MSFS-UI-GENERATOR` now shows three items, `MSFS-UI-GENERATOR.exe` (a small launcher: run it as before), `LICENSE.txt` and an `app` folder with the app and its files, instead of almost 400. Keep them together.
+- **No more folders for 85 languages**: the app is in English, and only WinUI's English strings ship with it (3.4 MB less).
+- **Updating**: delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, or its files stay beside the new ones. Your settings are kept (they are in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`). The mod itself is the same as in 2.0.2.
+
 ## 2.0.2 (2026-10-30)
 
 Includes 2.0.1 (built, not published): **favourites kept at every start**, see below.

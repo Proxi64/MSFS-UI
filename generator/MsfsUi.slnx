@@ -4,4 +4,5 @@
   <Project Path="MsfsUi.Core.Tests/MsfsUi.Core.Tests.csproj" />
   <Project Path="MsfsUi.Core/MsfsUi.Core.csproj" />
   <Project Path="MsfsUi.DevTool/MsfsUi.DevTool.csproj" />
+  <Project Path="MsfsUi.Launcher/MsfsUi.Launcher.csproj" />
 </Solution>
