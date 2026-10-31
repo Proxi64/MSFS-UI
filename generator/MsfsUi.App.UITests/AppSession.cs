@@ -38,6 +38,12 @@ internal sealed class AppSession : IDisposable
 
     public string PackageFolder => Path.Combine(Community, "msfs-ui");
 
+    /// <summary>The profile's own sim data folders, beside its data folder (the app's test mode uses them).</summary>
+    public string RoamingAppData => Path.Combine(Root, "roaming");
+
+    /// <summary>Whether the app has closed (the uninstall closes it).</summary>
+    public bool HasExited => _process.HasExited;
+
     public AutomationElement Window { get; }
 
     /// <summary>Whether the real sim runs on this machine: its process makes the app say "Running".</summary>

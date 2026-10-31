@@ -37,11 +37,29 @@ public interface ISimEnvironment
 /// <summary>The real machine.</summary>
 public sealed unsafe partial class WindowsSimEnvironment : ISimEnvironment
 {
-    /// <inheritdoc />
-    public string RoamingAppData => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+    private readonly string? _roamingAppData;
+    private readonly string? _localAppData;
+
+    /// <summary>The user's folders.</summary>
+    public WindowsSimEnvironment()
+    {
+    }
+
+    /// <summary>
+    /// Other folders instead of <c>%APPDATA%</c> and <c>%LOCALAPPDATA%</c> (the app's UI tests: the sim's data, its
+    /// vault folder included, is then never the user's).
+    /// </summary>
+    public WindowsSimEnvironment(string roamingAppData, string localAppData)
+    {
+        _roamingAppData = roamingAppData;
+        _localAppData = localAppData;
+    }
 
     /// <inheritdoc />
-    public string LocalAppData => Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    public string RoamingAppData => _roamingAppData ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+    /// <inheritdoc />
+    public string LocalAppData => _localAppData ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
     /// <inheritdoc />
     public string? ReadSteamPath()

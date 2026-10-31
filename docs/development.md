@@ -175,7 +175,7 @@ The mod's data (favourites, tail numbers, last choices) lives in the **vault**, 
 
 ## UI tests
 
-`generator/MsfsUi.App.UITests` starts the built `MSFS-UI-GENERATOR.exe` on an isolated profile (`AppSession`): a temporary folder with a fake `fs-base-ui`, a fake Community folder and the data folder, whose `app.json` names them. Two variables, read by `App.xaml.cs` for the tests only, point the app there: `MSFS_UI_DATA_ROOT` (data folder) and `MSFS_UI_INSPECTOR_HOST` (`127.0.0.1:9`, where nothing listens). The real sim, Community folder and data are never touched. Buttons are clicked once enabled (an async command stays disabled until its previous run ends). A `ContentDialog` shows as a `Popup` window inside the main window.
+`generator/MsfsUi.App.UITests` starts the built `MSFS-UI-GENERATOR.exe` on an isolated profile (`AppSession`): a temporary folder with a fake `fs-base-ui`, a fake Community folder and the data folder, whose `app.json` names them. Two variables, read by `App.xaml.cs` for the tests only, point the app there: `MSFS_UI_DATA_ROOT` (data folder; the sim's data folders, `%APPDATA%` and `%LOCALAPPDATA%` for detection and the uninstall, become the profile's `roaming` and `local` beside it) and `MSFS_UI_INSPECTOR_HOST` (`127.0.0.1:9`, where nothing listens). The real sim, Community folder, vault and data are never touched. Buttons are clicked once enabled (an async command stays disabled until its previous run ends). A `ContentDialog` shows as a `Popup` window inside the main window.
 
 ## Release
 

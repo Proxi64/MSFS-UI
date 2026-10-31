@@ -26,7 +26,7 @@ Version 2.0 also puts a small module, `msfs-ui.wasm`, in the package: it keeps y
 
 The app keeps its own data in `%LOCALAPPDATA%\MSFS-UI-GENERATOR`: your feature settings (`settings.json`), the folders chosen by hand and the theme (`app.json`), and the log files. Earlier versions used `%LOCALAPPDATA%\MSFS-UI`; that folder is moved there the first time.
 
-To remove the mod: **Remove** on the Home page, then restart the sim. The mod never changes a file of the sim: only the `Community\msfs-ui` folder is involved.
+To remove the mod: **Remove** on the Home page, then restart the sim. The mod never changes a file of the sim: only the `Community\msfs-ui` folder is involved. To remove everything, the mod's data and the app's included: **Uninstall everything…** on the Home page, the sim closed, then delete the app's folder.
 
 ## The app
 
@@ -45,6 +45,7 @@ The navigation is on the left; **Readme**, at the bottom, explains how the app a
 - **Generate & install** builds the package from the sim installed on this machine and your settings, and installs it. When the sim is running and only reads the files again, the mod is reloaded at once; when a restart is needed (first install, sim update), the app says so. If the reload does not get through (the sim's menu not on screen), the package is installed all the same: use **Reload in sim** later. While an installation or a removal runs, from Home or from Features, the other actions wait for it.
 - **Reload in sim** reloads the mod in the running sim.
 - **Remove** deletes the package, after confirmation. If the running sim holds one of its files, the removal stops and says so: the package stays recognised, and **Remove** works once the sim is closed.
+- **Uninstall everything…** (block *Uninstall*, the sim closed) deletes for good everything MSFS-UI put on this computer, after a confirmation that lists the folders found: the package in Community, the vault (`%APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui` on Steam, with your favourites, tail numbers and hidden aircraft) and the app's data (`%LOCALAPPDATA%\MSFS-UI-GENERATOR`: settings, logs). A few `MSFS_UI_` keys stay in the sim's own profile: they do nothing without the mod. The app then closes: delete its `MSFS-UI-GENERATOR` folder to finish. If a file is in use, what is left is listed and the app stays open to try again.
 
 ### Features
 

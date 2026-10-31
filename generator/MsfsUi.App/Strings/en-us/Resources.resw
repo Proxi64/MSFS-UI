@@ -99,6 +99,52 @@
   <data name="DialogCancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="DialogClose" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="HomeUninstallHeader.Text" xml:space="preserve">
+    <value>Uninstall</value>
+  </data>
+  <data name="HomeUninstallText.Text" xml:space="preserve">
+    <value>Deletes everything MSFS-UI put on this computer: the mod, its data (favourites, tail numbers, hidden aircraft) and the app's settings and logs. The app closes afterwards.</value>
+  </data>
+  <data name="HomeUninstall.Content" xml:space="preserve">
+    <value>Uninstall everything…</value>
+  </data>
+  <data name="HomeUninstallCloseSim.Text" xml:space="preserve">
+    <value>Close the sim first</value>
+  </data>
+  <data name="HomeUninstallTitle" xml:space="preserve">
+    <value>Uninstall MSFS-UI completely?</value>
+  </data>
+  <data name="HomeUninstallMessage" xml:space="preserve">
+    <value>These folders are deleted for good, with your favourites, tail numbers, hidden aircraft and settings:
+
+{0}
+
+A few MSFS_UI_ keys stay in the sim's own profile: they do nothing without the mod. The app closes afterwards; then delete its MSFS-UI-GENERATOR folder.</value>
+  </data>
+  <data name="HomeUninstallConfirm" xml:space="preserve">
+    <value>Uninstall</value>
+  </data>
+  <data name="HomeBusyUninstall" xml:space="preserve">
+    <value>Uninstalling…</value>
+  </data>
+  <data name="HomeUninstallFailed" xml:space="preserve">
+    <value>MSFS-UI could not be uninstalled</value>
+  </data>
+  <data name="HomeUninstallLeft" xml:space="preserve">
+    <value>Not everything could be deleted</value>
+  </data>
+  <data name="HomeUninstallLeftDetail" xml:space="preserve">
+    <value>A file may be in use: close what uses it, then Uninstall everything again. Left: {0}</value>
+  </data>
+  <data name="HomeUninstalledTitle" xml:space="preserve">
+    <value>MSFS-UI is uninstalled</value>
+  </data>
+  <data name="HomeUninstalledMessage" xml:space="preserve">
+    <value>The app closes now. To finish, delete its MSFS-UI-GENERATOR folder.</value>
+  </data>
   <data name="HomeBusyInstall" xml:space="preserve">
     <value>Generating and installing…</value>
   </data>

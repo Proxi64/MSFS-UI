@@ -80,6 +80,42 @@ public sealed class AppTests
     }
 
     [TestMethod]
+    public void UninstallEverythingDeletesTheModTheVaultAndTheAppDataThenCloses()
+    {
+        if (AppSession.RealSimRunning)
+        {
+            Assert.Inconclusive("The real sim is running: the uninstall waits for it to close.");
+        }
+
+        using var app = AppSession.Start();
+        app.WaitForText("HomePackageStatus", "Not installed");
+        app.Invoke("HomeInstall");
+        app.WaitForText("HomePackageStatus", "Installed and up to date");
+        var vault = Path.Combine(app.RoamingAppData, "Microsoft Flight Simulator 2024", "WASM", "MSFS2024", "msfs-ui");
+        Directory.CreateDirectory(Path.Combine(vault, "work"));
+        File.WriteAllText(Path.Combine(vault, "work", "vault-a.head"), "1");
+
+        // Cancel, the default button, deletes nothing.
+        app.Invoke("HomeUninstall");
+        var cancel = AppSession.DialogButton(app.Dialog("Uninstall MSFS-UI completely?"), "Cancel");
+        AppSession.WaitUntil(() => cancel.Current.HasKeyboardFocus, "Cancel has the focus");
+        AppSession.Invoke(cancel);
+        Assert.IsTrue(Directory.Exists(app.PackageFolder) && Directory.Exists(vault) && Directory.Exists(app.DataRoot), "everything kept");
+
+        app.Invoke("HomeUninstall");
+        var dialog = app.Dialog("Uninstall MSFS-UI completely?");
+        AppSession.WaitUntil(() => AppSession.Texts(dialog).Contains(vault, StringComparison.Ordinal), "the vault listed in the dialog");
+        AppSession.Invoke(AppSession.DialogButton(dialog, "Uninstall"));
+        AppSession.Invoke(AppSession.DialogButton(app.Dialog("MSFS-UI is uninstalled"), "Close"));
+        AppSession.WaitUntil(() => app.HasExited, "the app closed");
+
+        Assert.IsFalse(Directory.Exists(app.PackageFolder), "the package deleted");
+        Assert.IsFalse(Directory.Exists(vault), "the vault deleted");
+        Assert.IsFalse(Directory.Exists(app.DataRoot), "the app's data deleted, its log included");
+        Assert.IsTrue(Directory.Exists(Path.Combine(app.Root, "fs-base-ui")), "the sim's files untouched");
+    }
+
+    [TestMethod]
     public void GenerateInstallThenRemoveAfterConfirmation()
     {
         using var app = AppSession.Start();

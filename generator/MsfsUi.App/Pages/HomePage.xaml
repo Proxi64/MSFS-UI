@@ -188,6 +188,28 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
+
+                <!--  Everything MSFS-UI put on the machine, deleted for good (the sim closed).  -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel Spacing="12">
+                        <TextBlock
+                            x:Uid="HomeUninstallHeader"
+                            AutomationProperties.HeadingLevel="Level2"
+                            Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBlock x:Uid="HomeUninstallText" Style="{StaticResource BodyTextBlockStyle}" />
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button
+                                x:Uid="HomeUninstall"
+                                AutomationProperties.AutomationId="HomeUninstall"
+                                Command="{x:Bind ViewModel.UninstallCommand}" />
+                            <TextBlock
+                                x:Uid="HomeUninstallCloseSim"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource BodyTextBlockStyle}"
+                                Visibility="{x:Bind ViewModel.IsSimRunning, Mode=OneWay}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Grid>
     </ScrollViewer>

@@ -60,6 +60,31 @@ public sealed class FileLoggerProvider : ILoggerProvider
         }
     }
 
+    /// <summary>
+    /// Lines go to the file as well as to memory. Off while the app deletes its own data (the uninstall): the next line
+    /// would make the folder again. Set under the writes' lock: once off, no line is being written to the file.
+    /// </summary>
+    public bool WritesFiles
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _writesFiles;
+            }
+        }
+
+        set
+        {
+            lock (_lock)
+            {
+                _writesFiles = value;
+            }
+        }
+    }
+
+    private bool _writesFiles = true;
+
     /// <summary>Raised after each line, on the thread that wrote it.</summary>
     public event EventHandler<LogEntry>? EntryWritten;
 
@@ -95,14 +120,17 @@ public sealed class FileLoggerProvider : ILoggerProvider
                 _recent.RemoveFirst();
             }
 
-            try
+            if (_writesFiles)
             {
-                Directory.CreateDirectory(_folder);
-                File.AppendAllText(Path.Combine(_folder, string.Create(CultureInfo.InvariantCulture, $"msfs-ui-{entry.Time:yyyyMMdd}.log")), line, Encoding.UTF8);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // The log must never break the app: the line stays in memory.
+                try
+                {
+                    Directory.CreateDirectory(_folder);
+                    File.AppendAllText(Path.Combine(_folder, string.Create(CultureInfo.InvariantCulture, $"msfs-ui-{entry.Time:yyyyMMdd}.log")), line, Encoding.UTF8);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // The log must never break the app: the line stays in memory.
+                }
             }
         }
 

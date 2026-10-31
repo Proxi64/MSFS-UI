@@ -76,11 +76,15 @@ public partial class App : Application
         services.AddSingleton(paths);
         services.AddSingleton(time);
 
-        // Core services (MsfsUi.Core), as the developer tool composes them.
-        services.AddSingleton<ISimEnvironment, WindowsSimEnvironment>();
+        // Core services (MsfsUi.Core), as the developer tool composes them. On the isolated profile, the sim's data
+        // folders are the profile's own, beside its data folder: the uninstall never reaches the user's vault.
+        services.AddSingleton<ISimEnvironment>(string.IsNullOrWhiteSpace(dataRoot)
+            ? new WindowsSimEnvironment()
+            : new WindowsSimEnvironment(Path.GetFullPath(Path.Combine(dataRoot, "..", "roaming")), Path.GetFullPath(Path.Combine(dataRoot, "..", "local"))));
         services.AddSingleton<SimLocator>();
         services.AddSingleton<PackageBuilder>();
         services.AddSingleton<PackageInstaller>();
+        services.AddSingleton<Uninstaller>();
         services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(5) });
         services.AddSingleton(string.IsNullOrWhiteSpace(inspectorHost) ? new CoherentInspectorOptions() : new CoherentInspectorOptions { Host = inspectorHost });
         services.AddSingleton<CoherentInspector>();

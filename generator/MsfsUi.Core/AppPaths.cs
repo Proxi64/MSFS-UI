@@ -8,11 +8,12 @@ namespace MsfsUi.Core;
 /// </summary>
 public sealed class AppPaths
 {
-    /// <summary>Creates the paths under <paramref name="root"/>.</summary>
-    public AppPaths(string root)
+    /// <summary>Creates the paths under <paramref name="root"/>; <paramref name="legacyRoot"/>: the data folder of earlier versions, if any.</summary>
+    public AppPaths(string root, string? legacyRoot = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
         Root = root;
+        LegacyRoot = legacyRoot;
     }
 
     /// <summary>Name of the data folder before the app was named MSFS-UI-GENERATOR.</summary>
@@ -36,22 +37,28 @@ public sealed class AppPaths
     {
         if (Directory.Exists(root) || !Directory.Exists(legacyRoot))
         {
-            return new AppPaths(root);
+            return new AppPaths(root, legacyRoot);
         }
 
         try
         {
             Directory.Move(legacyRoot, root);
-            return new AppPaths(root);
+            return new AppPaths(root, legacyRoot);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return new AppPaths(legacyRoot);
+            return new AppPaths(legacyRoot, legacyRoot);
         }
     }
 
     /// <summary>Root folder of the app's data.</summary>
     public string Root { get; }
+
+    /// <summary>
+    /// The data folder of earlier versions (<see cref="LegacyFolderName"/>), when the paths are the user's: left behind
+    /// when both existed. Null for other roots (tests).
+    /// </summary>
+    public string? LegacyRoot { get; }
 
     /// <summary>Where the package is generated before being copied to Community.</summary>
     public string StagingPackage => Path.Combine(Root, "staging", PackageLayout.PackageName);

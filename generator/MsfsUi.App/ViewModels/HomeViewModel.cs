@@ -25,9 +25,20 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
     private readonly ModReloader _reloader;
     private readonly SettingsStore _store;
     private readonly IDialogService _dialogs;
+    private readonly Uninstaller _uninstaller;
+    private readonly FileLoggerProvider _log;
     private readonly ILogger<HomeViewModel> _logger;
 
-    public HomeViewModel(SimSession session, PackageInstaller installer, CoherentInspector inspector, ModReloader reloader, SettingsStore store, IDialogService dialogs, ILogger<HomeViewModel> logger)
+    public HomeViewModel(
+        SimSession session,
+        PackageInstaller installer,
+        CoherentInspector inspector,
+        ModReloader reloader,
+        SettingsStore store,
+        IDialogService dialogs,
+        Uninstaller uninstaller,
+        FileLoggerProvider log,
+        ILogger<HomeViewModel> logger)
     {
         _session = session;
         _installer = installer;
@@ -35,6 +46,8 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         _reloader = reloader;
         _store = store;
         _dialogs = dialogs;
+        _uninstaller = uninstaller;
+        _log = log;
         _logger = logger;
         _session.PropertyChanged += OnSessionChanged;
         Update();
@@ -66,6 +79,10 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial bool HasManualFolders { get; private set; }
+
+    /// <summary>The sim runs: the uninstall waits for it to close.</summary>
+    [ObservableProperty]
+    public partial bool IsSimRunning { get; private set; }
 
     // ----- The package -----
 
@@ -106,7 +123,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
     /// it was left and opened again): the page is a new one at each visit, the operation is the session's.
     /// </summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(InstallCommand), nameof(RemoveCommand), nameof(ReloadCommand), nameof(ChooseFoldersCommand), nameof(UseDetectedFoldersCommand))]
+    [NotifyCanExecuteChangedFor(nameof(InstallCommand), nameof(RemoveCommand), nameof(ReloadCommand), nameof(ChooseFoldersCommand), nameof(UseDetectedFoldersCommand), nameof(UninstallCommand))]
     public partial bool IsBusy { get; private set; }
 
     /// <summary>The busy text of this page's own action, while it runs.</summary>
@@ -141,6 +158,8 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
     private bool CanChooseFolders() => !IsBusy;
 
     private bool CanUseDetectedFolders() => !IsBusy && _session.Preferences.HasManualFolders;
+
+    private bool CanUninstall() => !IsBusy && !_session.SimRunning;
 
     /// <summary>Generates the package from the sim's MasterPage and the user's settings, and installs it.</summary>
     [RelayCommand(CanExecute = nameof(CanInstall))]
@@ -238,6 +257,49 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         LogDetectedFolders();
     });
 
+    /// <summary>
+    /// Deletes everything MSFS-UI put on the machine, after a confirmation that lists it, the sim closed; then says
+    /// that the app's own folder is left to delete and closes the app (it would write its data again). What could not
+    /// be deleted is listed instead, the app left open to try again.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanUninstall))]
+    private async Task UninstallAsync()
+    {
+        var sim = _session.Sim;
+        var folders = await _uninstaller.FindAsync(sim);
+        var list = string.Join(Environment.NewLine, folders.Select(folder => "• " + folder));
+        if (!await _dialogs.ConfirmAsync(Strings.Get("HomeUninstallTitle"), Strings.Format("HomeUninstallMessage", list), Strings.Get("HomeUninstallConfirm")))
+        {
+            return;
+        }
+
+        var done = false;
+        await RunPackageOperationAsync(Strings.Get("HomeBusyUninstall"), Strings.Get("HomeUninstallFailed"), async () =>
+        {
+            LogUninstalling();
+            // The log's next line would make the app's data folder again: from now on, lines stay in memory.
+            _log.WritesFiles = false;
+            try
+            {
+                var left = await _uninstaller.UninstallAsync(sim);
+                done = left.Count == 0;
+                if (!done)
+                {
+                    ShowMessage(InfoBarSeverity.Error, Strings.Get("HomeUninstallLeft"), Strings.Format("HomeUninstallLeftDetail", string.Join(", ", left)));
+                }
+            }
+            finally
+            {
+                _log.WritesFiles = !done;
+            }
+        });
+        if (done)
+        {
+            await _dialogs.InformAsync(Strings.Get("HomeUninstalledTitle"), Strings.Get("HomeUninstalledMessage"));
+            Microsoft.UI.Xaml.Application.Current.Exit();
+        }
+    }
+
     public void Dispose() => _session.PropertyChanged -= OnSessionChanged;
 
     /// <summary>Runs an action with the busy state, reports a failure, and refreshes the state afterwards.</summary>
@@ -318,6 +380,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         FsBaseUi = sim is null ? string.Empty : Strings.Format("HomeFsBaseUiValue", sim.FsBaseUiVersion, sim.FsBaseUiPath);
         Community = sim?.CommunityPath ?? string.Empty;
         SimState = Strings.Get(_session.SimRunning ? "HomeSimRunning" : "HomeSimNotRunning");
+        IsSimRunning = _session.SimRunning;
 
         UpdateBusy();
         UpdatePackage(_session.Status);
@@ -325,6 +388,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         RemoveCommand.NotifyCanExecuteChanged();
         ReloadCommand.NotifyCanExecuteChanged();
         UseDetectedFoldersCommand.NotifyCanExecuteChanged();
+        UninstallCommand.NotifyCanExecuteChanged();
     }
 
     private void UpdatePackage(PackageStatus? status)
@@ -380,4 +444,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Folders chosen by hand forgotten: the sim is detected again")]
     private partial void LogDetectedFolders();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Uninstalling everything MSFS-UI put on this computer")]
+    private partial void LogUninstalling();
 }

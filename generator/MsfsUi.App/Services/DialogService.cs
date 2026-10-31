@@ -10,6 +10,9 @@ public interface IDialogService
     /// <summary>Asks to confirm; true when the user chose <paramref name="confirm"/>.</summary>
     Task<bool> ConfirmAsync(string title, string message, string confirm);
 
+    /// <summary>Tells something, with a single Close button; returns when it is closed.</summary>
+    Task InformAsync(string title, string message);
+
     /// <summary>Asks for a folder; null when cancelled.</summary>
     Task<string?> PickFolderAsync(string commitText);
 }
@@ -34,6 +37,20 @@ public sealed class DialogService : IDialogService
             DefaultButton = ContentDialogButton.Close,
         };
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
+    }
+
+    public async Task InformAsync(string title, string message)
+    {
+        var root = Window?.Content?.XamlRoot ?? throw new InvalidOperationException("The main window is not shown yet.");
+        var dialog = new ContentDialog
+        {
+            XamlRoot = root,
+            Title = title,
+            Content = message,
+            CloseButtonText = Strings.Get("DialogClose"),
+            DefaultButton = ContentDialogButton.Close,
+        };
+        await dialog.ShowAsync();
     }
 
     public async Task<string?> PickFolderAsync(string commitText)
