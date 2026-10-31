@@ -37,4 +37,4 @@ pwsh -File wasm/build.ps1 -NoTest    # without the tests
 node --test "wasm/test/*.test.ts"    # the tests alone (need a built module)
 ```
 
-The build checks that every import is the sim's (`env.fs*`) or the C library's (`wasi_snapshot_preview1.*`), that the required exports are there, and that no path or name of the build machine is in the binary. The tests (`test/vault.test.ts`) run the real module in Node with fake sim imports (`test/harness.ts`: a disk in memory, queued I/O callbacks, a crash that drops them). `dist/` and `obj/` are ignored by Git.
+The build checks that every import is the sim's (`env.fs*`) or the C library's (`wasi_snapshot_preview1.*`), that the required exports are there, and that no path or name of the build machine is in the binary. The tests (`test/vault.test.ts`) run the real module in Node with fake sim imports (`test/harness.ts`: a disk in memory, queued I/O callbacks, a crash that drops them). `test/protocol-contract.test.ts` drives it with the mod's own encoders and decoders (`mod/src/core/vault-protocol.ts`): a change of the protocol on one side only fails there. `dist/` and `obj/` are ignored by Git.
