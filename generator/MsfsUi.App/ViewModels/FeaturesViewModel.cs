@@ -194,6 +194,13 @@ public sealed partial class FeaturesViewModel : ObservableObject
             return;
         }
 
+        // The installer refuses while another package replaces the MasterPage: the choices are saved all the same.
+        if (_session.Status.Conflicts.Count > 0)
+        {
+            ShowMessage(InfoBarSeverity.Warning, Strings.Get("FeaturesSaved"), Strings.Format("FeaturesSavedConflicts", string.Join(", ", _session.Status.Conflicts)));
+            return;
+        }
+
         // An installation of the session: Home offers none meanwhile (the installer also runs them one at a time).
         using var operation = _session.BeginPackageOperation(Strings.Get("FeaturesBusyApply"));
         var result = await _installer.InstallAsync(sim, PackageInputs.ForMod(_mod.Catalog, _mod.ModScript, _mod.VaultModule, selection));

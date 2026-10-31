@@ -15,7 +15,7 @@ internal sealed class AppSession : IDisposable
     public const string FsBaseUiVersion = "9.9.9";
 
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(20);
-    private const string MasterPageGuid = "{7DA60FBA-EF32-48F2-974D-F8BEA35337A4}";
+    public const string MasterPageGuid = "{7DA60FBA-EF32-48F2-974D-F8BEA35337A4}";
 
     private readonly Process _process;
 
@@ -165,6 +165,15 @@ internal sealed class AppSession : IDisposable
     /// <summary>The dialog with this title, once shown (a ContentDialog shows as a Popup window).</summary>
     public AutomationElement Dialog(string title) =>
         WaitFor(() => ByName(Window, title, "Popup"), $"the dialog '{title}'", DefaultTimeout);
+
+    /// <summary>A button of a dialog, once it exists: the dialog's window shows before its content.</summary>
+    public static AutomationElement DialogButton(AutomationElement dialog, string name) =>
+        WaitFor(
+            () => dialog.FindFirst(TreeScope.Descendants, new AndCondition(
+                new PropertyCondition(AutomationElement.NameProperty, name),
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button))),
+            $"the button '{name}' of the dialog",
+            DefaultTimeout);
 
     /// <summary>Waits until <paramref name="condition"/> is true.</summary>
     public static void WaitUntil(Func<bool> condition, string what) =>

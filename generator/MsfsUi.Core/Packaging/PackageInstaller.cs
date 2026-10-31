@@ -74,8 +74,9 @@ public sealed partial class PackageInstaller : IDisposable
     /// part of the package are removed afterwards. The state file is copied last: if the copy fails half-way, the
     /// package still describes the previous build, so its status asks for an update.
     /// </summary>
-    /// <exception cref="MsfsUiException">The Community folder is missing or holds a foreign <c>msfs-ui</c> folder, the
-    /// MasterPage cannot be used, or a file is locked.</exception>
+    /// <exception cref="MsfsUiException">The Community folder is missing, holds a foreign <c>msfs-ui</c> folder or
+    /// another package replacing the MasterPage (<see cref="FindConflicts"/>), the MasterPage cannot be used, or a file
+    /// is locked.</exception>
     public async Task<InstallResult> InstallAsync(SimInstallation sim, PackageInputs inputs, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sim);
@@ -123,6 +124,14 @@ public sealed partial class PackageInstaller : IDisposable
             throw new MsfsUiException($"Community folder not found: {sim.CommunityPath}. Check the sim folders.");
         }
 
+        // Only one package can replace the MasterPage: with another one there, either this one or that one is ignored.
+        var conflicts = FindConflicts(sim);
+        if (conflicts.Count > 0)
+        {
+            throw new MsfsUiException(
+                $"Only one mod can replace the sim's menu page: remove {string.Join(", ", conflicts)} from the Community folder ({sim.CommunityPath}) to install msfs-ui.");
+        }
+
         var target = PackageFolder(sim);
         PackageState? previous = null;
         byte[]? previousMasterPage = null;
@@ -158,17 +167,11 @@ public sealed partial class PackageInstaller : IDisposable
         }
 
         var masterPageChanged = previousMasterPage is null || !previousMasterPage.AsSpan().SequenceEqual(newMasterPage);
-        var conflicts = FindConflicts(sim);
         var vaultChanged = previous?.VaultSha256 != state.VaultSha256;
         var nextStep = NextStepAfterInstall(previous, newestFileCreatedUtc, masterPageChanged, vaultChanged);
 
         LogInstalled(state.Version, target, nextStep);
-        if (conflicts.Count > 0)
-        {
-            LogConflicts(string.Join(", ", conflicts));
-        }
-
-        return new InstallResult(state, target, previous is null, masterPageChanged, conflicts, nextStep);
+        return new InstallResult(state, target, previous is null, masterPageChanged, nextStep);
     }
 
     private async Task<bool> RemoveExclusiveAsync(SimInstallation sim, CancellationToken cancellationToken)
@@ -377,9 +380,6 @@ public sealed partial class PackageInstaller : IDisposable
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Package {Version} installed in {Folder}; next step in the sim: {NextStep}")]
     private partial void LogInstalled(string version, string folder, NextStep nextStep);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Other Community packages also replace the MasterPage: {Conflicts}. Only one can win: remove the others.")]
-    private partial void LogConflicts(string conflicts);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Package removed from {Folder}")]
     private partial void LogRemoved(string folder);

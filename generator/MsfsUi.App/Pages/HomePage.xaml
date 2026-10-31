@@ -157,7 +157,7 @@
                             IsClosable="False"
                             IsOpen="{x:Bind ViewModel.HasConflicts, Mode=OneWay}"
                             Message="{x:Bind ViewModel.Conflicts, Mode=OneWay}"
-                            Severity="Warning"
+                            Severity="Error"
                             Visibility="{x:Bind ViewModel.HasConflicts, Mode=OneWay}" />
 
                         <StackPanel Orientation="Horizontal" Spacing="8">

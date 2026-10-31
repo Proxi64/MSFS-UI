@@ -41,7 +41,7 @@ The navigation is on the left; **Readme**, at the bottom, explains how the app a
   - *Not installed*;
   - *Another msfs-ui folder is in Community*: a folder the app did not create, which it never touches.
 
-  Other Community packages that also replace the menu's root page are listed: only one of them can win.
+  Another Community package that also replaces the menu's root page (another menu mod) shows in red: only one mod can do so, so **Generate & install** waits until it is removed from the Community folder (Home sees it within 5 seconds). **Remove** stays available.
 - **Generate & install** builds the package from the sim installed on this machine and your settings, and installs it. When the sim is running and only reads the files again, the mod is reloaded at once; when a restart is needed (first install, sim update), the app says so. If the reload does not get through (the sim's menu not on screen), the package is installed all the same: use **Reload in sim** later. While an installation or a removal runs, from Home or from Features, the other actions wait for it.
 - **Reload in sim** reloads the mod in the running sim.
 - **Remove** deletes the package, after confirmation. If the running sim holds one of its files, the removal stops and says so: the package stays recognised, and **Remove** works once the sim is closed.
@@ -202,7 +202,7 @@ A number is remembered for the current livery as soon as you change the tail num
 |---|---|---|
 | The sim's menu is broken | The mod, or another package that replaces the same page | **Remove** on Home and restart the sim: the original menu always comes back |
 | No change in the sim after installing | The sim reads a new package only at start-up | Restart the sim |
-| Home: *Other packages replace the same menu page* | Another Community package replaces the menu's root page too | Remove one of them |
+| Home: *Another mod replaces the same menu page*, **Generate & install** greyed out | Another Community package replaces the menu's root page too: only one can work | Remove the package it names from the Community folder |
 | Home: *Sim not found* | Neither Steam nor the Microsoft Store installation was found | **Choose folders…** |
 | The left column of the aircraft selection is empty | The current aircraft became invalid (a choice sent to a released configurator) | Click an aircraft in the gallery; otherwise leave and reopen the screen |
 | A favourite does not load (*not in the list*) | The aircraft is not in the category tab chosen in the aircraft selection | Choose the *All* tab |

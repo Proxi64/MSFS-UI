@@ -61,6 +61,25 @@ public sealed class AppTests
     }
 
     [TestMethod]
+    public void AnotherModReplacingTheMenuPageBlocksTheInstallationUntilRemoved()
+    {
+        using var app = AppSession.Start();
+        app.WaitForText("HomePackageStatus", "Not installed");
+        var other = Path.Combine(app.Community, "other-ui");
+        Directory.CreateDirectory(Path.Combine(other, "cookedcomps"));
+        File.WriteAllText(Path.Combine(other, "cookedcomps", AppSession.MasterPageGuid + ".html"), "<ui-resource-element></ui-resource-element>");
+
+        // The app reads the Community folder again every 5 seconds.
+        app.WaitForText("HomeConflicts", "remove other-ui from the Community folder");
+        var install = app.Find("HomeInstall");
+        AppSession.WaitUntil(() => !install.Current.IsEnabled, "Generate & install disabled");
+
+        Directory.Delete(other, recursive: true);
+        AppSession.WaitUntil(() => install.Current.IsEnabled, "Generate & install enabled again");
+        Assert.IsNull(app.TryFind("HomeConflicts"), "the banner closed");
+    }
+
+    [TestMethod]
     public void GenerateInstallThenRemoveAfterConfirmation()
     {
         using var app = AppSession.Start();
@@ -74,17 +93,13 @@ public sealed class AppTests
 
         // Cancel keeps the package; it is the default button.
         app.Invoke("HomeRemove");
-        var dialog = app.Dialog("Remove the package?");
-        var cancel = dialog.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.NameProperty, "Cancel"));
-        Assert.IsTrue(cancel.Current.HasKeyboardFocus, "Cancel has the focus");
+        var cancel = AppSession.DialogButton(app.Dialog("Remove the package?"), "Cancel");
+        AppSession.WaitUntil(() => cancel.Current.HasKeyboardFocus, "Cancel has the focus");
         AppSession.Invoke(cancel);
         Assert.IsTrue(Directory.Exists(app.PackageFolder), "package kept");
 
         app.Invoke("HomeRemove");
-        dialog = app.Dialog("Remove the package?");
-        AppSession.Invoke(dialog.FindFirst(TreeScope.Descendants, new AndCondition(
-            new PropertyCondition(AutomationElement.NameProperty, "Remove"),
-            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button))));
+        AppSession.Invoke(AppSession.DialogButton(app.Dialog("Remove the package?"), "Remove"));
         app.WaitForText("HomePackageStatus", "Not installed");
         Assert.IsFalse(Directory.Exists(app.PackageFolder), "package removed");
     }
@@ -170,15 +185,11 @@ public sealed class AppTests
 
         // Cancel keeps the newer settings as they are.
         app.Invoke("FeaturesApply");
-        var dialog = app.Dialog("Replace the newer settings?");
-        AppSession.Invoke(dialog.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.NameProperty, "Cancel")));
+        AppSession.Invoke(AppSession.DialogButton(app.Dialog("Replace the newer settings?"), "Cancel"));
         Assert.AreEqual(NewerSettings, File.ReadAllText(settingsFile), "nothing written");
 
         app.Invoke("FeaturesApply");
-        dialog = app.Dialog("Replace the newer settings?");
-        AppSession.Invoke(dialog.FindFirst(TreeScope.Descendants, new AndCondition(
-            new PropertyCondition(AutomationElement.NameProperty, "Apply anyway"),
-            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button))));
+        AppSession.Invoke(AppSession.DialogButton(app.Dialog("Replace the newer settings?"), "Apply anyway"));
         // The text of a save without package (the warning above also starts with "Settings saved").
         app.WaitForText("FeaturesMessage", "The package is not installed");
         StringAssert.Contains(File.ReadAllText(settingsFile), "\"tailNumber\": {\n      \"enabled\": false");

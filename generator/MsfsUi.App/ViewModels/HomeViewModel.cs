@@ -82,7 +82,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial IReadOnlyList<string> Reasons { get; private set; } = [];
 
-    /// <summary>Other Community packages that also replace the menu's root page.</summary>
+    /// <summary>Other Community packages that also replace the menu's root page: what to do (the installation waits).</summary>
     [ObservableProperty]
     public partial string Conflicts { get; private set; } = string.Empty;
 
@@ -130,7 +130,9 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     private bool IsOursInstalled => _session.Status?.Kind is PackageStatusKind.UpToDate or PackageStatusKind.UpdateNeeded;
 
-    private bool CanInstall() => !IsBusy && _session.Sim is not null && _session.Inputs is not null && _session.Status?.Kind != PackageStatusKind.Foreign;
+    /// <summary>Not over a foreign folder, nor while another package replaces the same menu page (the installer refuses).</summary>
+    private bool CanInstall() => !IsBusy && _session.Sim is not null && _session.Inputs is not null
+        && _session.Status is not ({ Kind: PackageStatusKind.Foreign } or { Conflicts.Count: > 0 });
 
     private bool CanRemove() => !IsBusy && _session.Sim is not null && IsOursInstalled;
 
@@ -350,7 +352,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             ? Strings.Format("HomePackageInstalledDetail", installed.Version, BuiltAt(installed.BuiltAt), installed.FsBaseUiVersion, status.PackageFolder)
             : status.Kind == PackageStatusKind.Foreign ? Strings.Format("HomePackageForeignDetail", status.PackageFolder) : Strings.Get("HomePackageNotInstalledDetail");
         SetReasons([.. status.Reasons.Select(reason => Strings.Get($"HomeReason{reason}"))]);
-        Conflicts = string.Join(Environment.NewLine, status.Conflicts);
+        Conflicts = Strings.Format("HomeConflictsMessage", string.Join(", ", status.Conflicts), _session.Sim?.CommunityPath ?? string.Empty);
         HasConflicts = status.Conflicts.Count > 0;
         IsSimUpdated = status.Reasons.Contains(UpdateReason.SimUpdated);
     }

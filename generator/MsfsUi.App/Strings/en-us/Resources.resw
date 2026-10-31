@@ -82,7 +82,10 @@
     <value>msfs-ui package</value>
   </data>
   <data name="HomeConflicts.Title" xml:space="preserve">
-    <value>Other packages replace the same menu page</value>
+    <value>Another mod replaces the same menu page</value>
+  </data>
+  <data name="HomeConflictsMessage" xml:space="preserve">
+    <value>Only one mod can replace the sim's menu page: remove {0} from the Community folder ({1}) to install msfs-ui.</value>
   </data>
   <data name="HomeInstall.Content" xml:space="preserve">
     <value>Generate &amp; install</value>
@@ -254,6 +257,9 @@
   </data>
   <data name="FeaturesSavedNotInstalled" xml:space="preserve">
     <value>The package is not installed: Generate &amp; install on Home puts the mod in the sim with these settings.</value>
+  </data>
+  <data name="FeaturesSavedConflicts" xml:space="preserve">
+    <value>The package is not updated while {0} replaces the same menu page: see the Home page.</value>
   </data>
   <data name="FeaturesApplied" xml:space="preserve">
     <value>Settings applied</value>

@@ -86,12 +86,10 @@ public enum NextStep
 /// <param name="PackageFolder">Folder of the package in Community.</param>
 /// <param name="FirstInstall">The package was not installed before.</param>
 /// <param name="MasterPageChanged">The installed MasterPage differs from the previous one (loader or sim update).</param>
-/// <param name="Conflicts">Other Community packages that also replace the MasterPage.</param>
 /// <param name="NextStep">What the user has to do in the sim.</param>
 public sealed record InstallResult(
     PackageState State,
     string PackageFolder,
     bool FirstInstall,
     bool MasterPageChanged,
-    IReadOnlyList<string> Conflicts,
     NextStep NextStep);

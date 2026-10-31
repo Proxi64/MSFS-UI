@@ -8,6 +8,7 @@ Coming from 2.0.3: this version includes 2.0.4 and 2.0.5 (see below), among them
 - **Search location back in its own place**, under the aircraft on the left, level with the tabs on the right; the favourites hide while its results are open (the results opened under them).
 - **The METAR no longer looks cut**: its card ends with the same room under its text as above it.
 - **Microsoft Store: the sim found wherever it is installed**: the app looked for a Store sim only in an `XboxGames` folder, and a sim installed in `C:\Program Files\WindowsApps` had to be set by hand with **Choose folders…**. It now asks Windows where the sim is installed. If you had chosen the folders by hand, click **Use detected folders** on the Home page.
+- **Another menu mod blocks the installation**: when another package of the Community folder also replaces the sim's menu page, only one of the two can work. The Home page said so in a yellow note that was easy to miss, and installed all the same. It now says it in red, names the package to remove, and **Generate & install** waits until it is gone.
 - **Updating**: delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, then open the app and click **Generate & install**. Coming from 2.0.3, restart the sim (the fixed vault module of 2.0.4 is read only at its start); coming from 2.0.4 or 2.0.5, the app reloads the mod in the running sim.
 
 ## 2.0.5 (2026-10-31)

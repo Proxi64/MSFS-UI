@@ -344,14 +344,25 @@ public sealed class PackageInstallerTests
     public async Task ConflictsListOtherPackagesReplacingTheMasterPage()
     {
         using var setup = new Setup();
+        await setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken);
         setup.Folder.Write($"Community/other-ui/{PackageLayout.MasterPageHtmlPath}", "<ui-resource-element></ui-resource-element>");
         setup.Folder.Write("Community/liveries-pack/layout.json", "{}");
 
-        var result = await setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken);
         var status = await setup.Installer.GetStatusAsync(setup.Sim, Inputs, TestContext.CancellationToken);
 
-        CollectionAssert.AreEqual(ExpectedConflicts, result.Conflicts.ToArray(), "our own package is not a conflict");
-        CollectionAssert.AreEqual(ExpectedConflicts, status.Conflicts.ToArray());
+        CollectionAssert.AreEqual(ExpectedConflicts, status.Conflicts.ToArray(), "our own package is not a conflict, nor one without a MasterPage");
+    }
+
+    [TestMethod]
+    public async Task AnotherPackageReplacingTheMasterPagePreventsTheInstallation()
+    {
+        using var setup = new Setup();
+        setup.Folder.Write($"Community/other-ui/{PackageLayout.MasterPageHtmlPath}", "<ui-resource-element></ui-resource-element>");
+
+        var error = await Assert.ThrowsExactlyAsync<MsfsUiException>(() => setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken));
+
+        StringAssert.Contains(error.Message, "other-ui");
+        Assert.IsFalse(Directory.Exists(setup.Package), "nothing installed");
     }
 
     private static readonly string[] ExpectedConflicts = ["other-ui"];
