@@ -77,7 +77,7 @@ export function tailNumber(_settings: Settings['tailNumber'], scope: Scope): voi
     log(`tail number ${field.value} kept for livery ${liveryKey(currentLivery)}`);
   });
   // The field is published only after an update is requested.
-  aircraft.UpdateCurrentAircraftIdentification.request().catch(() => undefined);
+  aircraft.UpdateCurrentAircraftIdentification.request().catch((error: unknown) => logError('the tail number could not be requested', error));
   log('tail number per livery');
 
   async function applyForLivery(folder: string, aircraftName: string): Promise<void> {

@@ -50,14 +50,21 @@ export function watch<T>(scope: Scope, node: StoreNode, callback: (value: T) => 
  */
 export const ANSWER_TIMEOUT_MS = 5000;
 
+/** Items the sim is asked to load at once; `requestRange` answers the array's whole size whatever the range. */
+const RANGE = 1000;
+
 /**
- * Reads every item of an array of the model, `what` for the error when the sim does not answer: each request is
- * bounded (the size, then each item), not the whole array, so that a long list is not cut short.
+ * Reads every item of an array of the model, `what` for the error when the sim does not answer: each range of RANGE
+ * items is asked before its items are read (a list longer than one range is read whole), and each request is bounded
+ * (the ranges, then each item), not the whole array, so that a long list is not cut short.
  */
 export async function readArray<T>(node: StoreNode, what: string): Promise<T[]> {
-  const total = await answerWithin(node.requestRange(0, 1000), ANSWER_TIMEOUT_MS, what);
+  const total = await answerWithin(node.requestRange(0, RANGE), ANSWER_TIMEOUT_MS, what);
   const items: T[] = [];
-  for (let i = 0; i < total; i++) items.push(await answerWithin(node.getElement(i) as Promise<T>, ANSWER_TIMEOUT_MS, what));
+  for (let i = 0; i < total; i++) {
+    if (i > 0 && i % RANGE === 0) await answerWithin(node.requestRange(i, RANGE), ANSWER_TIMEOUT_MS, what);
+    items.push(await answerWithin(node.getElement(i) as Promise<T>, ANSWER_TIMEOUT_MS, what));
+  }
   return items;
 }
 

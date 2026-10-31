@@ -81,6 +81,22 @@ describe('waits on the sim', () => {
     assert.deepEqual(await readArray(configurator.Items, 'the variants'), variants);
   });
 
+  it('reads a list longer than one range whole, asking each range before its items', async () => {
+    // As the sim: the whole size whatever the range asked, an item only once its range was asked.
+    const names = Array.from({ length: 2500 }, (_, at) => `aircraft ${at}`);
+    const asked: number[] = [];
+    const loaded = new Set<number>();
+    const long = node();
+    long.requestRange = ((start: number, count: number) => {
+      asked.push(start);
+      for (let at = start; at < Math.min(start + count, names.length); at++) loaded.add(at);
+      return Promise.resolve(names.length);
+    }) as () => Promise<number>;
+    long.getElement = (index: number) => Promise.resolve(loaded.has(index) ? names[index] : undefined);
+    assert.deepEqual(await readArray(long, 'the aircraft list'), names);
+    assert.deepEqual(asked, [0, 1000, 2000]);
+  });
+
   it('gives up an array whose item never comes, naming it', async () => {
     configurator.Items.getElement = (index: number) => (index === 1 ? never() : Promise.resolve(variants[index]));
     const read = assert.rejects(readArray(configurator.Items, 'the variants'), { message: `the variants: no answer after ${ANSWER_TIMEOUT_MS} ms` });
