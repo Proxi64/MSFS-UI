@@ -93,7 +93,7 @@ Grow the window during one session too (1080, then 2160 lines): what the mod rem
 | `html_ui\msfs-ui\config.js` | The user's settings (`ConfigScript`) |
 | `html_ui\msfs-ui\px.gif` | The 1 × 1 image that triggers the loader |
 | `modules\msfs-ui.wasm` | The vault, a WASM module (`wasm\dist`, embedded in the app); the manifest names the MSFS 2024 builder so the sim runs it |
-| `msfs-ui.json` | State: version, generation time, `fs-base-ui` version, SHA-256 of the original MasterPage, of `main.js` and of `config.js`; tells why the package needs generating again, and that the folder is ours |
+| `msfs-ui.json` | State: version, generation time, `fs-base-ui` version, SHA-256 of the original MasterPage, of `main.js`, of `config.js` and of the vault module; tells why the package needs generating again, and that the folder is ours |
 | `layout.json`, `manifest.json` | Files every package needs (exact FILETIME dates, total size) |
 
 ## Contracts between the app and the mod
@@ -131,7 +131,7 @@ The cost: the mod's start-up waits for `config.js`, and both files are a contrac
 
 ## The vault (2.0)
 
-The mod's data (favourites, tail numbers, last choices) lives in the **vault**, the `msfs-ui.wasm` module of the package, because the sim's `datastorage` reaches the disk only when the sim saves its profile (and is missing on some Store sims). The module keeps one snapshot (the whole key / value copy, one JSON text) in two slots of its `work` folder, `vault-a` and `vault-b` (`.head` and `.data`), written alternately: an interrupted write leaves the previous snapshot. Protocol, file format and tests: [wasm/README.md](../wasm/README.md); the SDK and CommBus facts: the skill `.claude/skills/msfs-wasm`.
+The mod's data (favourites, tail numbers, last choices) lives in the **vault**, the `msfs-ui.wasm` module of the package, because the sim's `datastorage` reaches the disk only when the sim saves its profile (and is missing on one user's sim, [next-steps.md](next-steps.md) 1.5). The module keeps one snapshot (the whole key / value copy, one JSON text) in two slots of its `work` folder, `vault-a` and `vault-b` (`.head` and `.data`), written alternately: an interrupted write leaves the previous snapshot. Protocol, file format and tests: [wasm/README.md](../wasm/README.md); the SDK and CommBus facts: the skill `.claude/skills/msfs-wasm`.
 
 - **Mod side**: `core/storage.ts` keeps its API over an in-memory copy; `sim/vault.ts` loads it from the module at start-up (the first LOAD is repeated until the module answers, 3000 ms at most) and sends a snapshot 300 ms after the last write; the module's answer confirms it (none within 5 s is logged). If the module does not answer, the mod keeps `datastorage`: `window.__msfsUiRuntime.storage.kind` is `vault` or `datastorage`, and the Compatibility page's Storage group says which one and why.
 - **Package side**: the manifest names the MSFS 2024 builder (with `minimum_game_version` 1.9.12 and the total size in the `D20` form), or the sim gives the module its folder under `WASM\MSFS2020` and does not run it. The module is read **only at the sim's start**: installing it, or a package without it (`msfs-ui-dev install --vault none`), needs a restart; the installer says so.

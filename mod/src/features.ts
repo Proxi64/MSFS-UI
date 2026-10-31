@@ -19,7 +19,7 @@ import type { FeatureId, Settings } from './generated/catalog.ts';
  */
 export type FeatureStart<Id extends FeatureId> = (settings: Settings[Id], scope: Scope) => void | Promise<void>;
 
-/** `null`: not ported to the 1.0 mod yet (steps 2b to 2d); the mod logs it and carries on. */
+/** `null`: a feature of the catalogue without a module yet; the mod logs it and carries on. */
 export type FeatureRegistry = { readonly [Id in FeatureId]: FeatureStart<Id> | null };
 
 export const FEATURES: FeatureRegistry = {

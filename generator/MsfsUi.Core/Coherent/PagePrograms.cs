@@ -12,7 +12,8 @@ public static class PagePrograms
 {
     /// <summary>
     /// Global variable of the page holding pending evaluation results, one slot per token, so evaluations that
-    /// overlap (a status poll during a backup…) never overwrite each other.
+    /// overlap (a reload while the Compatibility page checks the sim, <c>msfs-ui-dev eval</c> beside the app…) never
+    /// overwrite each other.
     /// </summary>
     public const string ResultVariable = "__msfsUiEvalResults";
 

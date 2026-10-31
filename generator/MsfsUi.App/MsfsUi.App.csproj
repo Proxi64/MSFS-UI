@@ -15,7 +15,7 @@
     <EnableMsixTooling>true</EnableMsixTooling>
 
     <!-- Delivered as a self-contained folder (xcopy): no package identity, .NET and the Windows App SDK
-         runtime ship next to MSFS-UI.exe, nothing to install on the target machine. -->
+         runtime ship next to MSFS-UI-GENERATOR.exe, nothing to install on the target machine. -->
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>

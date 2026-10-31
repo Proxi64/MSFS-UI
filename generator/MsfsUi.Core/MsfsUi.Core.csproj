@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <!-- Everything the app does without UI: sim detection, package generation and installation, Coherent
-       inspector, compatibility check, backups. Windows only (registry, MSFS paths). -->
+       inspector, compatibility check, settings. Windows only (registry, MSFS paths). -->
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>MsfsUi.Core</RootNamespace>

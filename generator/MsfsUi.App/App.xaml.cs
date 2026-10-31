@@ -18,7 +18,7 @@ namespace MsfsUi.App;
 /// </summary>
 public partial class App : Application
 {
-    /// <summary>Data folder used instead of <c>%LOCALAPPDATA%\MSFS-UI</c> (UI tests only).</summary>
+    /// <summary>Data folder used instead of <c>%LOCALAPPDATA%\MSFS-UI-GENERATOR</c> (UI tests only).</summary>
     public const string TestDataRootVariable = "MSFS_UI_DATA_ROOT";
 
     /// <summary>Address of the sim's inspector used instead of the real one (UI tests only).</summary>

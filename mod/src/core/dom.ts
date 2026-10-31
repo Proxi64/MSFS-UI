@@ -1,4 +1,4 @@
-// Small UI building blocks suited to Coherent GT (see CLAUDE.md, "Findings for building a UI").
+// Small UI building blocks suited to Coherent GT (see CLAUDE.md, "Findings to keep in mind").
 
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, parent?: Element): HTMLElementTagNameMap[K] {
   const element = document.createElement(tag);

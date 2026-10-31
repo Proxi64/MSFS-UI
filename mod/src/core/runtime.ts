@@ -1,6 +1,6 @@
 // The mod's lifetime in the menu page. Each loaded version owns one root scope. A hot reload imports a new main.js,
 // which first unloads the previous version through `window.__msfsUiRuntime`, so every change to the sim is undone
-// exactly once. The app's programs use the same handle (backup restore unloads the mod before writing its keys).
+// exactly once. The app's programs read the same handle (version, settings, storage).
 
 import { MOD_VERSION, type FeatureId, type Settings } from '../generated/catalog.ts';
 import { logError } from './log.ts';
