@@ -8,6 +8,7 @@
 // A click sends the page the `tileClick` event of the sim's tiles, a hover `tileHover`: the selection and the header
 // of the left column go through the sim's own logic.
 
+import { answerWithin } from '../../core/async.ts';
 import { el, setStyle, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
@@ -23,7 +24,7 @@ import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth } from '../../sim/real-scroll.ts';
 import { setLiveriesInGallery, setupPanelShown } from '../../sim/selection-layout.ts';
 import { translate } from '../../sim/localization.ts';
-import { readArray, store, watch } from '../../sim/store.ts';
+import { ANSWER_TIMEOUT_MS, readArray, store, watch } from '../../sim/store.ts';
 import { DefaultColumns } from './default-columns.ts';
 import { columnOf, defaultGrid } from './default-grid.ts';
 import { GalleryBar, type SortView } from './gallery-bar.ts';
@@ -488,8 +489,8 @@ export class Gallery {
     const number = ++this.reloadNumber;
     const first = this.items.length === 0;
     const [items, current] = await Promise.all([
-      readArray<AircraftItem>(aircraft.AircraftList),
-      aircraft.CurrentAircraft() as Promise<{ variationId: string; thumbnailPath: string } | null>,
+      readArray<AircraftItem>(aircraft.AircraftList, 'the aircraft list'),
+      answerWithin(aircraft.CurrentAircraft() as Promise<{ variationId: string; thumbnailPath: string } | null>, ANSWER_TIMEOUT_MS, 'the current aircraft'),
     ]);
     if (this.scope.disposed || number !== this.reloadNumber) return;
     this.items = items.filter((item) => !!item);

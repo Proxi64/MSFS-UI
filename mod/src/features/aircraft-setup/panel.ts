@@ -5,6 +5,7 @@
 // sets on the aircraft chosen in the list; no 3D preview loads. The panel places itself and shares its room between
 // the lists (setup-layout.ts).
 
+import { answerOrNull, answerWithin } from '../../core/async.ts';
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
@@ -18,7 +19,7 @@ import { translate } from '../../sim/localization.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layout.ts';
-import { store, watch } from '../../sim/store.ts';
+import { ANSWER_TIMEOUT_MS, store, watch } from '../../sim/store.ts';
 import { LiveryThumbnails } from './livery-thumbnails.ts';
 import {
   GAP,
@@ -271,13 +272,12 @@ export class SetupPanel {
     this.variants.render(state.variants);
     this.liveries.render(state.liveries);
     // A failed read of the statistics shows none, and never stops the identification's refresh (the tail number).
-    const current = (await (aircraft.CurrentAircraft() as Promise<unknown>).catch((error: unknown) => {
-      logError('the statistics of the aircraft could not be read', error);
-      return null;
-    })) as { details?: AircraftStatistic[] } | null;
+    const current = (await answerOrNull(aircraft.CurrentAircraft(), ANSWER_TIMEOUT_MS, 'the statistics of the aircraft could not be read')) as {
+      details?: AircraftStatistic[];
+    } | null;
     if (this.scope.disposed || number !== this.reloadNumber) return;
     this.statistics.render(current && Array.isArray(current.details) ? current.details.filter((statistic) => !!statistic && !!statistic.name) : []);
-    await aircraft.UpdateCurrentAircraftIdentification.request();
+    await answerWithin(aircraft.UpdateCurrentAircraftIdentification.request(), ANSWER_TIMEOUT_MS, 'the update of the tail number');
   }
 
   /** A choice the configurator ignored (not on the current aircraft): the panel reads it again. */

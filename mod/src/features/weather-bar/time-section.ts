@@ -1,10 +1,11 @@
 // The weather bar's times of day (bar.ts): Now, Dawn, Day, Dusk, Night as the sim's tiles, applied at the departure
 // (time-of-day.ts), the one in force selected.
 
+import { answerWithin } from '../../core/async.ts';
 import { el } from '../../core/dom.ts';
 import type { Scope } from '../../core/scope.ts';
 import { COMPONENTS, type SimComponent } from '../../sim/components.ts';
-import { store, type TimeInfo } from '../../sim/store.ts';
+import { ANSWER_TIMEOUT_MS, store, type TimeInfo } from '../../sim/store.ts';
 import { run, type MakeComponent } from './section.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, TIME_MODES, type SentTime, type TimeMode } from './time-of-day.ts';
 
@@ -91,12 +92,12 @@ export class TimeSection {
   }
 
   async apply(mode: TimeMode): Promise<void> {
-    const time = this.time || ((await gameFlight.timeData()) as TimeInfo);
+    const time = this.time || ((await answerWithin(gameFlight.timeData(), ANSWER_TIMEOUT_MS, 'the time')) as TimeInfo);
     if (mode === 'now') {
       this.lastSent = null;
       this.mode = 'now';
-      if (this.liveBuffer) await flight.SetLiveOffset.request('0');
-      else await flight.ResetToSystemTime.request('true');
+      if (this.liveBuffer) await answerWithin(flight.SetLiveOffset.request('0'), ANSWER_TIMEOUT_MS, 'the change of time');
+      else await answerWithin(flight.ResetToSystemTime.request('true'), ANSWER_TIMEOUT_MS, 'the change of time');
       return;
     }
     const target = departureSeconds(mode, time, this.departureDms);
@@ -104,10 +105,10 @@ export class TimeSection {
     if (this.liveBuffer) {
       const offset = liveOffsetFor(target, time);
       this.lastSent = { kind: 'offset', value: offset, at: Date.now() };
-      await flight.SetLiveOffset.request(String(offset));
+      await answerWithin(flight.SetLiveOffset.request(String(offset)), ANSWER_TIMEOUT_MS, 'the change of time');
     } else {
       this.lastSent = { kind: 'time', value: target, at: Date.now() };
-      await flight.SetDepartureTime.request(String(target));
+      await answerWithin(flight.SetDepartureTime.request(String(target)), ANSWER_TIMEOUT_MS, 'the change of time');
     }
   }
 

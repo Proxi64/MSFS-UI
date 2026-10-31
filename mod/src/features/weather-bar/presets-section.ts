@@ -2,7 +2,9 @@
 // the presets added by other packages in the sim's dropdown under it (the owner's choice, 2026-10-30), the name of the
 // preset in the header.
 
+import { answerWithin } from '../../core/async.ts';
 import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
+import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import {
   COMPONENTS,
@@ -15,7 +17,7 @@ import {
 } from '../../sim/components.ts';
 import { translate } from '../../sim/localization.ts';
 import type { RealScroll } from '../../sim/real-scroll.ts';
-import { readArray, store } from '../../sim/store.ts';
+import { ANSWER_TIMEOUT_MS, readArray, store } from '../../sim/store.ts';
 import { GAP, presetCellSizes, presetListSize, type PresetCell } from './bar-layout.ts';
 import type { WeatherPreset } from './model.ts';
 import { isSimPreset, rememberedPreset } from './presets.ts';
@@ -57,9 +59,13 @@ export class PresetsSection {
     this.events = events;
   }
 
-  /** Reads the sim's presets (those enabled), before `build`. */
+  /** Reads the sim's presets (those enabled), before `build`; none when the sim does not give them (the bar shows the rest). */
   async load(): Promise<void> {
-    this.presets = (await readArray<WeatherPreset>(store.Game.Weather.FlightConditions.PresetList)).filter((preset) => preset && preset.enabled);
+    const presets = await readArray<WeatherPreset>(store.Game.Weather.FlightConditions.PresetList, 'the weather presets').catch((error: unknown) => {
+      logError('the weather presets could not be read', error);
+      return [];
+    });
+    this.presets = presets.filter((preset) => preset && preset.enabled);
   }
 
   build(weather: Section, component: MakeComponent): void {
@@ -195,7 +201,7 @@ export class PresetsSection {
   }
 
   private async choose(preset: WeatherPreset): Promise<void> {
-    await store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(preset.index));
+    await answerWithin(store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(preset.index)), ANSWER_TIMEOUT_MS, 'the change of weather');
     this.events.chosen(preset);
   }
 }

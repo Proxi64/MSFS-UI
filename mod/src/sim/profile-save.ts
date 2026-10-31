@@ -9,14 +9,13 @@ import { debounced, withTimeout } from '../core/async.ts';
 import { log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import { onStorageWrite } from '../core/storage.ts';
-import { readArray, store, type StoreNode } from './store.ts';
+import { ANSWER_TIMEOUT_MS, readArray, store, type StoreNode } from './store.ts';
 
 /** The option re-validated: "Show the white dot cursor in freelook" (Flight interface), on or off. */
 const SECTION = 'MENU_OPTIONS_FLIGHT_INTERFACE';
 const OPTION = 'OptionsGeneralItemGUID_{666BFED5-26A0-4C7D-BF27-D717AFCAF33D}';
 /** A burst of writes (hearts clicked one after the other) gives one save, this long after the last. */
 const DELAY_MS = 2000;
-const ANSWER_TIMEOUT_MS = 5000;
 
 /** An option of a section of the General options (`Game.Options.General.Item[section]`). */
 interface OptionItem {
@@ -51,7 +50,7 @@ async function saveProfile(): Promise<void> {
   const general = store.Game.Options.General;
   const late = `the sim's options did not answer within ${ANSWER_TIMEOUT_MS} ms`;
   await withTimeout(general.UpdateSectionOptionsGeneral.request(SECTION), ANSWER_TIMEOUT_MS, late);
-  const items = await withTimeout(readArray<OptionItem>(general.Item[SECTION]), ANSWER_TIMEOUT_MS, late);
+  const items = await withTimeout(readArray<OptionItem>(general.Item[SECTION], "the sim's options"), ANSWER_TIMEOUT_MS, late);
   const item = items.filter((candidate) => !!candidate && candidate.strID === OPTION)[0];
   if (!item) throw new Error(`option ${OPTION} not found in ${SECTION}`);
   let node: StoreNode = store;

@@ -5,6 +5,7 @@
 // 3. the default number: the first one the mod read in the field, kept in the sim's storage.
 // A change made by the user (the mod's setup panel or the sim's Identification tab) is kept for the current livery.
 
+import { answerWithin } from '../core/async.ts';
 import { log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import { loadData, saveData } from '../core/storage.ts';
@@ -22,7 +23,7 @@ import {
 } from '../sim/liveries.ts';
 import { atcIdFromCfg, liveryNameFromCfg, liveryTailCandidates, pickRegistration } from '../sim/registration.ts';
 import { translate } from '../sim/localization.ts';
-import { store, watch } from '../sim/store.ts';
+import { ANSWER_TIMEOUT_MS, store, watch } from '../sim/store.ts';
 
 /** Storage key of the default number, read once then kept: otherwise the field keeps the last number typed. */
 const BASE_TAIL_KEY = 'BASE_TAIL';
@@ -82,8 +83,8 @@ export function tailNumber(_settings: Settings['tailNumber'], scope: Scope): voi
     // Each wait may let the user pick another livery: a stale apply must not write onto it.
     const stillCurrent = () => !scope.disposed && folder === currentLivery;
 
-    await aircraft.UpdateCurrentAircraftIdentification.request();
-    const field = tailNumberField(await aircraft.CurrentIdentification());
+    await answerWithin(aircraft.UpdateCurrentAircraftIdentification.request(), ANSWER_TIMEOUT_MS, 'the update of the tail number');
+    const field = tailNumberField(await answerWithin(aircraft.CurrentIdentification(), ANSWER_TIMEOUT_MS, 'the tail number'));
     if (!stillCurrent()) return;
     const maxLength = tailLength(field);
 
@@ -102,7 +103,7 @@ export function tailNumber(_settings: Settings['tailNumber'], scope: Scope): voi
 
     ownWrites.push({ value: choice.registration, at: Date.now() });
     if (ownWrites.length > 10) ownWrites.shift();
-    await aircraft.SetCurrentAircraftIdentification.request(`${TAIL_NUMBER}%%${choice.registration}`);
+    await answerWithin(aircraft.SetCurrentAircraftIdentification.request(`${TAIL_NUMBER}%%${choice.registration}`), ANSWER_TIMEOUT_MS, 'the change of tail number');
     log(`tail number ${choice.registration} (${choice.source}, livery "${liveryName || liveryKey(folder)}", ${aircraftName})`);
   }
 }

@@ -3,11 +3,12 @@
 // releases the configurator when leaving the screen and sets it only on a click on a tile or on "Configure"; a choice
 // sent to a released configurator makes the current aircraft invalid: every choice is guarded (`canApply`).
 
+import { answerWithin } from '../core/async.ts';
 import { logError } from '../core/log.ts';
 import { syncConfiguratorToCurrent, type ConfiguratorLivery } from './aircraft-loading.ts';
 import { loadFavoriteLiveries, saveFavoriteLiveries, withFavoriteLivery } from './favorites.ts';
 import { variationOf } from './liveries.ts';
-import { readArray, store } from './store.ts';
+import { ANSWER_TIMEOUT_MS, readArray, store } from './store.ts';
 
 /** A variant of the configurator (`Configurator.Items`). */
 export interface ConfiguratorItem {
@@ -37,9 +38,9 @@ const configurator = store.Game.Aircraft.Configurator;
 /** Reads the configurator's variants, liveries and details. */
 export async function readConfigurator(): Promise<ConfiguratorState> {
   const [variants, liveries, details] = await Promise.all([
-    readArray<ConfiguratorItem>(configurator.Items),
-    readArray<ConfiguratorLivery>(configurator.Liveries),
-    configurator.Details() as Promise<ConfiguratorDetails | null>,
+    readArray<ConfiguratorItem>(configurator.Items, 'the variants'),
+    readArray<ConfiguratorLivery>(configurator.Liveries, 'the liveries'),
+    answerWithin(configurator.Details() as Promise<ConfiguratorDetails | null>, ANSWER_TIMEOUT_MS, 'the configurator'),
   ]);
   const items = variants.filter((item) => !!item);
   const selected = items.filter((item) => item.isSelected)[0];
@@ -61,7 +62,7 @@ export async function syncConfigurator(): Promise<boolean> {
 /** Before acting: the configurator is ready and the item belongs to its aircraft. */
 async function canApply(itemVariationId: string): Promise<boolean> {
   const ready = await syncConfigurator();
-  const details = (await configurator.Details()) as { variationId: string } | null;
+  const details = (await answerWithin(configurator.Details(), ANSWER_TIMEOUT_MS, 'the configurator')) as { variationId: string } | null;
   if (ready && details && details.variationId === itemVariationId) return true;
   logError(`choice ignored (configurator on ${details ? details.variationId : '?'}, item of ${itemVariationId})`);
   return false;
@@ -78,7 +79,7 @@ export async function chooseVariant(state: ConfiguratorState, id: string): Promi
   const selected = state.variants.filter((candidate) => candidate.isSelected)[0];
   const ready = await canApply(selected ? selected.id : '');
   if (!ready) return false;
-  await configurator.SelectItem.request(id);
+  await answerWithin(configurator.SelectItem.request(id), ANSWER_TIMEOUT_MS, 'the change of variant');
   return true;
 }
 
@@ -88,7 +89,7 @@ export async function chooseLivery(state: ConfiguratorState, id: string): Promis
   if (!livery || livery.isSelected || livery.isDisabled) return false;
   const ready = await canApply(variationOf(id));
   if (!ready) return false;
-  await configurator.SaveVariationId.request(id);
+  await answerWithin(configurator.SaveVariationId.request(id), ANSWER_TIMEOUT_MS, 'the change of livery');
   return true;
 }
 

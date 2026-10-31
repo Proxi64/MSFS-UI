@@ -6,7 +6,7 @@ import { log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import { findFavoriteLivery, loadFavoriteLiveries, loadUses, saveFavoriteLiveries, saveUses, withUse, type AircraftUse } from './favorites.ts';
 import { liveryDirectory, liveryFolder, matchLivery, variationOf } from './liveries.ts';
-import { readArray, store, watch } from './store.ts';
+import { ANSWER_TIMEOUT_MS, readArray, store, watch } from './store.ts';
 
 /** A livery of the configurator (`Configurator.Liveries`). */
 export interface ConfiguratorLivery {
@@ -31,11 +31,6 @@ interface AircraftRef {
 
 /** The use is recorded a little after the aircraft changes: the livery follows the change of aircraft. */
 const RECORD_DELAY_MS = 1500;
-/**
- * Longest wait for one answer of the sim. Coherent may never settle a request (core/async.ts): without a bound, a
- * loading would never end, and the lists that wait for it (Free Flight favourites, gallery) would stay inactive.
- */
-const ANSWER_TIMEOUT_MS = 5000;
 /** Wait for the configurator to take the aircraft asked directly, before going through the sim's list. */
 const DIRECT_CHANGE_MS = 1500;
 /** Longest wait for the configurator to take the aircraft or the variant asked through its list. */
@@ -60,7 +55,7 @@ export function trackAircraftUse(scope: Scope): void {
 async function recordUse(variationId: string): Promise<void> {
   const details = (await answerWithin(configurator.Details(), ANSWER_TIMEOUT_MS, 'the configurator')) as { variationId: string } | null;
   // The configurator follows the current aircraft; on another aircraft, the livery read would be the wrong one.
-  const liveries = details && details.variationId === variationId ? await answerWithin(readArray<ConfiguratorLivery>(configurator.Liveries), ANSWER_TIMEOUT_MS, 'the liveries') : [];
+  const liveries = details && details.variationId === variationId ? await readArray<ConfiguratorLivery>(configurator.Liveries, 'the liveries') : [];
   const selected = liveries.filter((livery) => livery && livery.isSelected)[0];
   const livery = selected ? { dir: liveryFolder(selected), title: selected.title, image: selected.imageUrl } : undefined;
   saveUses(withUse(loadUses(), variationId, livery, Date.now()));
@@ -98,7 +93,7 @@ export async function loadAircraft(variationId: string, use?: AircraftUse): Prom
     // 2. Otherwise through the entry of the sim's list for this aircraft (unless the configurator is already on it).
     const onAircraft = await configuratorIs(sameAircraft);
     if (!onAircraft) {
-      const entry = (await answerWithin(readArray<AircraftRef>(aircraft.AircraftList), ANSWER_TIMEOUT_MS, 'the aircraft list')).filter((item) => item && sameAircraft(item))[0];
+      const entry = (await readArray<AircraftRef>(aircraft.AircraftList, 'the aircraft list')).filter((item) => item && sameAircraft(item))[0];
       if (!entry) throw new Error(`${details.displayName} is not in the list (category tab?)`);
       await answerWithin(configurator.SetAircraftForConfigurator.request(`${entry.aircraftId}||${entry.variationIndex}`), ANSWER_TIMEOUT_MS, 'the change of aircraft');
       const switched = await waitFor(() => configuratorIs(sameAircraft), CHANGE_TIMEOUT_MS);
@@ -119,7 +114,7 @@ export async function loadAircraft(variationId: string, use?: AircraftUse): Prom
     // again until they are this variant's (matchLivery never takes another variant's).
     let liveries: ConfiguratorLivery[] = [];
     await waitFor(async () => {
-      liveries = await answerWithin(readArray<ConfiguratorLivery>(configurator.Liveries), ANSWER_TIMEOUT_MS, 'the liveries');
+      liveries = await readArray<ConfiguratorLivery>(configurator.Liveries, 'the liveries');
       return liveries.some((livery) => !!livery && variationOf(livery.id) === variationId);
     }, LIVERIES_TIMEOUT_MS);
     const match = matchLivery(liveries, variationId, wanted);

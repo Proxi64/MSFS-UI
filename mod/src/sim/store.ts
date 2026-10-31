@@ -4,6 +4,7 @@
 
 import { ReadableStore } from '/Global/shared/store.js';
 import { UniversalProxy } from '/Global/shared/utils.js';
+import { answerWithin } from '../core/async.ts';
 import { logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 
@@ -41,11 +42,22 @@ export function watch<T>(scope: Scope, node: StoreNode, callback: (value: T) => 
   });
 }
 
-/** Reads every item of an array of the model. */
-export async function readArray<T>(node: StoreNode): Promise<T[]> {
-  const total = await node.requestRange(0, 1000);
+/**
+ * Longest wait for one answer of the sim. Coherent may never settle a request (core/async.ts): without a bound, what
+ * waits for it would never end, silently. The slowest answers measured on 1.9.21 (2026-10-31, while opening the
+ * aircraft selection and changing its tabs, 402 rounds): 699 ms for the size of the aircraft list (149 aircraft),
+ * 460 ms for the configurator's variants, 205 ms for an action, 123 ms for one item of a list.
+ */
+export const ANSWER_TIMEOUT_MS = 5000;
+
+/**
+ * Reads every item of an array of the model, `what` for the error when the sim does not answer: each request is
+ * bounded (the size, then each item), not the whole array, so that a long list is not cut short.
+ */
+export async function readArray<T>(node: StoreNode, what: string): Promise<T[]> {
+  const total = await answerWithin(node.requestRange(0, 1000), ANSWER_TIMEOUT_MS, what);
   const items: T[] = [];
-  for (let i = 0; i < total; i++) items.push(await node.getElement(i));
+  for (let i = 0; i < total; i++) items.push(await answerWithin(node.getElement(i) as Promise<T>, ANSWER_TIMEOUT_MS, what));
   return items;
 }
 

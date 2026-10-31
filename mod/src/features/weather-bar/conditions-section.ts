@@ -1,11 +1,12 @@
 // The weather bar's air traffic and multiplayer (bar.ts): the buttons of the sim's Flight Conditions panel as the sim's
 // tiles, one section per group.
 
+import { answerWithin } from '../../core/async.ts';
 import { el } from '../../core/dom.ts';
 import type { Scope } from '../../core/scope.ts';
 import { COMPONENTS, type SimComponent } from '../../sim/components.ts';
 import { translate } from '../../sim/localization.ts';
-import { store } from '../../sim/store.ts';
+import { ANSWER_TIMEOUT_MS, store } from '../../sim/store.ts';
 import type { FlightConditions, FlightConfigurationButton } from './model.ts';
 import { run, shortLabel, type MakeComponent, type Section } from './section.ts';
 
@@ -92,7 +93,7 @@ export class ConditionsSection {
   private async choose(group: ConditionGroup, id: string): Promise<void> {
     const current = this.button(group, id);
     if (!current || current.disabled || current.selected) return;
-    await flight.SetFlightConditionConfiguration.request(id);
+    await answerWithin(flight.SetFlightConditionConfiguration.request(id), ANSWER_TIMEOUT_MS, 'the change of flight condition');
     this.events.chosen(group, id);
   }
 }
