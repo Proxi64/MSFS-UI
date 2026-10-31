@@ -425,19 +425,19 @@ A few MSFS_UI_ keys stay in the sim's own profile: they do nothing without the m
     <value>Readme</value>
   </data>
   <data name="ReadmeIntro.Text" xml:space="preserve">
-    <value>MSFS-UI-GENERATOR installs and sets up msfs-ui, a mod of the Microsoft Flight Simulator 2024 main menu: faster menus, a weather and time bar on Free Flight, favourite liveries, an aircraft gallery and list (with a side by side layout of large livery tiles), a setup panel and a tail number per livery.</value>
+    <value>MSFS-UI-GENERATOR installs and sets up msfs-ui, a mod of the Microsoft Flight Simulator 2024 main menu: faster menus, a weather and time bar on Free Flight, favourite liveries, an aircraft gallery and list (with a side by side layout of large livery tiles) where aircraft can be hidden, a setup panel and a tail number per livery.</value>
   </data>
   <data name="ReadmeNoSimFile.Title" xml:space="preserve">
     <value>No file of the simulator is modified</value>
   </data>
   <data name="ReadmeNoSimFile.Message" xml:space="preserve">
-    <value>The mod lives in its own package, msfs-ui, in the sim's Community folder. The sim's own files are only read: never changed, moved or deleted. Removing the package (Remove on the Home page, then a restart of the sim) brings the original menu back.</value>
+    <value>The mod lives in its own package, msfs-ui, in the sim's Community folder. The sim's own files are only read: never changed, moved or deleted. Removing the package (Remove on the Home page, then a restart of the sim) brings the original menu back; Uninstall everything also deletes the mod's data and the app's.</value>
   </data>
   <data name="ReadmeHowHeader.Text" xml:space="preserve">
     <value>How it works</value>
   </data>
   <data name="ReadmeHow1.Text" xml:space="preserve">
-    <value>1. The sim builds its main menu from components, and a package in the Community folder can stand in for one of them. When you generate the package, the app makes a copy of the menu's root component from your own sim, adds a small loader to it, and places the copy in the msfs-ui package. The sim then uses this copy instead of its own file, which stays untouched.</value>
+    <value>1. The sim builds its main menu from components, and a package in the Community folder can stand in for one of them. When you generate the package, the app makes a copy of the menu's root component from your own sim, adds a small loader to it, and places the copy in the msfs-ui package. The sim then uses this copy instead of its own file, which stays untouched. The package also holds the vault, a small WebAssembly module the sim runs to keep the mod's data in files of its own.</value>
   </data>
   <data name="ReadmeHow2.Text" xml:space="preserve">
     <value>2. When the menu opens, the loader starts the mod. The mod adds its panels and changes the menu in memory only: everything it does is undone when it unloads or when the sim closes. When it changes a setting of the sim (aircraft, livery, weather, time, traffic), it uses the same commands as the sim's own buttons.</value>
@@ -446,7 +446,7 @@ A few MSFS_UI_ keys stay in the sim's own profile: they do nothing without the m
     <value>3. Your choices on the Features page are written in the package as a settings file, which the mod reads when it starts. Apply updates this file and reloads the mod while the sim runs: no restart is needed.</value>
   </data>
   <data name="ReadmeHow4.Text" xml:space="preserve">
-    <value>4. What the mod remembers (favourites, tail numbers per livery, last weather and time choice, the gallery's view) is kept by the sim in its own storage, as it keeps its own preferences.</value>
+    <value>4. What the mod remembers (favourites, tail numbers per livery, hidden aircraft, last weather and time choice, the gallery's view) is kept by the vault, written to the disk at once and read back at the next start. If the vault does not answer, the mod falls back to the sim's own storage, as in earlier versions.</value>
   </data>
   <data name="ReadmePagesHeader.Text" xml:space="preserve">
     <value>The pages</value>
@@ -455,7 +455,7 @@ A few MSFS_UI_ keys stay in the sim's own profile: they do nothing without the m
     <value>Home</value>
   </data>
   <data name="ReadmePageHomeText.Text" xml:space="preserve">
-    <value>Finds the sim, shows the state of the package, and installs (Generate &amp; install), reloads or removes it.</value>
+    <value>Finds the sim, shows the state of the package, and installs (Generate &amp; install), reloads or removes it; Uninstall everything deletes all that MSFS-UI put on the computer.</value>
   </data>
   <data name="ReadmePageFeatures.Text" xml:space="preserve">
     <value>Features</value>
@@ -485,7 +485,7 @@ A few MSFS_UI_ keys stay in the sim's own profile: they do nothing without the m
     <value>Files of the app</value>
   </data>
   <data name="ReadmeFilesText.Text" xml:space="preserve">
-    <value>The package: &lt;Community folder&gt;\msfs-ui. The app's settings, chosen folders, theme and logs: %LOCALAPPDATA%\MSFS-UI-GENERATOR. Nothing else is written on the computer.</value>
+    <value>The package: &lt;Community folder&gt;\msfs-ui. The mod's data, in the vault's folder, which the sim makes: %APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui on Steam (under %LOCALAPPDATA%\Packages\Microsoft.Limitless_8wekyb3d8bbwe on the Microsoft Store), with a few MSFS_UI_ keys in the sim's own profile when the vault does not answer. The app's settings, chosen folders, theme and logs: %LOCALAPPDATA%\MSFS-UI-GENERATOR. Uninstall everything on the Home page deletes these folders.</value>
   </data>
   <data name="ReadmeVersion" xml:space="preserve">
     <value>{0} {1}</value>
