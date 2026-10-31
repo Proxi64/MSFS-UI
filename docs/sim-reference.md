@@ -20,6 +20,8 @@ The sim's components the mod creates, and how, are described in the [mod's READM
 
 The mod imports only exports with **readable names** (`engine_ui.bundle.js`, `shared/utils.js`, `shared/store.js`): the minified names of `lib.js` change from one version to the next.
 
+Where `fs-base-ui` is (`SimLocator`): on Steam, `<library>\steamapps\common\<game>\Packages\fs-base-ui`, the libraries in `libraryfolders.vdf`; on the Microsoft Store, under the folder where Windows installed the package `Microsoft.Limitless_8wekyb3d8bbwe` (`GetPackagesByPackageFamily`, `GetPackagePathByFullName`), in its `Packages` folder: `C:\Program Files\WindowsApps\Microsoft.Limitless_<version>_x64__8wekyb3d8bbwe\Packages\fs-base-ui` (a user's sim, 1.9.21, 2026-10-31: until then the app searched only `<drive>\XboxGames\<game>\Content\Packages`, still searched after it; the listing of `WindowsApps` is denied, its files can be read). The Community folder is `InstalledPackagesPath` of `UserCfg.opt` (Steam: `%APPDATA%\Microsoft Flight Simulator 2024`; Store: `%LOCALAPPDATA%\Packages\Microsoft.Limitless_8wekyb3d8bbwe\LocalCache`), wherever the packages are (`F:\MSFS_2024` for that user).
+
 ## Screens and elements
 
 | GUID | Class | Role |

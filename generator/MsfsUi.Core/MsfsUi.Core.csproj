@@ -4,6 +4,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>MsfsUi.Core</RootNamespace>
+    <!-- The Store package's folder from Windows (WindowsSimEnvironment): LibraryImport with pointer buffers. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

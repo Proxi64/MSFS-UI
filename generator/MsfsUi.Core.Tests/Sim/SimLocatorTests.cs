@@ -64,6 +64,39 @@ public sealed class SimLocatorTests
     }
 
     [TestMethod]
+    public async Task FindsTheStoreEditionInTheFolderWindowsGivesForItsPackage()
+    {
+        using var folder = new TempFolder();
+        var environment = new FakeSimEnvironment(folder);
+        environment.Drives.Add(folder["drive-c"]);
+        environment.StorePackages.Add(folder["drive-c/Program Files/WindowsApps/Microsoft.Limitless_1.9.21.0_x64__8wekyb3d8bbwe"]);
+        folder.Write("local/Packages/Microsoft.Limitless_8wekyb3d8bbwe/LocalCache/UserCfg.opt", $"InstalledPackagesPath \"{folder["store-packages"]}\"\r\n");
+        Directory.CreateDirectory(folder["store-packages/Community"]);
+        var expected = FakeFsBaseUi.Create(folder, "drive-c/Program Files/WindowsApps/Microsoft.Limitless_1.9.21.0_x64__8wekyb3d8bbwe/Packages/fs-base-ui");
+
+        var sim = await Locator(environment).LocateAsync(cancellationToken: TestContext.CancellationToken);
+
+        Assert.AreEqual(new SimInstallation(SimEdition.Store, expected, FakeFsBaseUi.Version, folder["store-packages/Community"]), sim);
+    }
+
+    [TestMethod]
+    public async Task SearchesXboxGamesWhenTheStorePackageFolderHasNoFsBaseUi()
+    {
+        using var folder = new TempFolder();
+        var environment = new FakeSimEnvironment(folder);
+        environment.Drives.Add(folder["drive-d"]);
+        environment.StorePackages.Add(folder["elsewhere"]);
+        Directory.CreateDirectory(folder["elsewhere"]);
+        folder.Write("local/Packages/Microsoft.Limitless_8wekyb3d8bbwe/LocalCache/UserCfg.opt", $"InstalledPackagesPath {folder["store-packages"]}\r\n");
+        Directory.CreateDirectory(folder["store-packages/Community"]);
+        var expected = FakeFsBaseUi.Create(folder, "drive-d/XboxGames/Microsoft Flight Simulator 2024/Content/Packages/fs-base-ui");
+
+        var sim = await Locator(environment).LocateAsync(cancellationToken: TestContext.CancellationToken);
+
+        Assert.AreEqual(expected, sim.FsBaseUiPath);
+    }
+
+    [TestMethod]
     public async Task OneExplicitFolderReplacesTheDetectedOne()
     {
         using var folder = new TempFolder();

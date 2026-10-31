@@ -13,7 +13,8 @@ public sealed partial class SimLocator
     /// <summary>Process name of the running sim.</summary>
     public const string SimProcessName = "FlightSimulator2024";
 
-    private const string StorePackageFamily = "Microsoft.Limitless_8wekyb3d8bbwe";
+    /// <summary>Package family of the sim installed from the Microsoft Store.</summary>
+    public const string StorePackageFamily = "Microsoft.Limitless_8wekyb3d8bbwe";
     private const string UserCfgFileName = "UserCfg.opt";
 
     private readonly ISimEnvironment _environment;
@@ -125,16 +126,17 @@ public sealed partial class SimLocator
             return null;
         }
 
+        // Where Windows installed the package (C:\Program Files\WindowsApps, whose listing is denied, or a folder chosen in
+        // the Xbox app), then the Xbox app's default folders.
+        var fsBaseUi = _environment.StorePackageFolders(StorePackageFamily)
+            .Select(folder => Path.Combine(folder, "Packages", "fs-base-ui"))
+            .FirstOrDefault(candidate => File.Exists(Path.Combine(candidate, "manifest.json")));
         foreach (var drive in _environment.FixedDriveRoots())
         {
-            var fsBaseUi = FindGamePackage(Path.Combine(drive, "XboxGames"), "Content", "Packages");
-            if (fsBaseUi is not null)
-            {
-                return new SimInstallation(SimEdition.Store, fsBaseUi, string.Empty, community);
-            }
+            fsBaseUi ??= FindGamePackage(Path.Combine(drive, "XboxGames"), "Content", "Packages");
         }
 
-        return null;
+        return fsBaseUi is null ? null : new SimInstallation(SimEdition.Store, fsBaseUi, string.Empty, community);
     }
 
     /// <summary><c>&lt;InstalledPackagesPath&gt;\Community</c>, from the <c>InstalledPackagesPath "…"</c> line of <c>UserCfg.opt</c>.</summary>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace MsfsUi.Core.Sim;
@@ -20,6 +21,12 @@ public interface ISimEnvironment
     /// <summary>Root folders of fixed drives (<c>C:\</c>, <c>D:\</c>…), where the Store installs games.</summary>
     IEnumerable<string> FixedDriveRoots();
 
+    /// <summary>
+    /// Install folders of the Microsoft Store packages of a family installed for the user, as Windows gives them
+    /// (<c>C:\Program Files\WindowsApps\…</c>, or a folder chosen in the Xbox app); none when it is not installed.
+    /// </summary>
+    IReadOnlyList<string> StorePackageFolders(string packageFamilyName);
+
     /// <summary>Whether a process with this name (without <c>.exe</c>) is running.</summary>
     bool IsProcessRunning(string processName);
 
@@ -28,7 +35,7 @@ public interface ISimEnvironment
 }
 
 /// <summary>The real machine.</summary>
-public sealed class WindowsSimEnvironment : ISimEnvironment
+public sealed unsafe partial class WindowsSimEnvironment : ISimEnvironment
 {
     /// <inheritdoc />
     public string RoamingAppData => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -50,6 +57,67 @@ public sealed class WindowsSimEnvironment : ISimEnvironment
             .Where(drive => drive.DriveType == DriveType.Fixed && drive.IsReady)
             .Select(drive => drive.RootDirectory.FullName);
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> StorePackageFolders(string packageFamilyName)
+    {
+        // Two calls each (appmodel.h): the first gives the sizes, the second fills the buffers.
+        uint count = 0;
+        uint length = 0;
+        var result = GetPackagesByPackageFamily(packageFamilyName, ref count, null, ref length, null);
+        if (result != ErrorInsufficientBuffer || count == 0)
+        {
+            return [];
+        }
+
+        // The names point into the buffer: read while it is pinned.
+        var fullNames = new List<string>();
+        var pointers = new IntPtr[count];
+        var buffer = new char[length];
+        fixed (IntPtr* names = pointers)
+        fixed (char* text = buffer)
+        {
+            if (GetPackagesByPackageFamily(packageFamilyName, ref count, names, ref length, text) != ErrorSuccess)
+            {
+                return [];
+            }
+
+            for (var at = 0; at < count; at++)
+            {
+                fullNames.Add(new string((char*)names[at]));
+            }
+        }
+
+        var folders = new List<string>();
+        foreach (var fullName in fullNames)
+        {
+            uint pathLength = 0;
+            if (GetPackagePathByFullName(fullName, ref pathLength, null) != ErrorInsufficientBuffer)
+            {
+                continue;
+            }
+
+            var path = new char[pathLength];
+            fixed (char* pathText = path)
+            {
+                if (GetPackagePathByFullName(fullName, ref pathLength, pathText) == ErrorSuccess)
+                {
+                    folders.Add(new string(pathText));
+                }
+            }
+        }
+
+        return folders;
+    }
+
+    private const int ErrorSuccess = 0;
+    private const int ErrorInsufficientBuffer = 122;
+
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial int GetPackagesByPackageFamily(string packageFamilyName, ref uint count, IntPtr* packageFullNames, ref uint bufferLength, char* buffer);
+
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial int GetPackagePathByFullName(string packageFullName, ref uint pathLength, char* path);
 
     /// <inheritdoc />
     public bool IsProcessRunning(string processName)

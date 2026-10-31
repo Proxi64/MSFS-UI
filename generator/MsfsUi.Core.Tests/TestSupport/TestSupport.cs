@@ -85,11 +85,17 @@ internal sealed class FakeSimEnvironment(TempFolder folder) : ISimEnvironment
 
     public List<string> Drives { get; } = [];
 
+    /// <summary>Install folders of the sim's Store package (none: not installed from the Store).</summary>
+    public List<string> StorePackages { get; } = [];
+
     public bool Running { get; set; }
 
     public string? ReadSteamPath() => SteamPath;
 
     public IEnumerable<string> FixedDriveRoots() => Drives;
+
+    public IReadOnlyList<string> StorePackageFolders(string packageFamilyName) =>
+        packageFamilyName == SimLocator.StorePackageFamily ? StorePackages : [];
 
     public bool IsProcessRunning(string processName) => Running && processName == SimLocator.SimProcessName;
 
