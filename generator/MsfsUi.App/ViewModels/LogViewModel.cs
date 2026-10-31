@@ -20,9 +20,6 @@ public sealed partial class LogViewModel : ObservableObject, IDisposable
 {
     private const string ModTag = "[msfs-ui]";
 
-    /// <summary>Lines shown at most, as the log keeps in memory.</summary>
-    private const int MaxAppLines = 500;
-
     private readonly FileLoggerProvider _log;
     private readonly CoherentInspector _inspector;
     private readonly SimSession _session;
@@ -127,7 +124,7 @@ public sealed partial class LogViewModel : ObservableObject, IDisposable
         _dispatcher.TryEnqueue(() =>
         {
             AppLines.Add(LogLine.From(entry));
-            if (AppLines.Count > MaxAppLines)
+            if (AppLines.Count > FileLoggerProvider.KeptInMemory)
             {
                 AppLines.RemoveAt(0);
             }

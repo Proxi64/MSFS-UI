@@ -181,10 +181,10 @@ public sealed class CompatibilityCheckerTests
             ["Global/sub/c.js"] = "export let Zeta;export*from\"../a.js\";",
         };
 
-        var names = CompatibilityChecker.ModuleExports(scripts, "Global/a.js");
+        var names = ModuleExports.Of(scripts, "Global/a.js");
 
         CollectionAssert.AreEquivalent(ExpectedExports, names.ToArray(), "cycles are followed once");
-        Assert.IsEmpty(CompatibilityChecker.ModuleExports(scripts, "Global/missing.js"));
+        Assert.IsEmpty(ModuleExports.Of(scripts, "Global/missing.js"));
     }
 
     [TestMethod]

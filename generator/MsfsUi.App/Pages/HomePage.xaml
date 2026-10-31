@@ -145,7 +145,7 @@
                             <ItemsControl Margin="0,0,0,12" ItemsSource="{x:Bind ViewModel.Reasons, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="x:String">
-                                        <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="{x:Bind}" />
+                                        <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="{x:Bind Mode=OneTime}" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

@@ -17,7 +17,8 @@ public sealed record LogEntry(DateTimeOffset Time, LogLevel Level, string Catego
 /// </summary>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
-    private const int KeptInMemory = 500;
+    /// <summary>Latest lines kept in memory for the Log page (it shows as many).</summary>
+    public const int KeptInMemory = 500;
 
     /// <summary>Log files older than this are deleted when the app starts.</summary>
     public const int KeptDays = 30;

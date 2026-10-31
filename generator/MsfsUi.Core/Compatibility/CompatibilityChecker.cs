@@ -43,7 +43,7 @@ public sealed partial class CompatibilityChecker
         foreach (var requirement in manifest.Exports)
         {
             var path = $"Global/{requirement.Module}";
-            var exported = ModuleExports(scripts, path);
+            var exported = ModuleExports.Of(scripts, path);
             foreach (var name in requirement.Names)
             {
                 results.Add(Result("Module exports", $"{name} ({requirement.Module})", exported.Contains(name), scripts.ContainsKey(path) ? "export not found" : "module not found"));
@@ -184,12 +184,20 @@ public sealed partial class CompatibilityChecker
     public const string ModLoadedMarker = "[msfs-ui] module loaded";
 
     /// <summary>
+    /// The keys the mod stores its data under (without the <c>MSFS_UI_</c> prefix): those of mod/src/core/storage.ts,
+    /// and <c>FAVORITE_AIRCRAFT</c> of the versions before 1.3.0, which the mod removes once read (sim/favorites.ts). A
+    /// contract test reads them from the mod. Declared before <see cref="StorageProbe"/>, which lists them.
+    /// </summary>
+    internal static readonly string[] ModDataKeys =
+        ["WEATHER_BAR", "WEATHER_BAR_TAB", "FAVORITE_AIRCRAFT", "FAVORITE_LIVERIES", "AIRCRAFT_GALLERY", "AIRCRAFT_USES", "LIVERY_TAILS", "BASE_TAIL", "HIDDEN_AIRCRAFT"];
+
+    /// <summary>
     /// The storage part of the live probe, an ES2017 function of the page's <c>window</c> returning
     /// <c>{ label, ok, detail }</c> items, read only: whether the mod keeps its data in the vault (WASM module, <c>__msfsUiRuntime.storage</c>) or why it fell back, where <c>datastorage</c> is (or the page's globals that look like
     /// it), each method the mod calls (mod/src/core/storage.ts) with the object's members when one is missing, and the
     /// mod's keys found in it. The details tell what another version of the sim exposes.
     /// </summary>
-    internal const string StorageProbe = """
+    internal static readonly string StorageProbe = $$"""
         function (page) {
           const results = [];
           const names = (o) => {
@@ -237,7 +245,7 @@ public sealed partial class CompatibilityChecker
           });
           if (typeof ds.getData === 'function') {
             const stored = [];
-            ['WEATHER_BAR', 'WEATHER_BAR_TAB', 'FAVORITE_AIRCRAFT', 'FAVORITE_LIVERIES', 'AIRCRAFT_GALLERY', 'AIRCRAFT_USES', 'LIVERY_TAILS', 'BASE_TAIL', 'HIDDEN_AIRCRAFT'].forEach((key) => {
+            [{{string.Join(", ", ModDataKeys.Select(key => $"'{key}'"))}}].forEach((key) => {
               try { if (ds.getData('MSFS_UI_' + key)) stored.push(key); } catch (e) { /* counted as absent */ }
             });
             results.push({ label: 'mod data (MSFS_UI_ keys)', ok: true, detail: stored.length ? 'stored: ' + stored.join(', ') : 'none stored yet' });
@@ -308,74 +316,6 @@ public sealed partial class CompatibilityChecker
               return results;
             })()
             """;
-    }
-
-    /// <summary>
-    /// Names exported by a module of the sim: <c>export{a as B,C}</c> lists, <c>export class|function|const …</c>
-    /// declarations, and <c>export*from"…"</c> re-exports, followed (absolute <c>/Global/…</c> or relative paths).
-    /// </summary>
-    public static HashSet<string> ModuleExports(IReadOnlyDictionary<string, string> scripts, string module)
-    {
-        ArgumentNullException.ThrowIfNull(scripts);
-        return ModuleExports(scripts, module, new HashSet<string>(StringComparer.Ordinal));
-    }
-
-    private static HashSet<string> ModuleExports(IReadOnlyDictionary<string, string> scripts, string module, HashSet<string> seen)
-    {
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        if (!scripts.TryGetValue(module, out var code) || !seen.Add(module))
-        {
-            return names;
-        }
-
-        foreach (Match list in ExportListRegex().Matches(code))
-        {
-            foreach (var part in list.Groups[1].Value.Split(','))
-            {
-                var name = AsRegex().Split(part.Trim())[^1].Trim();
-                if (name.Length > 0)
-                {
-                    names.Add(name);
-                }
-            }
-        }
-
-        foreach (Match declaration in ExportDeclarationRegex().Matches(code))
-        {
-            names.Add(declaration.Groups[1].Value);
-        }
-
-        foreach (Match reexport in ReexportRegex().Matches(code))
-        {
-            var target = reexport.Groups[1].Value;
-            var resolved = target.StartsWith('/')
-                ? target[1..]
-                : NormalizeModulePath($"{module[..(module.LastIndexOf('/') + 1)]}{target}");
-            names.UnionWith(ModuleExports(scripts, resolved, seen));
-        }
-
-        return names;
-    }
-
-    private static string NormalizeModulePath(string path)
-    {
-        var parts = new List<string>();
-        foreach (var part in path.Split('/'))
-        {
-            if (part == "..")
-            {
-                if (parts.Count > 0)
-                {
-                    parts.RemoveAt(parts.Count - 1);
-                }
-            }
-            else if (part is not ("." or ""))
-            {
-                parts.Add(part);
-            }
-        }
-
-        return string.Join('/', parts);
     }
 
     private static async Task<Dictionary<string, string>> ReadFilesAsync(string root, string pattern, Func<string, bool> include, CancellationToken cancellationToken)
@@ -454,18 +394,6 @@ public sealed partial class CompatibilityChecker
 
     private static CheckResult Result(string group, string label, bool ok, string failure) =>
         ok ? new CheckResult(group, label, true) : new CheckResult(group, label, false, failure);
-
-    [GeneratedRegex(@"export\s*\{([^}]*)\}")]
-    private static partial Regex ExportListRegex();
-
-    [GeneratedRegex(@"\s+as\s+")]
-    private static partial Regex AsRegex();
-
-    [GeneratedRegex(@"export\s+(?:async\s+)?(?:class|function\*?|const|let|var)\s+([A-Za-z_$][\w$]*)")]
-    private static partial Regex ExportDeclarationRegex();
-
-    [GeneratedRegex("""export\s*\*\s*from\s*["']([^"']+)["']""")]
-    private static partial Regex ReexportRegex();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Live compatibility check: {Failures} failure(s) out of {Total}")]
     private partial void LogLive(int failures, int total);

@@ -151,7 +151,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunAsync(Strings.Get("HomeBusyInstall"), Strings.Get("HomeInstallFailed"), packageOperation: true, async () =>
+        await RunPackageOperationAsync(Strings.Get("HomeBusyInstall"), Strings.Get("HomeInstallFailed"), async () =>
         {
             var result = await _installer.InstallAsync(sim, inputs);
             var (next, severity) = result.NextStep switch
@@ -166,7 +166,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     /// <summary>Reloads the mod in the running sim: it reads its files and settings again.</summary>
     [RelayCommand(CanExecute = nameof(CanReload))]
-    private Task ReloadAsync() => RunAsync(Strings.Get("HomeBusyReload"), Strings.Get("HomeReloadFailed"), packageOperation: false, async () =>
+    private Task ReloadAsync() => RunAsync(Strings.Get("HomeBusyReload"), Strings.Get("HomeReloadFailed"), async () =>
     {
         var result = await _inspector.ReloadModAsync();
         if (result.Ok)
@@ -195,7 +195,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunAsync(Strings.Get("HomeBusyRemove"), Strings.Get("HomeRemoveFailed"), packageOperation: true, async () =>
+        await RunPackageOperationAsync(Strings.Get("HomeBusyRemove"), Strings.Get("HomeRemoveFailed"), async () =>
         {
             var removed = await _installer.RemoveAsync(sim);
             ShowMessage(InfoBarSeverity.Success, Strings.Get(removed ? "HomeRemoved" : "HomeNothingToRemove"), _session.SimRunning ? Strings.Get("HomeRemovedRestart") : string.Empty);
@@ -218,7 +218,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunAsync(Strings.Get("HomeBusyLocate"), Strings.Get("HomeFoldersFailed"), packageOperation: false, async () =>
+        await RunAsync(Strings.Get("HomeBusyLocate"), Strings.Get("HomeFoldersFailed"), async () =>
         {
             // The other preferences (the theme) are kept.
             var current = await _store.LoadPreferencesAsync();
@@ -229,7 +229,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     /// <summary>Forgets the folders chosen by hand: the sim is detected again.</summary>
     [RelayCommand(CanExecute = nameof(CanUseDetectedFolders))]
-    private Task UseDetectedFoldersAsync() => RunAsync(Strings.Get("HomeBusyLocate"), Strings.Get("HomeFoldersFailed"), packageOperation: false, async () =>
+    private Task UseDetectedFoldersAsync() => RunAsync(Strings.Get("HomeBusyLocate"), Strings.Get("HomeFoldersFailed"), async () =>
     {
         var current = await _store.LoadPreferencesAsync();
         await _store.SavePreferencesAsync(current with { CommunityPath = null, FsBaseUiPath = null });
@@ -238,16 +238,20 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
 
     public void Dispose() => _session.PropertyChanged -= OnSessionChanged;
 
-    /// <summary>
-    /// Runs an action with the busy state, reports a failure, and refreshes the state afterwards. An installation or
-    /// a removal (<paramref name="packageOperation"/>) is also the session's, so that no other page starts one.
-    /// </summary>
-    private async Task RunAsync(string busyText, string failureTitle, bool packageOperation, Func<Task> action)
+    /// <summary>Runs an action with the busy state, reports a failure, and refreshes the state afterwards.</summary>
+    private Task RunAsync(string busyText, string failureTitle, Func<Task> action) => RunAsync(busyText, failureTitle, () => null, action);
+
+    /// <summary>An installation or a removal, run as <see cref="RunAsync(string, string, Func{Task})"/>: also the session's, so that no other page starts one.</summary>
+    private Task RunPackageOperationAsync(string busyText, string failureTitle, Func<Task> action) =>
+        RunAsync(busyText, failureTitle, () => _session.BeginPackageOperation(busyText), action);
+
+    /// <summary>Runs <paramref name="action"/>, holding the operation <paramref name="begin"/> starts (null: none) until it ends.</summary>
+    private async Task RunAsync(string busyText, string failureTitle, Func<IDisposable?> begin, Func<Task> action)
     {
         _ownBusyText = busyText;
         UpdateBusy();
         IsMessageOpen = false;
-        var operation = packageOperation ? _session.BeginPackageOperation(busyText) : null;
+        var operation = begin();
         try
         {
             await action();

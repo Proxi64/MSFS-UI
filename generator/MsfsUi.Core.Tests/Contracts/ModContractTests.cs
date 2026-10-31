@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using MsfsUi.Core.Compatibility;
 using MsfsUi.Core.Features;
 
@@ -75,6 +76,21 @@ public sealed class ModContractTests
 
         Assert.IsTrue(File.Exists(path), $"{path} is missing: run the tests with MSFS_UI_UPDATE_FIXTURES=1");
         Assert.AreEqual(expected, File.ReadAllText(path), $"{name} is out of date: run the tests with MSFS_UI_UPDATE_FIXTURES=1, then the mod's tests");
+    }
+
+    [TestMethod]
+    public void TheStorageProbeLooksForTheModsOwnKeys()
+    {
+        var storage = File.ReadAllText(Path.Combine(ModFolder(), "src", "core", "storage.ts"));
+        var favorites = File.ReadAllText(Path.Combine(ModFolder(), "src", "sim", "favorites.ts"));
+        var keys = Regex.Match(storage, @"const DATASTORAGE_KEYS = \[([^\]]*)\]");
+        var old = Regex.Match(favorites, @"const OLD_FAVORITE_AIRCRAFT_KEY = '([A-Z_]+)'");
+        Assert.IsTrue(keys.Success, "DATASTORAGE_KEYS not found in storage.ts");
+        Assert.IsTrue(old.Success, "OLD_FAVORITE_AIRCRAFT_KEY not found in favorites.ts");
+
+        var modKeys = Regex.Matches(keys.Groups[1].Value, "'([A-Z_]+)'").Select(match => match.Groups[1].Value).Append(old.Groups[1].Value).Order();
+
+        CollectionAssert.AreEqual(modKeys.ToList(), CompatibilityChecker.ModDataKeys.Order().ToList());
     }
 
     /// <summary>The mod's real catalogue (<c>mod/features.json</c>).</summary>
