@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/features.schema.json",
   "schemaVersion": 1,
-  "modVersion": "2.0.4",
+  "modVersion": "2.0.5",
   "features": [
     {
       "id": "fastMenus",

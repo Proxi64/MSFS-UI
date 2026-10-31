@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.5 (2026-10-31)
+
+Coming from 2.0.3: this version includes the fix of 2.0.4, **the vault works at the first start again** (see below).
+
+- **Sturdier when the sim does not answer**: every request the mod sends to the sim now has a time limit (5 seconds, about 7 times the slowest answer measured). A request left unanswered is written in the log (Log page) instead of leaving a panel, a click or a tail number waiting for ever. The weather bar shows without its presets when the sim does not give them, instead of not showing at all.
+- **Damaged saved data is no longer used**: the favourites, tail numbers, last choices of the weather bar and the gallery's view are checked when they are read; a value that is not what it should be (from another version, or a write cut short) gives the default instead. A wrong time could otherwise be sent to the sim.
+- **Large aircraft libraries read whole**: with more than 1000 aircraft, the ones after the first 1000 could be missing from the gallery; they are all read now.
+- **Compatibility**: the Compatibility page also checks the aircraft's variants and liveries, which the setup panel, the livery column and the favourites depend on: an update of the sim that changes them now shows there.
+- **An old record removed**: the last livery used for each aircraft, recorded by the earlier versions and read by nothing, is no longer kept; it is removed at the first start (one line in the log). The order of the Free Flight favourites, by last use, is kept.
+- **Under the hood**: a large tidying of the mod's code (the gallery, the weather bar and the setup panel split into smaller parts, shared rules written once) and of the app's, with more tests. Nothing changes on screen: every screen was measured before and after, to the pixel.
+- **Updating**: as for 2.0.3 and 2.0.4, delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, then open the app and click **Generate & install**. Coming from 2.0.3, restart the sim (the fixed vault module is read only at its start); coming from 2.0.4, the app reloads the mod in the running sim.
+
 ## 2.0.4 (2026-10-31)
 
 - **The vault works at the first start again**: since 2.0.1, the module that keeps your favourites, tail numbers and last choices stopped at every start of the sim when its files did not exist yet (a first install) or when only one of its two files had been written (a single change saved). The mod then kept your data in the sim's own storage, as in 1.x, instead of the vault. Fixed: the module starts in every case. If your vault was still empty, your data moves into it at the next start, the hidden aircraft included. If it had one save from 2.0.0, the vault keeps that save: the changes made since then in 2.0.3 are to be done again.
