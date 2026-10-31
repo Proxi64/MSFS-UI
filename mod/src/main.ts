@@ -5,11 +5,11 @@ import { CONFIG_URL, loadSettings } from './core/config.ts';
 import { log, logError } from './core/log.ts';
 import { root, runtime, startRuntime } from './core/runtime.ts';
 import type { Scope } from './core/scope.ts';
-import { copyFromDatastorage, moveSessionWrites, setStorageBackend } from './core/storage.ts';
+import { clearDatastorage, copyFromDatastorage, datastorageKeys, moveSessionWrites, setStorageBackend } from './core/storage.ts';
 import { injectTheme } from './core/theme.ts';
 import { FEATURES } from './features.ts';
 import { dropAircraftUses, dropFavoriteAircraft } from './sim/favorites.ts';
-import { startProfileSaves } from './sim/profile-save.ts';
+import { saveProfileOnce, startProfileSaves } from './sim/profile-save.ts';
 import { openVault, type Vault } from './sim/vault.ts';
 import { FEATURE_IDS, type FeatureId, type Settings } from './generated/catalog.ts';
 
@@ -92,6 +92,7 @@ function useVault(vault: Vault, lateMs?: number): string[] {
   const { moved, kept } = moveSessionWrites(backend);
   if (kept.length > 0) log(`the vault's newer values kept over this session's changes made on the sim storage: ${kept.join(', ')}`);
   setStorageBackend(backend);
+  clearDatastorageOnceSaved(vault);
   // Live: each read of the app's probe gives the current seq, size and keys (last, read by the app's check).
   runtime.storage = {
     kind: 'vault',
@@ -100,6 +101,31 @@ function useVault(vault: Vault, lateMs?: number): string[] {
     },
   };
   return moved;
+}
+
+/**
+ * The sim storage's copy of the mod's data goes once the vault holds the data on the disk, with a profile save: a new
+ * vault (after Uninstall everything, or its files deleted) would otherwise take it back (the owner, 2026-10-31: 50 hidden
+ * aircraft came back). Kept when the vault does not confirm its save. A later session without the vault then starts
+ * from an empty sim storage, and its changes give way to the vault's values (moveSessionWrites).
+ */
+function clearDatastorageOnceSaved(vault: Vault): void {
+  const leftovers = datastorageKeys();
+  if (leftovers.length === 0) return;
+  vault.whenSaved().then(
+    (saved) => {
+      if (root.disposed) return;
+      if (!saved) {
+        logError(`the sim storage keeps the mod's data (${leftovers.join(', ')}): the vault did not confirm its save`);
+        return;
+      }
+      const cleared = clearDatastorage();
+      if (cleared.length === 0) return;
+      log(`sim storage cleared of the mod's data, which the vault keeps: ${cleared.join(', ')}`);
+      saveProfileOnce();
+    },
+    (error: unknown) => logError('the sim storage could not be cleared of the mod data', error),
+  );
 }
 
 /**

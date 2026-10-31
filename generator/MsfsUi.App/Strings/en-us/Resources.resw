@@ -122,7 +122,7 @@
 
 {0}
 
-A few MSFS_UI_ keys stay in the sim's own profile: they do nothing without the mod. The app closes afterwards; then delete its MSFS-UI-GENERATOR folder.</value>
+The app closes afterwards; then delete its MSFS-UI-GENERATOR folder.</value>
   </data>
   <data name="HomeUninstallConfirm" xml:space="preserve">
     <value>Uninstall</value>
@@ -485,7 +485,7 @@ A few MSFS_UI_ keys stay in the sim's own profile: they do nothing without the m
     <value>Files of the app</value>
   </data>
   <data name="ReadmeFilesText.Text" xml:space="preserve">
-    <value>The package: &lt;Community folder&gt;\msfs-ui. The mod's data, in the vault's folder, which the sim makes: %APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui on Steam (under %LOCALAPPDATA%\Packages\Microsoft.Limitless_8wekyb3d8bbwe on the Microsoft Store), with a few MSFS_UI_ keys in the sim's own profile when the vault does not answer. The app's settings, chosen folders, theme and logs: %LOCALAPPDATA%\MSFS-UI-GENERATOR. Uninstall everything on the Home page deletes these folders.</value>
+    <value>The package: &lt;Community folder&gt;\msfs-ui. The mod's data, in the vault's folder, which the sim makes: %APPDATA%\Microsoft Flight Simulator 2024\WASM\MSFS2024\msfs-ui on Steam (under %LOCALAPPDATA%\Packages\Microsoft.Limitless_8wekyb3d8bbwe on the Microsoft Store), with a few MSFS_UI_ keys in the sim's own profile while the vault does not answer (the mod removes them once the vault holds the data). The app's settings, chosen folders, theme and logs: %LOCALAPPDATA%\MSFS-UI-GENERATOR. Uninstall everything on the Home page deletes these folders.</value>
   </data>
   <data name="ReadmeVersion" xml:space="preserve">
     <value>{0} {1}</value>

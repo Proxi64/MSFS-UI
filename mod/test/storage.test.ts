@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import {
+  clearDatastorage,
   copyFromDatastorage,
+  datastorageKeys,
   deleteData,
   loadData,
   moveSessionWrites,
@@ -138,6 +140,25 @@ describe('storage', () => {
     assert.equal(copy.get('MSFS_UI_BASE_TAIL'), '"KEPT"');
     assert.equal(copy.has('MSFS_UI_OTHER'), false, "only the mod's keys");
     assert.equal(data.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"a"}]', 'datastorage left as it was');
+  });
+
+  it("lists then clears the mod's keys of datastorage, old ones included, without touching the others or counting as the session's writes", () => {
+    const data = fakePage();
+    data.set('MSFS_UI_HIDDEN_AIRCRAFT', '[]');
+    data.set('MSFS_UI_FAVORITE_AIRCRAFT', '[]');
+    data.set('MSFS_UI_AIRCRAFT_USES', '{}');
+    data.set('LAYOUT_SOMETHING', 'the sim');
+    let writes = 0;
+    onStorageWrite(() => writes++);
+    assert.deepEqual(datastorageKeys(), ['HIDDEN_AIRCRAFT', 'FAVORITE_AIRCRAFT', 'AIRCRAFT_USES']);
+    assert.deepEqual(clearDatastorage(), ['HIDDEN_AIRCRAFT', 'FAVORITE_AIRCRAFT', 'AIRCRAFT_USES']);
+    onStorageWrite(null);
+    assert.deepEqual([...data.keys()], ['LAYOUT_SOMETHING']);
+    assert.deepEqual(datastorageKeys(), []);
+    assert.equal(writes, 0, 'the caller asks for the profile save');
+    const copy = new Map<string, string>([['MSFS_UI_HIDDEN_AIRCRAFT', '[1]']]);
+    const target: StorageBackend = { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
+    assert.deepEqual(moveSessionWrites(target), { moved: [], kept: [] }, 'not moved into a vault as a removal');
   });
 
   it('copies the hidden aircraft too: 2.0 kept them in datastorage while its vault module failed', () => {

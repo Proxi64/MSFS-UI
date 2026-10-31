@@ -346,6 +346,49 @@ describe('vault', () => {
     scope.dispose();
   });
 
+  describe('whenSaved', () => {
+    it('is true at once when nothing is waiting: the loaded snapshot is on the disk', async () => {
+      fake.stored = { seq: 4, text: '{"MSFS_UI_A":"1"}' };
+      const scope = new Scope();
+      const vault = await open(scope);
+      assert.equal(await vault.whenSaved(), true);
+      assert.equal(fake.saves().length, 0, 'nothing sent');
+      scope.dispose();
+    });
+
+    it('sends the pending snapshot and is true once the module confirms it', async () => {
+      const scope = new Scope();
+      const vault = await open(scope);
+      vault.backend().set(`${STORAGE_PREFIX}A`, '1');
+      const saved = vault.whenSaved();
+      assert.equal(fake.saves().length, 1, 'sent at once');
+      assert.equal(await saved, true);
+      scope.dispose();
+    });
+
+    it('is false when the module refuses the save, or does not answer within 5000 ms', async () => {
+      fake.saveStatus = 'error';
+      const scope = new Scope();
+      const vault = await open(scope);
+      vault.backend().set(`${STORAGE_PREFIX}A`, '1');
+      assert.equal(await vault.whenSaved(), false);
+      fake.saveStatus = null;
+      vault.backend().set(`${STORAGE_PREFIX}A`, '2');
+      const silent = vault.whenSaved();
+      mock.timers.tick(5000);
+      assert.equal(await silent, false);
+      scope.dispose();
+    });
+
+    it('is false for a snapshot too big to be sent', async () => {
+      const scope = new Scope();
+      const vault = await open(scope);
+      vault.backend().set(`${STORAGE_PREFIX}BIG`, 'x'.repeat(VAULT_MAX_BYTES));
+      assert.equal(await vault.whenSaved(), false);
+      scope.dispose();
+    });
+  });
+
   it('falls back with a reason when the stored snapshot is unreadable', async () => {
     fake.stored = { seq: 3, text: '{not json' };
     const scope = new Scope();

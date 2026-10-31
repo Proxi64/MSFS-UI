@@ -25,6 +25,11 @@ export interface Vault {
   backend(): StorageBackend;
   /** Sends the pending snapshot now. */
   flush(): void;
+  /**
+   * Sends the pending snapshot now; true once the module confirms that the vault's current content is on the disk
+   * (at once when nothing is waiting), false when that save failed, was too big to send, or was not confirmed in time.
+   */
+  whenSaved(): Promise<boolean>;
   /** One line for the app: `seq 4, 120 bytes, keys: A, B` (keys without the prefix). */
   describe(): string;
 }
@@ -227,12 +232,19 @@ class VaultImpl implements Vault {
   private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
   private readonly save = debounced(() => this.send(), SAVE_DELAY_MS);
   private ended = false;
+  /** The latest save the module confirmed (the loaded one at first: it is on the disk). */
+  private confirmed: number;
+  /** The latest change could not be sent (a snapshot too big): the disk does not hold it. */
+  private refused = false;
+  /** Who waits for a save (whenSaved), by its seq. */
+  private readonly waiters: { seq: number; resolve: (ok: boolean) => void }[] = [];
 
   private readonly copy: Map<string, string>;
 
   constructor(copy: Map<string, string>, seq: number) {
     this.copy = copy;
     this.current = seq;
+    this.confirmed = seq;
   }
 
   get seq(): number {
@@ -257,6 +269,16 @@ class VaultImpl implements Vault {
     this.save.flush();
   }
 
+  whenSaved(): Promise<boolean> {
+    this.save.flush();
+    const seq = this.current;
+    if (this.refused) return Promise.resolve(false);
+    if (this.confirmed >= seq) return Promise.resolve(true);
+    // Sent, and its answer already came back as a failure (or it timed out): its timer is gone.
+    if (!this.timers.has(seq)) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => this.waiters.push({ seq, resolve }));
+  }
+
   describe(): string {
     const keys = Array.from(this.copy.keys())
       .map((key) => (key.indexOf(STORAGE_PREFIX) === 0 ? key.slice(STORAGE_PREFIX.length) : key))
@@ -279,6 +301,19 @@ class VaultImpl implements Vault {
     if (timer !== undefined) clearTimeout(timer);
     this.timers.delete(seq);
     if (status !== 'ok') logError(`the vault module answered ${status} to save ${seq}`);
+    else if (seq > this.confirmed) this.confirmed = seq;
+    this.answerWaiters(seq, status === 'ok');
+  }
+
+  /** A confirmed save answers those waiting for it or an earlier one; a failed one, those waiting for it. */
+  private answerWaiters(seq: number, ok: boolean): void {
+    for (let at = this.waiters.length - 1; at >= 0; at--) {
+      const waiter = this.waiters[at]!;
+      if (waiter.seq === seq || (ok && waiter.seq < seq)) {
+        this.waiters.splice(at, 1);
+        waiter.resolve(ok);
+      }
+    }
   }
 
   private snapshot(): string {
@@ -297,8 +332,10 @@ class VaultImpl implements Vault {
     const text = this.snapshot();
     if (text.length > VAULT_MAX_BYTES) {
       logError(`the vault snapshot is too big (${text.length} bytes, above ${VAULT_MAX_BYTES}): not saved`);
+      this.refused = true;
       return;
     }
+    this.refused = false;
     const seq = this.current + 1;
     this.current = seq;
     sendToModule(VAULT_EVENTS.save, encodeSave(seq, text));
@@ -308,6 +345,7 @@ class VaultImpl implements Vault {
       setTimeout(() => {
         this.timers.delete(seq);
         logError(`the vault module did not confirm save ${seq} within ${CONFIRM_TIMEOUT_MS} ms`);
+        this.answerWaiters(seq, false);
       }, CONFIRM_TIMEOUT_MS),
     );
   }

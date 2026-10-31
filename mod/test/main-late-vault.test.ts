@@ -124,5 +124,14 @@ describe('main.ts, a vault module that answers late', () => {
     const saved = JSON.parse(save.text.slice(save.text.indexOf('\n') + 1)) as Record<string, string>;
     assert.equal(saved[`${STORAGE_PREFIX}FAVORITE_LIVERIES`], '[{"dir":"newer"}]');
     assert.equal(saved[`${STORAGE_PREFIX}BASE_TAIL`], '"ASXGS"');
+
+    // The sim storage keeps the mod's data until the vault confirms it holds it, then loses it for good: a new vault
+    // (after Uninstall everything) would take it back otherwise.
+    const modKeys = () => [...data.keys()].filter((key) => key.indexOf(STORAGE_PREFIX) === 0);
+    assert.ok(modKeys().length > 0, 'kept while the save is not confirmed');
+    engine.emit(VAULT_EVENTS.saved, `${save.text.split('\n')[0]}\nok`);
+    for (let i = 0; i < 20 && modKeys().length > 0; i++) await realTick();
+    assert.deepEqual(modKeys(), [], 'cleared once the vault confirmed');
+    assert.ok(logs.some((line) => line.indexOf('sim storage cleared') >= 0 && line.indexOf('BASE_TAIL') >= 0), 'the clearing logged');
   });
 });

@@ -100,6 +100,30 @@ export function setStorageBackend(next: StorageBackend | null): void {
  */
 const DATASTORAGE_KEYS = ['FAVORITE_LIVERIES', 'LIVERY_TAILS', 'BASE_TAIL', 'WEATHER_BAR', 'WEATHER_BAR_TAB', 'AIRCRAFT_GALLERY', 'HIDDEN_AIRCRAFT'];
 
+/** Keys of earlier versions that may linger in `datastorage`: nothing reads them any more. */
+const OLD_DATASTORAGE_KEYS = ['FAVORITE_AIRCRAFT', 'AIRCRAFT_USES'];
+
+/** The mod's keys `datastorage` holds (without the prefix): what clearDatastorage removes. */
+export function datastorageKeys(): string[] {
+  return DATASTORAGE_KEYS.concat(OLD_DATASTORAGE_KEYS).filter((key) => datastorageBackend.get(STORAGE_PREFIX + key) !== undefined);
+}
+
+/**
+ * Removes the mod's keys from `datastorage`, once the vault holds the data for good (the owner's report, 2026-10-31:
+ * after Uninstall everything, a new vault took them back, 50 hidden aircraft among them). Not a write of the session
+ * (moveSessionWrites ignores it); the caller asks for the profile save that takes it to the disk. Returns the keys
+ * removed (without the prefix).
+ */
+export function clearDatastorage(): string[] {
+  const store = storage();
+  const keys = datastorageKeys();
+  for (const key of keys) {
+    if (store) store.deleteData(STORAGE_PREFIX + key);
+    else memory.delete(STORAGE_PREFIX + key);
+  }
+  return keys;
+}
+
 /**
  * Copies into `target` the mod's keys found in `datastorage`, except those `target` already has; `datastorage` is left
  * as it was. Returns the keys copied (without the prefix).

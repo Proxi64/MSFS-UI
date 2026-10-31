@@ -45,6 +45,11 @@ export function startProfileSaves(scope: Scope): void {
   });
 }
 
+/** One profile save now (the mod's keys removed from the sim storage, core/storage.ts clearDatastorage); a failure is logged. */
+export function saveProfileOnce(): void {
+  saveProfile().catch((error: unknown) => logError('the sim profile could not be saved: the mod data removed from the sim storage may come back at the next start', error));
+}
+
 /** The option's current value sent back with VALIDATE: the sim saves its profile, and its storage with it. */
 async function saveProfile(): Promise<void> {
   const general = store.Game.Options.General;

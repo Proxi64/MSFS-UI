@@ -3,8 +3,9 @@
 ## 2.0.7 (2026-10-31)
 
 - **Uninstall everything**: a new *Uninstall* block on the Home page. **Uninstall everything…**, with the sim closed, deletes for good everything MSFS-UI put on your computer: the mod in the Community folder, its data (favourites, tail numbers, hidden aircraft) and the app's settings and logs. A confirmation lists the folders first. The app then closes: delete its `MSFS-UI-GENERATOR` folder to finish. **Remove** still removes the mod alone, your data kept.
+- **No old data coming back**: earlier versions also left a copy of your data in the sim's own storage, and a new installation took it back (hidden aircraft reappeared after a full removal). The mod now removes that copy once the vault holds your data, at its first start with this version: after **Uninstall everything**, a new installation starts empty.
 - **Readme page up to date**: it explains where the mod keeps your data (the vault, since 2.0) and how to remove everything.
-- **Updating**: delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, then open the app and click **Generate & install**; the app reloads the mod in the running sim.
+- **Updating**: delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, then open the app and click **Generate & install**. Restart the sim once (the mod reads its data at start-up, and removes the old copy then).
 
 ## 2.0.6 (2026-10-31)
 
