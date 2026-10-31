@@ -114,8 +114,7 @@ async function main(): Promise<void> {
 
   writeIfChanged(GENERATED, generateCatalogModule(catalog));
   const sources = readSources();
-  const modules = checkFeatureModules(catalog, sources);
-  failOnAny('feature modules do not match features.json', modules.errors);
+  failOnAny('feature modules do not match features.json', checkFeatureModules(catalog, sources));
   failOnAny('the sources use the sim beyond compat.json', checkSimReferences(compat, sources));
   failOnAny('invalid characters in the sources', checkSourceCharacters(sources));
 
@@ -128,9 +127,7 @@ async function main(): Promise<void> {
   mkdirSync(dirname(OUT_FILE), { recursive: true });
   writeFileSync(OUT_FILE, code);
 
-  const ported = catalog.features.length - modules.notPorted.length;
   console.log(`mod ${catalog.modVersion}: ${relative(MOD_DIR, OUT_FILE)} (${Math.round(code.length / 1024)} KB${release ? ', release' : ', with source map'}) in ${Date.now() - started} ms`);
-  console.log(`features: ${ported}/${catalog.features.length} ported${modules.notPorted.length > 0 ? ` (not yet: ${modules.notPorted.join(', ')})` : ''}`);
 }
 
 main().catch((error: unknown) => {

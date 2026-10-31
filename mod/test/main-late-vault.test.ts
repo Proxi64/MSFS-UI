@@ -108,13 +108,13 @@ describe('main.ts, a vault module that answers late', () => {
     saveData('FAVORITE_LIVERIES', [{ dir: 'old' }, { dir: 'clicked' }]);
     saveData('BASE_TAIL', 'ASXGS');
 
-    const snapshot = { [`${STORAGE_PREFIX}FAVORITE_LIVERIES`]: '[{"dir":"newer"}]', [`${STORAGE_PREFIX}AIRCRAFT_USES`]: '{"x":5}' };
+    const snapshot = { [`${STORAGE_PREFIX}FAVORITE_LIVERIES`]: '[{"dir":"newer"}]', [`${STORAGE_PREFIX}LIVERY_TAILS`]: '{"x":"F-NEW"}' };
     engine.emit(VAULT_EVENTS.loaded, `${load.text}\n7\n${JSON.stringify(snapshot)}`);
 
     assert.equal(runtime()?.storage?.kind, 'vault');
     assert.deepEqual(loadData('FAVORITE_LIVERIES', null), [{ dir: 'newer' }], "the vault's newer list kept");
     assert.equal(loadData('BASE_TAIL', ''), 'ASXGS', "the session's new key moved");
-    assert.deepEqual(loadData('AIRCRAFT_USES', null), { x: 5 });
+    assert.deepEqual(loadData('LIVERY_TAILS', null), { x: 'F-NEW' });
     assert.ok(logs.some((line) => line.indexOf('newer values kept') >= 0 && line.indexOf('FAVORITE_LIVERIES') >= 0), 'the kept key logged');
     assert.ok(logs.some((line) => line.indexOf('data moved to the vault module') >= 0 && line.indexOf('BASE_TAIL') >= 0), 'the moved key logged');
 

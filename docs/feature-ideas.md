@@ -180,7 +180,7 @@ No candidate action was triggered: what changes the sim's state (choosing a depa
 
 ### D2. Personal gallery filters
 
-**Idea.** Filters the sim does not have: "Recent" (from the recorded aircraft use), by publisher, and personal tags ("IFR", "School", "Bush"…).
+**Idea.** Filters the sim does not have: "Recent" (from a record of the aircraft used, to be made: the one recorded up to 2.0.4 was read by nobody and removed), by publisher, and personal tags ("IFR", "School", "Bush"…).
 
 **What the sim offers.** Nothing more than the list (`creator`, `displayName`, `variation`): everything rests on the mod's data. The sim's categories are the tabs.
 

@@ -1,6 +1,6 @@
 // The mod's memory of aircraft: favourite liveries (heart of the liveries: setup panel, livery column, Favorites
-// tiles) and the last use of each variant (livery, date). Same storage keys as 0.3.0 (mod/README.md, Data stored in
-// the sim). The favourites are liveries only since 1.3.0: an aircraft is a favourite when one of its liveries is.
+// tiles), each with the date of its last use (Free Flight's order). Same storage keys as 0.3.0 (mod/README.md, Data
+// stored in the sim). The favourites are liveries only since 1.3.0: an aircraft is a favourite when one of its liveries is.
 // Aircraft are identified by `variationId` (stable); `aircraftId` may change when an aircraft is installed.
 
 import { log } from '../core/log.ts';
@@ -17,7 +17,7 @@ export interface FavoriteLivery {
   displayName?: string;
   creator?: string;
   variation?: string;
-  /** Last use of the aircraft with this livery (see `recordUse`). */
+  /** Last use of the aircraft with this livery (aircraft-loading.ts, `trackFavoriteUse`). */
   usedAt?: number;
 }
 
@@ -27,19 +27,11 @@ export interface LiveryRef {
   image: string;
 }
 
-export interface AircraftUse {
-  livery?: LiveryRef;
-  usedAt: number;
-}
-
-export type AircraftUses = Record<string, AircraftUse>;
-
 /** The favourite aircraft (the gallery's heart) of the versions before 1.3.0: dropped (dropFavoriteAircraft). */
 const OLD_FAVORITE_AIRCRAFT_KEY = 'FAVORITE_AIRCRAFT';
 const FAVORITE_LIVERIES_KEY = 'FAVORITE_LIVERIES';
-const USES_KEY = 'AIRCRAFT_USES';
-/** Variants whose last use is kept. */
-export const MAX_USES = 60;
+/** The last use of each variant, recorded until 2.0.4 and read by nobody: dropped (dropAircraftUses). */
+const OLD_USES_KEY = 'AIRCRAFT_USES';
 
 /** Event sent on `document` at each change of the favourite liveries (the setup panel and the gallery redraw). */
 export const FAVORITE_LIVERIES_CHANGED = 'msfs-ui-favorite-liveries';
@@ -55,6 +47,14 @@ export function dropFavoriteAircraft(): number {
   const count = Array.isArray(old) ? old.length : 0;
   log(`favourite aircraft of an earlier version removed (${count}): the favourites are liveries now`);
   return count;
+}
+
+/** Removes the last use of each variant that versions up to 2.0.4 recorded (nothing read it). True when there was one. */
+export function dropAircraftUses(): boolean {
+  if (loadData<unknown>(OLD_USES_KEY, null) === null) return false;
+  deleteData(OLD_USES_KEY);
+  log('last uses of the aircraft of an earlier version removed: nothing read them');
+  return true;
 }
 
 export function loadFavoriteLiveries(): FavoriteLivery[] {
@@ -163,43 +163,3 @@ export function withFavoriteLivery(
   ]);
 }
 
-export function loadUses(): AircraftUses {
-  return usesFrom(loadData<unknown>(USES_KEY, {}));
-}
-
-/** The uses of a stored value: those with a date, their livery when it is well-formed. */
-export function usesFrom(stored: unknown): AircraftUses {
-  const uses: AircraftUses = {};
-  const entries = storedObject(stored);
-  if (!entries) return uses;
-  for (const variationId of Object.keys(entries)) {
-    const entry = storedObject(entries[variationId]);
-    if (!entry || !isTime(entry.usedAt)) continue;
-    const livery = storedObject(entry.livery);
-    uses[variationId] =
-      livery && isString(livery.dir) && isString(livery.title) && isString(livery.image)
-        ? { livery: { dir: livery.dir, title: livery.title, image: livery.image }, usedAt: entry.usedAt }
-        : { usedAt: entry.usedAt };
-  }
-  return uses;
-}
-
-export function saveUses(uses: AircraftUses): void {
-  saveData(USES_KEY, uses);
-}
-
-/**
- * The uses after a use of `variationId` at `now`, with `livery` (or the one known before), keeping the `MAX_USES`
- * most recent variants.
- */
-export function withUse(uses: AircraftUses, variationId: string, livery: LiveryRef | undefined, now: number): AircraftUses {
-  const previous = uses[variationId];
-  const all: AircraftUses = Object.assign({}, uses);
-  all[variationId] = { livery: livery || (previous && previous.livery), usedAt: now };
-  const kept = Object.keys(all)
-    .sort((a, b) => all[b]!.usedAt - all[a]!.usedAt)
-    .slice(0, MAX_USES);
-  const trimmed: AircraftUses = {};
-  for (const id of kept) trimmed[id] = all[id]!;
-  return trimmed;
-}

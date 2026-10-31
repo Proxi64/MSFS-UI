@@ -52,9 +52,9 @@ The version in `package.json` and the `modVersion` of `features.json` must be eq
 1. `features.json` and `compat.json` match their schemas. The catalogue also passes the rules a schema cannot express: unique ids, `min ≤ max`, and defaults within range and on the step grid.
 2. `src/generated/catalog.ts` is generated from `features.json`: the `Settings` type, `FEATURE_IDS` and the specs used to validate `config.js`. It is not committed.
 3. Feature modules match the catalogue:
-   - each feature lives in `src/features/<id-in-kebab-case>.ts` or in a folder of that name;
+   - each feature has its module, `src/features/<id-in-kebab-case>.ts` or a folder of that name;
    - it reads every one of its options as `settings.<option>`;
-   - it is registered in `src/features.ts`, and a feature without a module has a `null` entry.
+   - it is registered in `src/features.ts`.
 
    The registry's type also refuses a missing or unknown feature id.
 4. Everything the sources take from the sim is listed in `compat.json`:
@@ -95,7 +95,7 @@ src/
                        livery-thumbnails.ts, statistics.ts, tail-field.ts (its parts, made of sim components),
                        setup-layout.ts (pure: the lists' heights, thumbnails, statistics), aircraft-setup.css
                        (layout only)
-    freeflight-favorites/ index.ts (and the record of aircraft use), panel.ts (the Favorites block on Free
+    freeflight-favorites/ index.ts (and the date of use of a favourite), panel.ts (the Favorites block on Free
                        Flight, made of sim components), entries.ts (pure: entries, kept order, selection, removal),
                        freeflight-favorites.css (layout only)
     time-wheel.ts      wheel on the Flight Conditions widget
@@ -123,7 +123,7 @@ src/
                        isShown, isOnScreen
     components.ts      createComponent(scope, guid, parent): the sim's own components (see below); TILE_EVENTS, markOwned (horizontal tiles)
     text-field.ts      the sim's Search_Input as a text field (keyboard handled by the sim)
-    favorites.ts       favourite liveries, last uses (MSFS_UI_FAVORITE_LIVERIES, MSFS_UI_AIRCRAFT_USES)
+    favorites.ts       favourite liveries and their date of use (MSFS_UI_FAVORITE_LIVERIES)
     configurator.ts    the configurator: read it, guarded choice of a variant or livery, favourite liveries
     vault.ts           the vault module over the CommBus: load, snapshot after each burst of writes, confirmation
     profile-save.ts    the sim's profile saved after the mod's writes (datastorage fallback: it reaches the disk only then)
@@ -200,7 +200,7 @@ Since 2.0 the mod keeps its data in the **vault**: the `msfs-ui.wasm` module of 
 | `MSFS_UI_FAVORITE_LIVERIES` | Favourite liveries: `variationId`, livery folder (the form of `MSFS_UI_LIVERY_TAILS`; for a livery without one, the folder of its thumbnail), title, thumbnail, aircraft name, publisher, variant, date of last use | Hearts of the livery column, the setup panel and Free Flight; the date at each change of aircraft |
 | `MSFS_UI_HIDDEN_AIRCRAFT` | Hidden aircraft: `[{ "displayName": …, "creator": … }]` (name and publisher, as the favourite liveries identify an aircraft) | The eye of the gallery's aircraft tiles and rows |
 | `MSFS_UI_AIRCRAFT_GALLERY` | `{ "view": "gallery" \| "list" \| "stock", "favoritesOnly": …, "hiddenOnly": …, "sort": { "option": "name" \| "studio" \| <the sim's option key>, "reversed": … } \| null }` (`stock` is the Default view; the 0.3.0 key `TT:MENU.NAME` reads as `name`; `hiddenOnly`, the Hidden filter, absent before 2.0.0; both filters true, never written, reads as Favorites; a `lastView` stored by 2.0.1 is dropped) | The gallery's controls |
-| `MSFS_UI_AIRCRAFT_USES` | Per `variationId`: last livery (folder, title, thumbnail) and date of use; 60 variants at most | Recorded at each change of aircraft |
+| `MSFS_UI_AIRCRAFT_USES` | Last livery and date of use per variant, recorded up to 2.0.4 and read by nobody: **removed** at the first start of the next version (`dropAircraftUses`, logged) | Nothing since |
 | `MSFS_UI_LIVERY_TAILS` | Per livery folder (lower case, for example `simobjects/airplanes/microsoft_sf50/liveries/microsoft/apex_corso_red`): the tail number chosen | Changes of the tail number field |
 | `MSFS_UI_BASE_TAIL` | Default tail number: the sim's field the first time the mod reads it while the key is empty | Recorded once, or set by hand |
 A stored value is not trusted: each reader keeps only what has its type (`storedObject`, `core/storage.ts`; the favourite liveries and the uses in `sim/favorites.ts`, the tail numbers in `sim/liveries.ts`, the hidden aircraft in `sim/hidden.ts`, the memories in `weather-bar/memory.ts` and `aircraft-gallery/memory.ts`), so that a damaged value (another version, a write cut short) gives defaults instead of a wrong value sent to the sim.

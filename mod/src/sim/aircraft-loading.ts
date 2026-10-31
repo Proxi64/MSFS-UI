@@ -1,10 +1,10 @@
-// Loading an aircraft with its livery through the sim's configurator (`Game.Aircraft.Configurator`), and the record of
-// each aircraft's use. The tail number follows the livery (features/tail-number.ts).
+// Loading an aircraft with its livery through the sim's configurator (`Game.Aircraft.Configurator`), and the date of
+// use of a favourite livery. The tail number follows the livery (features/tail-number.ts).
 
 import { answerWithin } from '../core/async.ts';
 import { log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
-import { findFavoriteLivery, loadFavoriteLiveries, loadUses, saveFavoriteLiveries, saveUses, withUse, type AircraftUse } from './favorites.ts';
+import { findFavoriteLivery, loadFavoriteLiveries, saveFavoriteLiveries, type LiveryRef } from './favorites.ts';
 import { liveryDirectory, liveryFolder, matchLivery, variationOf } from './liveries.ts';
 import { ANSWER_TIMEOUT_MS, readArray, store, watch } from './store.ts';
 
@@ -41,42 +41,40 @@ const LIVERIES_TIMEOUT_MS = 1500;
 const aircraft = store.Game.Aircraft;
 const configurator = aircraft.Configurator;
 
-/** Records the livery of the current aircraft at each of its changes, until `scope` is disposed. */
-export function trackAircraftUse(scope: Scope): void {
+/**
+ * At each change of the current aircraft, until `scope` is disposed: when its livery is a favourite, the favourite's
+ * date of use (Free Flight's favourites put the latest first).
+ */
+export function trackFavoriteUse(scope: Scope): void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   watch<{ variationId: string } | null>(scope, aircraft.CurrentAircraft, (current) => {
     if (!current || !current.variationId) return;
     clearTimeout(timer);
-    timer = setTimeout(() => recordUse(current.variationId).catch((error: unknown) => logError('the aircraft use could not be recorded', error)), RECORD_DELAY_MS);
+    timer = setTimeout(() => recordFavoriteUse(current.variationId).catch((error: unknown) => logError('the use of a favourite could not be recorded', error)), RECORD_DELAY_MS);
   });
   scope.add(() => clearTimeout(timer));
 }
 
-async function recordUse(variationId: string): Promise<void> {
+async function recordFavoriteUse(variationId: string): Promise<void> {
   const details = (await answerWithin(configurator.Details(), ANSWER_TIMEOUT_MS, 'the configurator')) as { variationId: string } | null;
   // The configurator follows the current aircraft; on another aircraft, the livery read would be the wrong one.
   const liveries = details && details.variationId === variationId ? await readArray<ConfiguratorLivery>(configurator.Liveries, 'the liveries') : [];
   const selected = liveries.filter((livery) => livery && livery.isSelected)[0];
-  const livery = selected ? { dir: liveryFolder(selected), title: selected.title, image: selected.imageUrl } : undefined;
-  saveUses(withUse(loadUses(), variationId, livery, Date.now()));
-
-  if (selected) {
-    const favorites = loadFavoriteLiveries();
-    const at = findFavoriteLivery(favorites, variationId, liveryFolder(selected));
-    if (at >= 0) {
-      favorites[at]!.usedAt = Date.now();
-      saveFavoriteLiveries(favorites);
-    }
-  }
+  if (!selected) return;
+  const favorites = loadFavoriteLiveries();
+  const at = findFavoriteLivery(favorites, variationId, liveryFolder(selected));
+  if (at < 0) return;
+  favorites[at]!.usedAt = Date.now();
+  saveFavoriteLiveries(favorites);
 }
 
 /**
- * Loads the variant, then puts back its last livery. The sim's list has one entry per modular aircraft (with its
+ * Loads the variant, then the livery `wanted` when given. The sim's list has one entry per modular aircraft (with its
  * current variant), and `GetAircraftFromVariationId` gives for its other variants a number that
  * `SetAircraftForConfigurator` does not load (seen on sim 1.9.18): the aircraft is then loaded and the variant chosen
  * (`SelectItem`).
  */
-export async function loadAircraft(variationId: string, use?: AircraftUse): Promise<void> {
+export async function loadAircraft(variationId: string, wanted?: LiveryRef): Promise<void> {
   const details = (await answerWithin(aircraft.GetAircraftFromVariationId.request(variationId), ANSWER_TIMEOUT_MS, 'the variant')) as AircraftRef | null;
   if (!details) throw new Error(`variant ${variationId} not found`);
   const configuratorIs = async (test: (ref: AircraftRef) => boolean) => {
@@ -108,7 +106,6 @@ export async function loadAircraft(variationId: string, use?: AircraftUse): Prom
     }
   }
 
-  const wanted = use && use.livery;
   if (wanted) {
     // Right after a change of variant the configurator may still list the previous variant's liveries: they are read
     // again until they are this variant's (matchLivery never takes another variant's).
@@ -138,7 +135,7 @@ export async function syncConfiguratorToCurrent(): Promise<boolean> {
   if (details && details.variationId === current.variationId) return true;
   // Going through the list entry and `SelectItem` puts the first livery back: the current one is applied again.
   const livery = current.thumbnailPath ? { dir: liveryDirectory(current.thumbnailPath), title: '', image: current.thumbnailPath } : undefined;
-  await loadAircraft(current.variationId, { livery, usedAt: 0 });
+  await loadAircraft(current.variationId, livery);
   const after = (await answerWithin(configurator.Details(), ANSWER_TIMEOUT_MS, 'the configurator')) as { variationId: string } | null;
   return !!after && after.variationId === current.variationId;
 }

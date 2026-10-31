@@ -19,8 +19,8 @@ import type { FeatureId, Settings } from './generated/catalog.ts';
  */
 export type FeatureStart<Id extends FeatureId> = (settings: Settings[Id], scope: Scope) => void | Promise<void>;
 
-/** `null`: a feature of the catalogue without a module yet; the mod logs it and carries on. */
-export type FeatureRegistry = { readonly [Id in FeatureId]: FeatureStart<Id> | null };
+/** One start per feature of the catalogue. */
+export type FeatureRegistry = { readonly [Id in FeatureId]: FeatureStart<Id> };
 
 export const FEATURES: FeatureRegistry = {
   fastMenus,

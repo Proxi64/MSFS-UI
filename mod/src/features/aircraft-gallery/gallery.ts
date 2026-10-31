@@ -581,7 +581,7 @@ export class Gallery {
   private selectLivery(item: AircraftItem, livery: FavoriteLivery): void {
     if (!item.isUsable || this.loading) return;
     this.loading = true;
-    loadAircraft(livery.variationId, { livery: { dir: livery.dir, title: livery.title, image: livery.image }, usedAt: 0 })
+    loadAircraft(livery.variationId, { dir: livery.dir, title: livery.title, image: livery.image })
       .catch((error: unknown) => logError(`${item.displayName} could not be loaded`, error))
       .then(() => {
         this.loading = false;

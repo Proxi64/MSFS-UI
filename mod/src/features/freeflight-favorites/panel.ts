@@ -215,7 +215,7 @@ export class FavoritesPanel {
     if (this.loading) return;
     this.loading = true;
     this.root.classList.add('is-loading');
-    loadAircraft(entry.variationId, { livery: entry.livery, usedAt: 0 })
+    loadAircraft(entry.variationId, entry.livery)
       .catch((error: unknown) => logError(`${entry.name} could not be loaded`, error))
       .then(() => {
         this.loading = false;

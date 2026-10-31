@@ -98,7 +98,7 @@ export function setStorageBackend(next: StorageBackend | null): void {
  * The keys the mod keeps in `datastorage` when it has no vault (mod/README.md, Data stored in the sim), copied into a new
  * vault: those of 1.x, and the hidden aircraft of 2.0, kept there while the vault module of 2.0.1 to 2.0.3 failed.
  */
-const DATASTORAGE_KEYS = ['FAVORITE_LIVERIES', 'LIVERY_TAILS', 'AIRCRAFT_USES', 'BASE_TAIL', 'WEATHER_BAR', 'WEATHER_BAR_TAB', 'AIRCRAFT_GALLERY', 'HIDDEN_AIRCRAFT'];
+const DATASTORAGE_KEYS = ['FAVORITE_LIVERIES', 'LIVERY_TAILS', 'BASE_TAIL', 'WEATHER_BAR', 'WEATHER_BAR_TAB', 'AIRCRAFT_GALLERY', 'HIDDEN_AIRCRAFT'];
 
 /**
  * Copies into `target` the mod's keys found in `datastorage`, except those `target` already has; `datastorage` is left

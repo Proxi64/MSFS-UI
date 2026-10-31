@@ -8,7 +8,7 @@ import type { Scope } from './core/scope.ts';
 import { copyFromDatastorage, moveSessionWrites, setStorageBackend } from './core/storage.ts';
 import { injectTheme } from './core/theme.ts';
 import { FEATURES } from './features.ts';
-import { dropFavoriteAircraft } from './sim/favorites.ts';
+import { dropAircraftUses, dropFavoriteAircraft } from './sim/favorites.ts';
 import { startProfileSaves } from './sim/profile-save.ts';
 import { openVault, type Vault } from './sim/vault.ts';
 import { FEATURE_IDS, type FeatureId, type Settings } from './generated/catalog.ts';
@@ -60,6 +60,8 @@ async function start(): Promise<void> {
   }
   // The favourites are liveries since 1.3.0: the favourite aircraft of earlier versions go (saved with the profile).
   dropFavoriteAircraft();
+  // The last use of each variant, recorded until 2.0.4, was read by nobody: it goes too.
+  dropAircraftUses();
   runtime.settings = loaded.settings;
   runtime.settingsSource = loaded.source;
   if (loaded.problems.length > 0) {
@@ -121,19 +123,17 @@ function adoptLateVault(vault: Vault, afterMs: number, fallback: Scope): void {
 
 function startFeatures(settings: Settings): void {
   const off: FeatureId[] = [];
-  const notPorted: FeatureId[] = [];
   for (const id of FEATURE_IDS) {
     if (!settings[id].enabled) off.push(id);
-    else if (!startFeature(id, settings[id])) notPorted.push(id);
+    else startFeature(id, settings[id]);
   }
   const list = (ids: FeatureId[]) => (ids.length > 0 ? ids.join(', ') : 'none');
-  log(`features started: ${list(runtime.started)}; off: ${list(off)}${notPorted.length > 0 ? `; not ported yet: ${list(notPorted)}` : ''}`);
+  log(`features started: ${list(runtime.started)}; off: ${list(off)}`);
 }
 
-/** Starts one feature in its own scope; false when it is not ported yet. */
-function startFeature<Id extends FeatureId>(id: Id, settings: Settings[Id]): boolean {
+/** Starts one feature in its own scope. */
+function startFeature<Id extends FeatureId>(id: Id, settings: Settings[Id]): void {
   const start = FEATURES[id];
-  if (!start) return false;
   const scope = root.child();
   const fail = (error: unknown) => {
     // A start still pending when a newer version took over, or when the features started again: already disposed.
@@ -153,5 +153,4 @@ function startFeature<Id extends FeatureId>(id: Id, settings: Settings[Id]): boo
   } catch (error) {
     fail(error);
   }
-  return true;
 }

@@ -113,36 +113,38 @@ describe('generateCatalogModule', () => {
 });
 
 describe('checkFeatureModules', () => {
-  const registry = (entries: string) => ['src/features.ts', `export const FEATURES = { ${entries} };`] as const;
-
-  it('reports catalogue features without a module as not ported when their entry is null', () => {
-    const files = new Map([registry('timeWheel: null, tailNumber: null')]);
-    assert.deepEqual(checkFeatureModules(catalog(), files), { errors: [], notPorted: ['timeWheel', 'tailNumber'] });
-  });
+  const wheel = 'export function timeWheel(settings) { return settings.step + (settings.invert ? 1 : 0); }';
+  const tail = 'export function tailNumber() {}';
 
   it('accepts a module that reads every option, in a file or a folder', () => {
-    const code = 'export function timeWheel(settings) { return settings.step + (settings.invert ? 1 : 0); }';
-    const asFile = new Map([registry('timeWheel: timeWheel, tailNumber: null'), ['src/features/time-wheel.ts', code]]);
-    assert.deepEqual(checkFeatureModules(catalog(), asFile).errors, []);
+    const asFile = new Map([
+      ['src/features/time-wheel.ts', wheel],
+      ['src/features/tail-number.ts', tail],
+    ]);
+    assert.deepEqual(checkFeatureModules(catalog(), asFile), []);
     const asFolder = new Map([
-      registry('timeWheel: timeWheel, tailNumber: null'),
       ['src/features/time-wheel/index.ts', 'use(settings.step);'],
       ['src/features/time-wheel/invert.ts', 'use(settings.invert);'],
+      ['src/features/tail-number.ts', tail],
     ]);
-    assert.deepEqual(checkFeatureModules(catalog(), asFolder).errors, []);
+    assert.deepEqual(checkFeatureModules(catalog(), asFolder), []);
   });
 
-  it('reports unread options, unknown modules and registry mismatches', () => {
+  it('refuses a feature of the catalogue without its module', () => {
+    assert.deepEqual(checkFeatureModules(catalog(), new Map([['src/features/time-wheel.ts', wheel]])), [
+      'src/features/tail-number: no module for the feature "tailNumber" of features.json',
+    ]);
+  });
+
+  it('reports unread options and unknown modules', () => {
     const files = new Map([
-      registry('timeWheel: null, tailNumber: tailNumber'),
       ['src/features/time-wheel.ts', 'use(settings.step); use(stepInvert);'],
+      ['src/features/tail-number.ts', tail],
       ['src/features/old-thing.ts', ''],
     ]);
-    assert.deepEqual(checkFeatureModules(catalog(), files).errors, [
+    assert.deepEqual(checkFeatureModules(catalog(), files), [
       'src/features/old-thing.ts: no feature "old-thing" in features.json (feature modules are named after their id in kebab case)',
-      'src/features.ts: "timeWheel" has a module but its registry entry is null',
       'src/features/time-wheel: option "timeWheel.invert" of features.json is never read (settings.invert)',
-      'src/features.ts: "tailNumber" has no module under src/features/ but is not null',
     ]);
   });
 });

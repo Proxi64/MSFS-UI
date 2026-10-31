@@ -5,15 +5,15 @@ import { log } from '../../core/log.ts';
 import { injectStyle } from '../../core/runtime.ts';
 import type { Scope } from '../../core/scope.ts';
 import type { Settings } from '../../generated/catalog.ts';
-import { trackAircraftUse } from '../../sim/aircraft-loading.ts';
+import { trackFavoriteUse } from '../../sim/aircraft-loading.ts';
 import { onScreenActive, SCREENS } from '../../sim/screens.ts';
 import CSS from './freeflight-favorites.css';
 import { FavoritesPanel } from './panel.ts';
 
 export function freeflightFavorites(_settings: Settings['freeflightFavorites'], scope: Scope): void {
   injectStyle(CSS, scope);
-  trackAircraftUse(scope);
+  trackFavoriteUse(scope);
   const hooked = onScreenActive(SCREENS.freeFlight, scope, (page, screen) => new FavoritesPanel(page, screen).mount());
   if (!hooked) throw new Error('the Free Flight screen is missing');
-  log('favourites on Free Flight, aircraft use recorded');
+  log('favourites on Free Flight, their last use recorded');
 }

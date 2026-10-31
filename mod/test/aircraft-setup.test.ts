@@ -6,12 +6,10 @@ import {
   favoriteLiveriesOf,
   findFavoriteLivery,
   FAVORITE_LIVERIES_CHANGED,
+  dropAircraftUses,
   dropFavoriteAircraft,
-  MAX_USES,
   saveFavoriteLiveries,
-  withUse,
   favoriteLiveriesFrom,
-  usesFrom,
   type FavoriteLivery,
 } from '../src/sim/favorites.ts';
 import { cleanTail } from '../src/sim/registration.ts';
@@ -131,15 +129,6 @@ describe('favourites', () => {
     assert.deepEqual(favoriteLiveriesOf(favorites, { variationId: 'v9', displayName: 'Vision Jet', creator: 'Cirrus' }).map((f) => f.title), ['Red', 'Blue']);
     assert.deepEqual(favoriteLiveriesOf(favorites, { variationId: 'v3' }).map((f) => f.title), ['Green']);
   });
-
-  it('keeps the most recent uses, with the livery known before', () => {
-    let uses = withUse({}, 'v1', { dir: 'd', title: 'Red', image: 'a.png' }, 1000);
-    uses = withUse(uses, 'v1', undefined, 2000);
-    assert.deepEqual(uses.v1, { livery: { dir: 'd', title: 'Red', image: 'a.png' }, usedAt: 2000 });
-    for (let i = 0; i < MAX_USES + 5; i++) uses = withUse(uses, `x${i}`, undefined, 3000 + i);
-    assert.equal(Object.keys(uses).length, MAX_USES);
-    assert.equal('v1' in uses, false, 'the oldest are dropped');
-  });
 });
 
 describe('favourites in the storage', () => {
@@ -170,6 +159,15 @@ describe('favourites in the storage', () => {
     assert.equal(dropFavoriteAircraft(), 0, 'nothing left to drop');
   });
 
+  it('drops the last uses of earlier versions once, and keeps the favourite liveries', () => {
+    data.set('MSFS_UI_AIRCRAFT_USES', JSON.stringify({ v1: { usedAt: 5 } }));
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[]');
+    assert.equal(dropAircraftUses(), true);
+    assert.equal(data.has('MSFS_UI_AIRCRAFT_USES'), false);
+    assert.equal(data.get('MSFS_UI_FAVORITE_LIVERIES'), '[]');
+    assert.equal(dropAircraftUses(), false, 'nothing left to drop');
+  });
+
   it('announces a change of the favourite liveries', () => {
     saveFavoriteLiveries([]);
     assert.equal(events, 1);
@@ -185,7 +183,7 @@ describe('cleanTail', () => {
   });
 });
 
-describe('favourite liveries and uses read from the storage', () => {
+describe('favourite liveries read from the storage', () => {
   const red = { variationId: 'v1', dir: 'simobjects/a/red', title: 'Red', image: 'r.png' };
 
   it('keeps the well-formed favourite liveries, their optional fields when they have their type', () => {
@@ -197,14 +195,5 @@ describe('favourite liveries and uses read from the storage', () => {
   it('drops a favourite without its variant, folder, title or image, and a value that is not a list', () => {
     assert.deepEqual(favoriteLiveriesFrom([null, 'red', { ...red, dir: undefined }, { ...red, title: 3 }, red]), [red]);
     assert.deepEqual(favoriteLiveriesFrom({ 0: red }), []);
-  });
-
-  it('keeps the uses with a date, their livery when it is well-formed', () => {
-    const livery = { dir: 'simobjects/a/red', title: 'Red', image: 'r.png' };
-    assert.deepEqual(usesFrom({ v1: { livery, usedAt: 5 }, v2: { livery: { dir: 3 }, usedAt: 6 }, v3: { usedAt: 'now' }, v4: null }), {
-      v1: { livery, usedAt: 5 },
-      v2: { usedAt: 6 },
-    });
-    assert.deepEqual(usesFrom([{ usedAt: 5 }]), {});
   });
 });

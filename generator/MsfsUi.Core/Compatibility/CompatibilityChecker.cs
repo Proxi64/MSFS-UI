@@ -189,7 +189,7 @@ public sealed partial class CompatibilityChecker
     /// contract test reads them from the mod. Declared before <see cref="StorageProbe"/>, which lists them.
     /// </summary>
     internal static readonly string[] ModDataKeys =
-        ["WEATHER_BAR", "WEATHER_BAR_TAB", "FAVORITE_AIRCRAFT", "FAVORITE_LIVERIES", "AIRCRAFT_GALLERY", "AIRCRAFT_USES", "LIVERY_TAILS", "BASE_TAIL", "HIDDEN_AIRCRAFT"];
+        ["WEATHER_BAR", "WEATHER_BAR_TAB", "FAVORITE_AIRCRAFT", "FAVORITE_LIVERIES", "AIRCRAFT_GALLERY", "LIVERY_TAILS", "BASE_TAIL", "HIDDEN_AIRCRAFT"];
 
     /// <summary>
     /// The storage part of the live probe, an ES2017 function of the page's <c>window</c> returning

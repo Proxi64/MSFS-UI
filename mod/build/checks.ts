@@ -17,23 +17,15 @@ export interface CompatJson {
   translations: string[];
 }
 
-export interface FeatureModuleReport {
-  errors: string[];
-  /** Catalogue features without a module yet (their registry entry is null). */
-  notPorted: string[];
-}
-
 const FEATURES_DIR = 'src/features/';
-const REGISTRY = 'src/features.ts';
 
 /**
  * Each feature lives in src/features/<feature-id>.ts or src/features/<feature-id>/, reads every option of its
- * catalogue entry as `settings.<option>`, and is registered in src/features.ts; a feature without a module has a
- * `null` registry entry. (The registry's type already fails to compile for a missing or unknown feature id.)
+ * catalogue entry as `settings.<option>`, and is registered in src/features.ts (the registry's type fails to compile
+ * for a missing or unknown feature id).
  */
-export function checkFeatureModules(catalog: CatalogJson, files: SourceFiles): FeatureModuleReport {
+export function checkFeatureModules(catalog: CatalogJson, files: SourceFiles): string[] {
   const errors: string[] = [];
-  const notPorted: string[] = [];
   const byName = new Map(catalog.features.map((feature) => [kebabCase(feature.id), feature]));
   const owned = new Map<string, string[]>();
   for (const path of files.keys()) {
@@ -49,16 +41,12 @@ export function checkFeatureModules(catalog: CatalogJson, files: SourceFiles): F
     owned.set(name, list);
   }
 
-  const registry = files.get(REGISTRY) || '';
   for (const [name, feature] of byName) {
     const paths = owned.get(name);
-    const isNull = new RegExp(`\\b${feature.id}\\s*:\\s*null\\b`).test(registry);
     if (!paths) {
-      notPorted.push(feature.id);
-      if (!isNull) errors.push(`${REGISTRY}: "${feature.id}" has no module under ${FEATURES_DIR} but is not null`);
+      errors.push(`${FEATURES_DIR}${name}: no module for the feature "${feature.id}" of features.json`);
       continue;
     }
-    if (isNull) errors.push(`${REGISTRY}: "${feature.id}" has a module but its registry entry is null`);
     const code = paths.map((path) => files.get(path)).join('\n');
     for (const option of feature.options) {
       if (!new RegExp(`\\bsettings\\.${option.id}\\b`).test(code)) {
@@ -66,7 +54,7 @@ export function checkFeatureModules(catalog: CatalogJson, files: SourceFiles): F
       }
     }
   }
-  return { errors, notPorted };
+  return errors;
 }
 
 /**

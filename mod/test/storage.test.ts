@@ -202,14 +202,14 @@ describe('storage', () => {
     // The 1.x data left in datastorage; the vault has moved on since.
     data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"old"}]');
     saveData('FAVORITE_LIVERIES', [{ dir: 'old' }, { dir: 'clicked' }]);
-    saveData('AIRCRAFT_USES', { x: 1 });
+    saveData('LIVERY_TAILS', { x: 'F-OLD' });
     const copy = new Map<string, string>([
       ['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"newer"}]'],
-      ['MSFS_UI_AIRCRAFT_USES', '{"x":5,"y":2}'],
+      ['MSFS_UI_LIVERY_TAILS', '{"x":"F-NEW","y":"F-TWO"}'],
     ]);
-    assert.deepEqual(moveSessionWrites(vaultOf(copy)), { moved: [], kept: ['AIRCRAFT_USES', 'FAVORITE_LIVERIES'] });
+    assert.deepEqual(moveSessionWrites(vaultOf(copy)), { moved: [], kept: ['FAVORITE_LIVERIES', 'LIVERY_TAILS'] });
     assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"newer"}]');
-    assert.equal(copy.get('MSFS_UI_AIRCRAFT_USES'), '{"x":5,"y":2}', 'a key absent from datastorage: the vault value is newer than nothing');
+    assert.equal(copy.get('MSFS_UI_LIVERY_TAILS'), '{"x":"F-NEW","y":"F-TWO"}', 'a key absent from datastorage: the vault value is newer than nothing');
   });
 
   it('counts a vault that already holds the session value as moved', () => {
