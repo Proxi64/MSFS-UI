@@ -42,7 +42,7 @@ import { readArray, store, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { barColumns, columnOf, defaultGrid, settleColumn, WheelColumns, type DefaultGrid } from './default-grid.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
-import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, galleryBodyClass, lastColumnSpan, shortCount, splitColumns } from './livery-column.ts';
+import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, aircraftTileSize, galleryBodyClass, lastColumnSpan, shortCount, splitColumns } from './livery-column.ts';
 import {
   accumulateKept,
   emptyMessage,
@@ -114,13 +114,6 @@ interface SlotExtras {
 
 const MEMORY_KEY = 'AIRCRAFT_GALLERY';
 const SORT_ICON = 'coui://html_UI/VFS/components/shared/resources/Icons/General/Sort.svg';
-/** Aimed width of a gallery tile, in layout units; the sim's aircraft tile is 360 × 250. */
-const TILE_WIDTH = 330;
-const TILE_RATIO = 250 / 360;
-/** Share of the sim's tile given to its image: its template splits the height 1.4 (image) to 1.2 (text). */
-const IMAGE_SHARE = 1.4 / 2.6;
-/** Height of the tile's text banner for its three lines of text (21 units each) and 6 units above and below. */
-const BANNER_HEIGHT = 75;
 /** Room left on the right of the tiles for the sim's scroll bar, in layout units. */
 const SCROLL_BAR_ROOM = 24;
 /** The sim's scroll bar until the list's own is measured: 10 pixels at 1440 lines (measured on 1.9.21), in layout units. */
@@ -651,14 +644,8 @@ export class Gallery {
     // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
     // before the scroll bar, and less the bar's own width when the tiles do not fit without it (core/virtual-list.ts:
     // decided on the full width, so the bar cannot make the tiles swing between two sizes).
-    const tileAt = (listWidth: number) => {
-      const room = Math.floor(listWidth - SCROLL_BAR_ROOM * unit);
-      const columns = halves ? AIRCRAFT_COLUMNS : Math.max(2, Math.floor(room / (TILE_WIDTH * unit)));
-      const width = Math.floor(room / columns - 12 * unit);
-      // The image keeps the sim's tile proportions; the text banner below only takes its three lines.
-      const image = Math.round(width * TILE_RATIO * IMAGE_SHARE);
-      return { columns, width, image, height: image + Math.round(BANNER_HEIGHT * unit) };
-    };
+    const tileLayout = { room: SCROLL_BAR_ROOM * unit, unit, columns: halves ? AIRCRAFT_COLUMNS : null };
+    const tileAt = (listWidth: number) => aircraftTileSize(listWidth, tileLayout);
     // The vertical list's bar only (a horizontal one, between two views, is as wide as the grid).
     if (this.listAxis === 'y') this.barUnits = Math.max(this.barUnits, scrollBarWidth(this.list) / unit);
     const barWidth = Math.round(this.barUnits * unit);

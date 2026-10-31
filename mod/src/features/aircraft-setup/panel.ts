@@ -30,7 +30,7 @@ import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layout.ts';
 import { store, watch } from '../../sim/store.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
-import { overflows, rowCount, variantsHeight, variantsPerRow } from './setup-layout.ts';
+import { LIVERY_COLUMNS, overflows, rowCount, statisticsRoom, thumbnailSize, variantsHeight, variantsPerRow } from './setup-layout.ts';
 
 /** The sim's livery button (ImageButtonLiveryManipulator). */
 interface LiveryButtonManipulator {
@@ -70,9 +70,6 @@ function removeAll(hosts: readonly HTMLElement[]): void {
 }
 
 const RELOAD_DELAY_MS = 80;
-/** Livery thumbnails: three per row, in the proportions of the sim's thumbnails (about 2:1). */
-const LIVERY_COLUMNS = 3;
-const LIVERY_RATIO = 0.47;
 /** Selection corner of the compact tiles (core/theme.css), kept clear of the title. */
 const CORNER_UNITS = 30;
 /**
@@ -298,15 +295,14 @@ export class SetupPanel {
 
     const liveryRows = (thumbnail: { height: number }): Rows => ({ count: withLiveries ? rowCount(this.liveries.length, LIVERY_COLUMNS) : 0, step: thumbnail.height + gap });
     const variantRows = (perRow: number): Rows => ({ count: rowCount(this.variants.length, perRow), step: (VARIANT_HEIGHT + GAP) * unit });
-    const wideThumbnail = this.thumbnailSize(full, unit);
+    const wideThumbnail = thumbnailSize(full, gap);
     let perRow = this.variantsPerRow(full, gap);
     // The statistics take their room only when the lists still have all they need at full width (decided on the full
     // width and the lists' natural heights: never a scrolling list for them, never a swing between the two).
     const listsNeed = variantRows(perRow).count * variantRows(perRow).step + liveryRows(wideThumbnail).count * liveryRows(wideThumbnail).step;
-    const statsHigh = this.statistics.length > 0 ? Math.ceil(this.statistics.length * STATISTIC_HEIGHT * unit + gap) : 0;
-    const withStats = statsHigh > 0 && room - statsHigh >= listsNeed;
-    toggleClass(this.root, 'has-statistics', withStats);
-    if (withStats) room -= statsHigh;
+    const statsRoom = statisticsRoom({ count: this.statistics.length, row: STATISTIC_HEIGHT, unit, gap }, room, listsNeed);
+    toggleClass(this.root, 'has-statistics', statsRoom > 0);
+    room -= statsRoom;
     let variants = variantRows(perRow);
     let variantsHigh = variantsHeight(room, variants, liveryRows(wideThumbnail));
     const variantsScroll = overflows(variants, variantsHigh);
@@ -321,7 +317,7 @@ export class SetupPanel {
     }
     const liveriesScroll = overflows(liveryRows(wideThumbnail), room - variantsHigh);
     toggleClass(this.liveriesList, 'is-scrolling', liveriesScroll);
-    const thumbnail = liveriesScroll ? this.thumbnailSize(narrow(this.liveriesList), unit) : wideThumbnail;
+    const thumbnail = liveriesScroll ? thumbnailSize(narrow(this.liveriesList), gap) : wideThumbnail;
 
     this.arrangeVariants(perRow, variantsWidth);
     // Each row counts the gap under it; the list's own margin is the gap under the last one: a list that does not
@@ -344,12 +340,6 @@ export class SetupPanel {
         this.variantsList.scrollToPosition(revealPosition(Math.floor(selected / perRow), variants, variantsHigh));
       }
     }
-  }
-
-  /** A livery thumbnail in a list `width` wide: three per row, 6 units apart, in whole pixels. */
-  private thumbnailSize(width: number, unit: number): { width: number; height: number } {
-    const thumbnail = (width - (LIVERY_COLUMNS - 1) * GAP * unit) / LIVERY_COLUMNS;
-    return { width: Math.floor(thumbnail), height: Math.round(thumbnail * LIVERY_RATIO) };
   }
 
   /** The sim's lists measure their content again (after a change of height or of content). */

@@ -25,6 +25,7 @@ import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
 import { GROUP_GAP, GROUP_GAP_ATTRIBUTE } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
 import { readArray, store, watch, type StoreNode, type TimeInfo } from '../../sim/store.ts';
+import { groupGap, presetCellSizes, presetListSize } from './bar-layout.ts';
 import type { FlightConditions, FlightConfigurationButton, FlightLocation, WeatherInfo, WeatherPreset } from './model.ts';
 import { isSimPreset, rememberedPreset } from './presets.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, TIME_MODES, type SentTime, type TimeMode } from './time-of-day.ts';
@@ -500,45 +501,29 @@ export class WeatherBar {
     const host = list ? list.element.parentElement : null;
     if (!list || !host || this.panel.style.display === 'none') return;
     const box = host.getBoundingClientRect();
-    const below = (this.panel.getBoundingClientRect().bottom - box.bottom) / unit;
-    const count = this.presetItems.size;
-    const fitBelow = Math.floor((below - DROPDOWN_PADDING) / DROPDOWN_ITEM);
-    const up = fitBelow < LIST_LEAST;
-    toggleClass(host, 'is-up', up);
-    let size: number;
-    let padding = DROPDOWN_EDGE;
-    if (up) {
-      size = Math.max(1, Math.min(count, Math.floor(((box.top - columnTop) / unit - DROPDOWN_PADDING) / DROPDOWN_ITEM))) * DROPDOWN_ITEM + DROPDOWN_PADDING;
-    } else if (count <= fitBelow) {
-      size = count * DROPDOWN_ITEM + DROPDOWN_PADDING;
-    } else {
-      // Half a pixel more: the engine rounds the height down, the list must reach the buttons' edge.
-      size = below + 0.5 / unit;
-      padding += below - (fitBelow * DROPDOWN_ITEM + DROPDOWN_PADDING);
-    }
-    list.set('List_Size', size.toFixed(2));
-    setVariable(host.style, '--msfs-ui-presets-top', `${Math.floor(padding * unit)}px`);
+    const sized = presetListSize(
+      { count: this.presetItems.size, below: (this.panel.getBoundingClientRect().bottom - box.bottom) / unit, above: (box.top - columnTop) / unit, unit },
+      { item: DROPDOWN_ITEM, edge: DROPDOWN_EDGE, padding: DROPDOWN_PADDING },
+      LIST_LEAST,
+    );
+    toggleClass(host, 'is-up', sized.up);
+    list.set('List_Size', sized.size.toFixed(2));
+    setVariable(host.style, '--msfs-ui-presets-top', `${Math.floor(sized.padding * unit)}px`);
   }
 
   /**
    * The preset grid in whole pixels, `width` wide: PRESETS_PER_ROW cells per row, GAP units between them (rounded down,
-   * as the engine does for the other gaps), the pixels left over given one each to the first cells of the rows. In
-   * units, the engine rounded each cell down and the rows ended 5 pixels short (measured 2026-10-30).
+   * as the engine does for the other gaps; bar-layout.ts).
    */
   private layoutPresets(width: number, unit: number): void {
-    const gap = Math.floor(GAP * unit);
-    const free = width - (PRESETS_PER_ROW - 1) * gap;
-    const base = Math.floor(free / PRESETS_PER_ROW);
-    const extra = free - base * PRESETS_PER_ROW;
-    for (const { host, start, span } of this.presetCells) {
-      const column = start % PRESETS_PER_ROW;
-      let cells = (span - 1) * gap;
-      for (let at = column; at < column + span; at++) cells += base + (at < extra ? 1 : 0);
+    const sizes = presetCellSizes(width, Math.floor(GAP * unit), PRESETS_PER_ROW, this.presetCells);
+    this.presetCells.forEach(({ host }, at) => {
+      const size = sizes[at]!;
       const style = host.style;
-      style.width = `${cells}px`;
-      style.marginRight = column + span >= PRESETS_PER_ROW ? '0px' : `${gap}px`;
-      style.marginTop = start >= PRESETS_PER_ROW ? `${gap}px` : '0px';
-    }
+      style.width = `${size.width}px`;
+      style.marginRight = `${size.marginRight}px`;
+      style.marginTop = `${size.marginTop}px`;
+    });
   }
 
   /**
@@ -551,24 +536,17 @@ export class WeatherBar {
   private groupGap(widgetBottom: number, unit: number, card: HTMLElement | null, tab: Tab): number {
     const buttons = this.page.elt.querySelector(MAP_BUTTONS);
     if (!isShown(buttons)) return Math.floor(GROUP_GAP * unit);
-    let blocks = Math.floor(SEARCH_HEIGHT * unit);
-    let gaps = 2;
-    if (card) blocks += (TAB_ROW + GAP) * unit;
-    if (card && tab === 'airport') {
-      blocks += card.getBoundingClientRect().height;
-      gaps++;
-    } else {
+    const fixed = Math.floor(SEARCH_HEIGHT * unit) + (card ? (TAB_ROW + GAP) * unit : 0);
+    const spaced: number[] = [];
+    if (card && tab === 'airport') spaced.push(card.getBoundingClientRect().height);
+    else {
       const sections = this.panel.querySelectorAll<HTMLElement>('.msfs-ui-wx__section');
       for (let at = 0; at < sections.length; at++) {
         const high = sections[at]!.getBoundingClientRect().height;
-        if (high === 0) continue;
-        blocks += high;
-        gaps++;
+        if (high !== 0) spaced.push(high);
       }
     }
-    // Rounded to the nearest pixel: the gap under the search field differs from the others by a few pixels at most
-    // (rounded down, the room left over all went there: 48 pixels under it, 43 between the others at 1440 lines).
-    return Math.max(Math.floor(GAP * unit), Math.round((buttons.getBoundingClientRect().top - widgetBottom - blocks) / gaps));
+    return groupGap(buttons.getBoundingClientRect().top - widgetBottom, { fixed, spaced }, Math.floor(GAP * unit));
   }
 
   /** `gap` pixels above every section but the first (a hidden one, the METAR, takes no room). */

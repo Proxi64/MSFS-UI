@@ -42,3 +42,23 @@ export function variantsHeight(room: number, variants: Rows, liveries: Rows): nu
 export function overflows(rows: Rows, height: number): boolean {
   return rows.count * rows.step > height + 1;
 }
+
+/** Livery thumbnails: three per row, in the proportions of the sim's thumbnails (about 2:1). */
+export const LIVERY_COLUMNS = 3;
+const LIVERY_RATIO = 0.47;
+
+/** A livery thumbnail in a list `width` wide, LIVERY_COLUMNS per row `gap` pixels apart: whole pixels wide. */
+export function thumbnailSize(width: number, gap: number): { width: number; height: number } {
+  const thumbnail = (width - (LIVERY_COLUMNS - 1) * gap) / LIVERY_COLUMNS;
+  return { width: Math.floor(thumbnail), height: Math.round(thumbnail * LIVERY_RATIO) };
+}
+
+/**
+ * The room the aircraft's statistics take, in pixels: `count` rows of `row` layout units (`unit` pixels each) and the
+ * gap under them, rounded up; 0 when there are none, or when the lists would no longer have all they `need` in the
+ * `room` left (the statistics never make a list scroll).
+ */
+export function statisticsRoom(statistics: { count: number; row: number; unit: number; gap: number }, room: number, need: number): number {
+  const high = statistics.count > 0 ? Math.ceil(statistics.count * statistics.row * statistics.unit + statistics.gap) : 0;
+  return high > 0 && room - high >= need ? high : 0;
+}

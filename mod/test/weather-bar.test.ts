@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { WeatherInfo, WeatherPreset } from '../src/features/weather-bar/model.ts';
 import type { TimeInfo } from '../src/sim/store.ts';
+import { groupGap, presetCellSizes, presetListSize } from '../src/features/weather-bar/bar-layout.ts';
 import { isSimPreset, rememberedPreset } from '../src/features/weather-bar/presets.ts';
 import { parseDms, sunTimes } from '../src/features/weather-bar/sun.ts';
 import { currentTimeMode, departureSeconds, liveOffsetFor, SETTLE_MS } from '../src/features/weather-bar/time-of-day.ts';
@@ -202,5 +203,44 @@ describe('weather text', () => {
     assert.equal(cloudText(weather({ flightRules: '', coverage: 60, cloudAltitude: value(3000, 'ft') })), 'BKN 3000 ft');
     assert.equal(cloudText(weather({ flightRules: '', coverage: 1 })), 'Clear');
     assert.equal(cloudText(weather({ flightRules: '', coverage: -1 })), null);
+  });
+});
+
+describe('weather bar layout', () => {
+  it('lays the presets grid in whole pixels (measured on 1.9.21 at 1440 lines: 190 and 91 px)', () => {
+    const cells = [{ start: 0, span: 2 }, ...Array.from({ length: 10 }, (_, at) => ({ start: at + 2, span: 1 }))];
+    const sizes = presetCellSizes(586, 8, 6, cells);
+    assert.deepEqual(sizes[0], { width: 190, marginRight: 8, marginTop: 0 });
+    assert.deepEqual(sizes[4], { width: 91, marginRight: 0, marginTop: 0 }, 'the last cell of the first row');
+    assert.deepEqual(sizes[5], { width: 91, marginRight: 8, marginTop: 8 });
+    assert.deepEqual(sizes[10], { width: 91, marginRight: 0, marginTop: 8 });
+  });
+
+  it('gives the pixels left over to the first cells of each row', () => {
+    const cells = Array.from({ length: 6 }, (_, at) => ({ start: at, span: 1 }));
+    assert.deepEqual(presetCellSizes(588, 8, 6, cells).map((cell) => cell.width), [92, 92, 91, 91, 91, 91]);
+  });
+
+  it('shares the free room of the column evenly between the groups, never under the minimum', () => {
+    assert.equal(groupGap(600, { fixed: 100, spaced: [50, 50, 50] }, 8), 70);
+    assert.equal(groupGap(603, { fixed: 100, spaced: [50, 50, 50] }, 8), 71, 'rounded to the nearest pixel');
+    assert.equal(groupGap(200, { fixed: 100, spaced: [50, 50, 50] }, 8), 8);
+  });
+
+  describe('the list of the added presets', () => {
+    const metrics = { item: 33, edge: 6, padding: 9 };
+
+    it('opens downwards to the length of its items when they fit', () => {
+      assert.deepEqual(presetListSize({ count: 4, below: 200, above: 300, unit: 1 }, metrics, 3), { up: false, size: 141, padding: 6 });
+    });
+
+    it('scrolls downwards to the bottom of the panel, the room left by whole items in its top padding', () => {
+      assert.deepEqual(presetListSize({ count: 10, below: 200, above: 300, unit: 4 / 3 }, metrics, 3), { up: false, size: 200.375, padding: 32 });
+    });
+
+    it('opens upwards when fewer than the least items fit below, one item at least', () => {
+      assert.deepEqual(presetListSize({ count: 10, below: 100, above: 300, unit: 1 }, metrics, 3), { up: true, size: 273, padding: 6 });
+      assert.deepEqual(presetListSize({ count: 10, below: 100, above: 0, unit: 1 }, metrics, 3), { up: true, size: 42, padding: 6 });
+    });
   });
 });

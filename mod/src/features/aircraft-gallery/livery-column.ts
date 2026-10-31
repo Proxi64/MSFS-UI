@@ -31,6 +31,37 @@ export function shortCount(room: number, fullCount: number, minSearch: number): 
   return room - fullCount < minSearch;
 }
 
+/** Aimed width of a gallery tile, in layout units; the sim's aircraft tile is 360 × 250. */
+const TILE_WIDTH = 330;
+const TILE_RATIO = 250 / 360;
+/** Share of the sim's tile given to its image: its template splits the height 1.4 (image) to 1.2 (text). */
+const IMAGE_SHARE = 1.4 / 2.6;
+/** Height of the tile's text banner for its three lines of text (21 units each) and 6 units above and below. */
+const BANNER_HEIGHT = 75;
+
+/** A gallery tile in whole pixels: the tiles per row, its width, its image's height and its whole height. */
+export interface AircraftTile {
+  columns: number;
+  width: number;
+  image: number;
+  height: number;
+}
+
+/**
+ * A gallery tile in a list `list` pixels wide that keeps `room` pixels on the right before the scroll bar, 6 units on
+ * each side of every tile (`unit` pixels per layout unit): `columns` per row (AIRCRAFT_COLUMNS side by side), or null
+ * for as many tiles about TILE_WIDTH wide as fit, two at least. The image keeps the sim's tile proportions; the text
+ * banner below only takes its three lines.
+ */
+export function aircraftTileSize(list: number, layout: { room: number; unit: number; columns: number | null }): AircraftTile {
+  const { room, unit } = layout;
+  const inner = Math.floor(list - room);
+  const columns = layout.columns !== null ? layout.columns : Math.max(2, Math.floor(inner / (TILE_WIDTH * unit)));
+  const width = Math.floor(inner / columns - 12 * unit);
+  const image = Math.round(width * TILE_RATIO * IMAGE_SHARE);
+  return { columns, width, image, height: image + Math.round(BANNER_HEIGHT * unit) };
+}
+
 /**
  * The width of the gallery's List rows, in whole pixels: the list's width less the room kept on the right and the
  * scroll bar's width, whether the list scrolls or not, so that the rows keep one width (a short list, the Hidden view,

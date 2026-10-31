@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { overflows, rowCount, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
+import { overflows, rowCount, statisticsRoom, thumbnailSize, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
 import { orderLiveries } from '../src/sim/livery-order.ts';
 import {
   favoriteLiveriesOf,
@@ -87,6 +87,19 @@ describe('setup panel layout', () => {
     assert.equal(overflows({ count: 3, step: variant }, 125.6), false);
     assert.equal(overflows({ count: 3, step: variant }, 125), false);
     assert.equal(overflows({ count: 3, step: variant }, 124.9), true);
+  });
+
+  it('sizes three livery thumbnails per row, whole pixels wide (measured on 1.9.21 at 1440 lines: 171 x 81)', () => {
+    assert.deepEqual(thumbnailSize(530, 8), { width: 171, height: 81 });
+    assert.deepEqual(thumbnailSize(480, 6), { width: 156, height: 73 });
+  });
+
+  it('shows the statistics only when the lists keep all they need', () => {
+    const statistics = { count: 3, row: 36, unit: 1, gap: 6 };
+    assert.equal(statisticsRoom(statistics, 500, 386), 114);
+    assert.equal(statisticsRoom(statistics, 500, 387), 0, 'a list would scroll');
+    assert.equal(statisticsRoom({ ...statistics, count: 0 }, 500, 0), 0);
+    assert.equal(statisticsRoom({ ...statistics, unit: 1.078 }, 500, 0), 123, 'rounded up');
   });
 
   it('does not scroll a list given its whole rows rounded down (measured 2026-10-30, 1164 lines)', () => {

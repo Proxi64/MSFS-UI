@@ -16,7 +16,7 @@ import {
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { aircraftEdges, aircraftRowWidth, lastColumnSpan, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
+import { aircraftEdges, aircraftRowWidth, aircraftTileSize, lastColumnSpan, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
 const aircraft = (variationId: string, displayName: string, creator: string, variation = ''): AircraftItem => ({
@@ -258,6 +258,21 @@ describe('livery column', () => {
     const livery = liveryTileSize(right, 32, 16, 72).width;
     assert.ok(Math.abs(aircraft - livery) <= 1, `aircraft ${aircraft}, livery ${livery}`);
     assert.equal(Number.isInteger(left), true);
+  });
+
+  it('sizes the aircraft tiles in whole pixels, three per row side by side', () => {
+    // 3440 x 1440: unit 4/3, room 24 units = 32 px; measured on 1.9.21 (2026-10-31): tiles 322 x 220, images 120 high.
+    const layout = { room: 32, unit: 4 / 3 };
+    assert.deepEqual(aircraftTileSize(1046, { ...layout, columns: 3 }), { columns: 3, width: 322, image: 120, height: 220 });
+  });
+
+  it('fits as many aircraft tiles of about 330 units as the list takes, two at least', () => {
+    const layout = { room: 32, unit: 4 / 3, columns: null };
+    assert.equal(aircraftTileSize(2000, layout).columns, 4);
+    assert.equal(aircraftTileSize(2000, layout).width, 476);
+    assert.equal(aircraftTileSize(1046, layout).columns, 2);
+    assert.equal(aircraftTileSize(600, layout).columns, 2, 'two even when one would fit');
+    assert.equal(aircraftTileSize(600, layout).width, 268);
   });
 
   it('sizes two livery tiles per row in the thumbnails ratio', () => {
