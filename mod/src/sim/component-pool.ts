@@ -4,10 +4,11 @@
 // cells near the view; a slot far from it waits in a hidden parking (out of the layout). Moving a slot keeps the
 // component loaded and active (measured on 1.9.21: 4.8 ms with the layout).
 
-import { el } from '../core/dom.ts';
-import type { Scope } from '../core/scope.ts';
-import type { SimComponent } from './components.ts';
+import { el, uiUnit } from '../core/dom.ts';
 import type { IconToggle } from '../core/icon-toggle.ts';
+import type { Scope } from '../core/scope.ts';
+import { cellAction, type Extent } from '../core/virtual-list.ts';
+import type { SimComponent } from './components.ts';
 
 /** A card and its icon, in hosts that move from cell to cell (`cardHost` and `iconHost`, appended to a cell's host). */
 export interface PoolSlot<T> {
@@ -126,5 +127,104 @@ export class ComponentPool<T> {
   /** Number of slots created (for the log and the checks). */
   get size(): number {
     return this.slots.length;
+  }
+}
+
+/** A cell of a pooled list: its host keeps its place in the list, its slot and card are there while it is near the view. */
+export interface PooledCell<C> {
+  readonly host: HTMLElement;
+  slot: PoolSlot<C> | null;
+  card: SimComponent | null;
+}
+
+/** How a list's cells get their components. */
+export interface PooledCellsOptions<C> {
+  /** The kind of component the list shows now (tiles, rows…): another kind than the last one makes a new pool. */
+  kind(): string;
+  /** How the pool of a kind makes its slots. */
+  maker(kind: string): PoolSlotMaker<C>;
+  /** A cell got a slot: the list shows its item there (a slot still loading has no card yet: `create` shows it once ready). */
+  assigned(cell: C): void;
+}
+
+/** Components are created for the cells within this distance of the visible part, and kept within the second, in layout units. */
+const CREATE_MARGIN = 300;
+const KEEP_MARGIN = 600;
+
+/**
+ * The components of a list's cells, kept only near its visible part (core/virtual-list.ts), in slots of a pool of the
+ * current kind (made when first needed). Shared by the gallery and its livery column.
+ */
+export class PooledCells<C extends PooledCell<C>> {
+  private readonly owner: Scope;
+  private readonly parent: HTMLElement;
+  private readonly options: PooledCellsOptions<C>;
+  private pool: ComponentPool<C> | null = null;
+  private poolKind: string | null = null;
+  private poolScope: Scope | null = null;
+
+  /** The pools' slots are disposed with `owner`; `parent` holds their hidden parking. */
+  constructor(owner: Scope, parent: HTMLElement, options: PooledCellsOptions<C>) {
+    this.owner = owner;
+    this.parent = parent;
+    this.options = options;
+  }
+
+  /**
+   * Gives the cells near `view` a slot and takes it back from those far from it, along the list's axis (`x`: the cells
+   * come into view from the sides). The positions are all read before any change, so the engine lays the page out once.
+   */
+  materialize(cells: readonly C[], view: HTMLElement, axis: 'x' | 'y'): void {
+    const extent = axis === 'x' ? (rect: DOMRect): Extent => ({ top: rect.left, bottom: rect.right }) : (rect: DOMRect): Extent => rect;
+    const visible = extent(view.getBoundingClientRect());
+    if (visible.bottom - visible.top <= 0) return;
+    const unit = uiUnit();
+    const margins = { create: CREATE_MARGIN * unit, keep: KEEP_MARGIN * unit };
+    const actions = cells.map((cell) => cellAction(extent(cell.host.getBoundingClientRect()), cell.slot !== null, visible, margins));
+    cells.forEach((cell, at) => {
+      if (actions[at] === 'create') this.assign(cell);
+      else if (actions[at] === 'destroy') this.release(cell);
+    });
+  }
+
+  /** The cell's slot goes back to the pool's parking (the host keeps its place in the list). */
+  release(cell: C): void {
+    if (cell.slot && this.pool) this.pool.release(cell.slot);
+    cell.slot = null;
+    cell.card = null;
+  }
+
+  /** Every slot to the parking, items forgotten (a new list). */
+  releaseAll(): void {
+    if (this.pool) this.pool.releaseAll();
+  }
+
+  /** A slot's components are made (see ComponentPool.markReady). */
+  markReady(slot: PoolSlot<C>): void {
+    if (this.pool) this.pool.markReady(slot);
+  }
+
+  /** Number of slots of the current pool (for the checks). */
+  get size(): number {
+    return this.pool ? this.pool.size : 0;
+  }
+
+  /** The cell gets a slot of the pool (a parked one first). */
+  private assign(cell: C): void {
+    const slot = this.currentPool().acquire(cell.host, cell);
+    cell.slot = slot;
+    cell.card = slot.card;
+    this.options.assigned(cell);
+  }
+
+  private currentPool(): ComponentPool<C> {
+    const kind = this.options.kind();
+    if (!this.pool || this.poolKind !== kind) {
+      if (this.poolScope) this.poolScope.dispose();
+      const scope = (this.poolScope = this.owner.child());
+      this.poolKind = kind;
+      this.pool = new ComponentPool<C>(scope, this.parent, this.options.maker(kind));
+    }
+    return this.pool;
   }
 }

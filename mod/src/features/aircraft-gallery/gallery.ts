@@ -14,16 +14,18 @@ import { HEART_SVG, EYE_SLASH_SVG } from '../../core/icons.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
-import { cellAction, layoutWidth, type Extent } from '../../core/virtual-list.ts';
+import { layoutWidth } from '../../core/virtual-list.ts';
 import { loadData, saveData } from '../../core/storage.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
-import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
+import { PooledCells, type PoolSlot } from '../../sim/component-pool.ts';
 import {
   COMPONENTS,
   createComponent,
   DROPDOWN_ITEM,
   DROPDOWN_PADDING,
+  markOwned,
+  TILE_EVENTS,
   type ComponentGuid,
   type DropdownItem,
   type DropdownManipulator,
@@ -91,18 +93,6 @@ const SORTS: SortChoice[] = [
   { id: 'maxRange', label: () => translate('TT:MENU.ACPROPUI_MAX_RANGE'), sim: 'TT:MENU.ACPROPUI_MAX_RANGE' },
 ];
 
-/** The sim's horizontal marketplace tile (MarketplaceTileHorizontalManipulator). */
-interface HorizontalTileManipulator {
-  /**
-   * The marketplace item shown. Its hover handler reads `isOwned`; an owned item makes it do nothing more (the mod
-   * writes the tile's texts and image itself).
-   */
-  item?: { isOwned: boolean; isOwnedBySubscription: boolean; isFavorite: boolean };
-}
-
-/** Events of the sim's aircraft tiles, sent with their data by the mod; the tiles' own ones carry none. */
-const TILE_EVENTS = ['tileClick', 'tileClickDisabled', 'tileHover'];
-
 /** A tile on screen: its host, and its components while near the visible part of the list (core/virtual-list.ts). */
 interface Cell {
   tile: Tile;
@@ -131,9 +121,6 @@ const TILE_RATIO = 250 / 360;
 const IMAGE_SHARE = 1.4 / 2.6;
 /** Height of the tile's text banner for its three lines of text (21 units each) and 6 units above and below. */
 const BANNER_HEIGHT = 75;
-/** Components are created for the tiles within this distance of the visible part, and kept within the second, in layout units. */
-const CREATE_MARGIN = 300;
-const KEEP_MARGIN = 600;
 /** Room left on the right of the tiles for the sim's scroll bar, in layout units. */
 const SCROLL_BAR_ROOM = 24;
 /** The sim's scroll bar until the list's own is measured: 10 pixels at 1440 lines (measured on 1.9.21), in layout units. */
@@ -256,12 +243,10 @@ export class Gallery {
    */
   private barUnits = 0;
   /**
-   * The pool of slots of the current kind of component, and its scope: aircraft tiles (Gallery and Default share it)
-   * or List rows.
+   * The tiles' components, near the visible part of the list: one pool for the aircraft tiles (Gallery and Default
+   * share it: their slots move from one view to the other), another for the List rows.
    */
-  private pool: ComponentPool<Cell> | null = null;
-  private poolKind: 'tile' | 'row' | null = null;
-  private poolScope: Scope | null = null;
+  private readonly pooled: PooledCells<Cell>;
   /** The Default view's grid, as last laid out (null until then): its column step places the selected tile. */
   private grid: DefaultGrid | null = null;
   /** The tiles on screen, their scope (disposed when the list changes) and what they were built for. */
@@ -275,6 +260,19 @@ export class Gallery {
     this.page = page;
     this.scope = scope;
     this.layoutChoice = layout;
+    this.pooled = new PooledCells<Cell>(scope, this.root, {
+      kind: () => (this.memory.view === 'list' ? 'row' : 'tile'),
+      maker: (kind) => ({
+        cardClass: 'msfs-ui-gal__card',
+        iconClass: 'msfs-ui-gal__icon',
+        create: (slot, slotScope) => this.createSlot(slot, slotScope, kind === 'tile'),
+      }),
+      assigned: (cell) => {
+        if (!cell.card) return;
+        this.fillCell(cell, this.memory.view !== 'list');
+        this.updateCell(cell);
+      },
+    });
   }
 
   mount(): void {
@@ -983,7 +981,7 @@ export class Gallery {
 
   private clearCells(): void {
     // The slots leave the hosts before these go: they wait in the pool's parking for the next list.
-    if (this.pool) this.pool.releaseAll();
+    this.pooled.releaseAll();
     if (this.cellScope) this.cellScope.dispose();
     this.cellScope = null;
     this.cells = [];
@@ -996,57 +994,11 @@ export class Gallery {
   /**
    * Keeps components only for the tiles near the visible part of the list, as the sim's own grid does: every tile alive
    * makes each change of layout slower (core/virtual-list.ts). Along the list's axis: Default's tiles come into view
-   * from the sides. The positions are all read before any change, so the engine lays the page out once.
+   * from the sides.
    */
   private materialize(): void {
     if (!this.cellScope || this.cells.length === 0) return;
-    const extent = this.listAxis === 'x' ? (rect: DOMRect): Extent => ({ top: rect.left, bottom: rect.right }) : (rect: DOMRect): Extent => rect;
-    const body = extent(this.list.getBoundingClientRect());
-    if (body.bottom - body.top <= 0) return;
-    const unit = uiUnit();
-    const margins = { create: CREATE_MARGIN * unit, keep: KEEP_MARGIN * unit };
-    const actions = this.cells.map((cell) => cellAction(extent(cell.host.getBoundingClientRect()), cell.slot !== null, body, margins));
-    this.cells.forEach((cell, at) => {
-      if (actions[at] === 'create') this.assignCell(cell);
-      else if (actions[at] === 'destroy') this.releaseCell(cell);
-    });
-  }
-
-  /** The cell gets a slot of the pool (a parked one first) and shows its tile. */
-  private assignCell(cell: Cell): void {
-    const slot = this.slotPool().acquire(cell.host, cell);
-    cell.slot = slot;
-    cell.card = slot.card;
-    if (slot.card) {
-      this.fillCell(cell, this.memory.view !== 'list');
-      this.updateCell(cell);
-    }
-  }
-
-  /** The cell's slot goes back to the pool's parking (the host keeps its place in the list). */
-  private releaseCell(cell: Cell): void {
-    if (cell.slot && this.pool) this.pool.release(cell.slot);
-    cell.slot = null;
-    cell.card = null;
-  }
-
-  /**
-   * The pool of the current kind of component: the aircraft tiles of Gallery and Default (one pool for both: their
-   * slots move from one view to the other) or the List rows; another kind makes a new one.
-   */
-  private slotPool(): ComponentPool<Cell> {
-    const kind = this.memory.view === 'list' ? 'row' : 'tile';
-    if (!this.pool || this.poolKind !== kind) {
-      if (this.poolScope) this.poolScope.dispose();
-      const scope = (this.poolScope = this.scope.child());
-      this.poolKind = kind;
-      this.pool = new ComponentPool<Cell>(scope, this.root, {
-        cardClass: 'msfs-ui-gal__card',
-        iconClass: 'msfs-ui-gal__icon',
-        create: (slot, slotScope) => this.createSlot(slot, slotScope, kind === 'tile'),
-      });
-    }
-    return this.pool;
+    this.pooled.materialize(this.cells, this.list, this.listAxis);
   }
 
   /** A slot's components, made once; they show whatever cell holds the slot (`gallery`: an aircraft tile, else a row). */
@@ -1081,11 +1033,8 @@ export class Gallery {
         // card hovered (the sim does the same with its WishlistBlock).
         card.element.appendChild(veil);
         card.element.appendChild(slot.iconHost);
-        if (this.pool) this.pool.markReady(slot);
-        if (!gallery) {
-          const horizontal = card.manipulator<HorizontalTileManipulator>();
-          if (horizontal) horizontal.item = { isOwned: true, isOwnedBySubscription: false, isFavorite: false };
-        }
+        this.pooled.markReady(slot);
+        if (!gallery) markOwned(card);
         card.onClick(scope, () => {
           const cell = slot.item;
           if (!cell || cell.slot !== slot) return;

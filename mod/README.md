@@ -114,7 +114,7 @@ src/
     real-scroll.ts     the sim's scrolling list (<real-scroll>) and its scroll bar's width
     screens.ts         onScreenActive(guid, scope, …): one hook per screen, dispatched to the features;
                        isShown, isOnScreen
-    components.ts      createComponent(scope, guid, parent): the sim's own components (see below)
+    components.ts      createComponent(scope, guid, parent): the sim's own components (see below); TILE_EVENTS, markOwned (horizontal tiles)
     text-field.ts      the sim's Search_Input as a text field (keyboard handled by the sim)
     favorites.ts       favourite liveries, last uses (MSFS_UI_FAVORITE_LIVERIES, MSFS_UI_AIRCRAFT_USES)
     configurator.ts    the configurator: read it, guarded choice of a variant or livery, favourite liveries
@@ -123,7 +123,8 @@ src/
     selection-layout.ts  flag set by the gallery while it shows the liveries, read by the setup panel
     freeflight-layout.ts  GROUP_GAP: Free Flight's gap between groups, set by the weather bar, read by the favourites
     livery-order.ts    order of the livery thumbnails, favourites first, kept while the variant stays (pure)
-    component-pool.ts  the sim's components of a list, recycled from cell to cell
+    component-pool.ts  the sim's components of a list, recycled from cell to cell (ComponentPool), kept near the view
+                       only (PooledCells: the gallery and the livery column)
     aircraft-loading.ts  loading an aircraft with its livery, configurator sync, use tracking
     liveries.ts        livery keys and folders, tail numbers per livery (MSFS_UI_LIVERY_TAILS),
                        the tail number field (tailNumberField, tailLength), livery.cfg (readLiveryCfg)

@@ -7,10 +7,10 @@ import { iconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
-import { cellAction, revealPosition } from '../../core/virtual-list.ts';
+import { revealPosition } from '../../core/virtual-list.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
-import { ComponentPool, type PoolSlot } from '../../sim/component-pool.ts';
-import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
+import { PooledCells, type PoolSlot } from '../../sim/component-pool.ts';
+import { COMPONENTS, createComponent, markOwned, TILE_EVENTS, type SimComponent } from '../../sim/components.ts';
 import { chooseLivery, readConfigurator, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED, isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { DEFAULT_TAIL_LENGTH, liveryDirectory, liveryFolder, liveryKey, loadLiveryTails, readLiveryCfg } from '../../sim/liveries.ts';
@@ -20,11 +20,6 @@ import { atcIdFromCfg } from '../../sim/registration.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { store, watch } from '../../sim/store.ts';
 import { LIVERY_COLUMNS, liveryFit, liveryTail } from './livery-column.ts';
-
-/** The sim's horizontal marketplace tile (see the gallery's List view): an owned item makes its hover do nothing more. */
-interface HorizontalTileManipulator {
-  item?: { isOwned: boolean; isOwnedBySubscription: boolean; isFavorite: boolean };
-}
 
 /** A tile of the column: its host, and its components while near the visible part of the list (core/virtual-list.ts). */
 interface Cell {
@@ -45,8 +40,6 @@ export interface ColumnRect {
   list: boolean;
 }
 
-/** Events of the sim's aircraft tile: they carry no data here, the page would take them for its own grid's. */
-const TILE_EVENTS = ['tileClick', 'tileClickDisabled', 'tileHover'];
 const RELOAD_DELAY_MS = 80;
 /** Layout units: gap between the two tiles of a row and under each row; room for the scroll bar (as in the CSS). */
 const GAP = 12;
@@ -55,9 +48,6 @@ const SCROLL_BAR_ROOM = 24;
 const BANNER_HEIGHT = 54;
 /** A row of the List view and the gap under it, in layout units (as the gallery's rows, aircraft-gallery.css). */
 const ROW_STEP = 77 + 6;
-/** Components are created for the tiles within this distance of the visible part, and kept within the second, in layout units. */
-const CREATE_MARGIN = 300;
-const KEEP_MARGIN = 600;
 
 const aircraft = store.Game.Aircraft;
 
@@ -80,10 +70,8 @@ export class LiveryColumn {
   private reloadNumber = 0;
   /** A new variant: the list scrolls to the selected livery once laid out. */
   private revealSelected = false;
-  /** The pool of slots of the current view, and its scope. */
-  private pool: ComponentPool<Cell> | null = null;
-  private poolRows = false;
-  private poolScope: Scope | null = null;
+  /** The tiles' components near the visible part of the list: one pool for the tiles, another for the rows. */
+  private readonly pooled: PooledCells<Cell>;
   /**
    * Width of the list's scroll bar, the widest seen (0 until it first shows), in layout units: a change of resolution
    * in the session changes its pixels (10 at 1440 lines, 20 at 2160).
@@ -96,6 +84,18 @@ export class LiveryColumn {
 
   constructor(scope: Scope, parent: HTMLElement) {
     this.scope = scope;
+    this.pooled = new PooledCells<Cell>(scope, this.root, {
+      kind: () => (this.rows ? 'row' : 'tile'),
+      maker: (kind) => ({
+        cardClass: 'msfs-ui-gal__card',
+        iconClass: 'msfs-ui-gal__icon',
+        create: (slot, slotScope) => this.createSlot(slot, slotScope, kind === 'row'),
+      }),
+      assigned: (cell) => {
+        if (cell.card) this.update(cell, loadFavoriteLiveries(), loadLiveryTails());
+        this.readAtcId(cell.livery);
+      },
+    });
     const header = el('div', 'msfs-ui-header msfs-ui-gal__livery-header', this.root);
     el('span', 'msfs-ui-title', header).textContent = translate('TT:GENERIC.LIVERY');
     header.appendChild(this.name);
@@ -202,7 +202,7 @@ export class LiveryColumn {
 
   private build(items: ConfiguratorLivery[]): void {
     // The slots leave the hosts before these go: they wait in the pool's parking for the next list.
-    if (this.pool) this.pool.releaseAll();
+    this.pooled.releaseAll();
     if (this.cellScope) this.cellScope.dispose();
     const scope = (this.cellScope = this.scope.child());
     // The sim's list keeps its own structure: its content is emptied child by child.
@@ -227,46 +227,7 @@ export class LiveryColumn {
    */
   private materialize(): void {
     if (!this.cellScope || this.cells.length === 0 || this.root.style.display === 'none') return;
-    const view = this.list.getBoundingClientRect();
-    if (view.height <= 0) return;
-    const unit = uiUnit();
-    const margins = { create: CREATE_MARGIN * unit, keep: KEEP_MARGIN * unit };
-    const actions = this.cells.map((cell) => cellAction(cell.host.getBoundingClientRect(), cell.slot !== null, view, margins));
-    this.cells.forEach((cell, at) => {
-      if (actions[at] === 'create') this.assign(cell);
-      else if (actions[at] === 'destroy') this.release(cell);
-    });
-  }
-
-  /** The cell gets a slot of the pool (a parked one first) and shows its livery. */
-  private assign(cell: Cell): void {
-    const slot = this.slotPool().acquire(cell.host, cell);
-    cell.slot = slot;
-    cell.card = slot.card;
-    if (slot.card) this.update(cell, loadFavoriteLiveries(), loadLiveryTails());
-    this.readAtcId(cell.livery);
-  }
-
-  /** The cell's slot goes back to the pool's parking (the host keeps its place in the list). */
-  private release(cell: Cell): void {
-    if (cell.slot && this.pool) this.pool.release(cell.slot);
-    cell.slot = null;
-    cell.card = null;
-  }
-
-  /** The pool of the current view (tiles or rows); the other view makes a new one. */
-  private slotPool(): ComponentPool<Cell> {
-    if (!this.pool || this.poolRows !== this.rows) {
-      if (this.poolScope) this.poolScope.dispose();
-      const scope = (this.poolScope = this.scope.child());
-      const rows = (this.poolRows = this.rows);
-      this.pool = new ComponentPool<Cell>(scope, this.root, {
-        cardClass: 'msfs-ui-gal__card',
-        iconClass: 'msfs-ui-gal__icon',
-        create: (slot, slotScope) => this.createSlot(slot, slotScope, rows),
-      });
-    }
-    return this.pool;
+    this.pooled.materialize(this.cells, this.list, 'y');
   }
 
   /** A slot's components, made once; they show whatever cell holds the slot. */
@@ -283,13 +244,9 @@ export class LiveryColumn {
         slot.card = card;
         // The icon goes inside the card: the pointer on it keeps the card hovered (the sim does the same with its WishlistBlock).
         card.element.appendChild(slot.iconHost);
-        if (this.pool) this.pool.markReady(slot);
-        if (rows) {
-          const horizontal = card.manipulator<HorizontalTileManipulator>();
-          if (horizontal) horizontal.item = { isOwned: true, isOwnedBySubscription: false, isFavorite: false };
-        } else {
-          card.set('Distance', '');
-        }
+        this.pooled.markReady(slot);
+        if (rows) markOwned(card);
+        else card.set('Distance', '');
         card.onClick(scope, () => {
           const cell = slot.item;
           if (cell && cell.slot === slot) this.choose(cell.livery.id);

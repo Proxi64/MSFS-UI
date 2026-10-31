@@ -10,7 +10,7 @@ import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { panel } from '../../core/theme.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
-import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
+import { COMPONENTS, createComponent, markOwned, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
@@ -19,11 +19,6 @@ import { translate } from '../../sim/localization.ts';
 import type { RealScroll } from '../../sim/real-scroll.ts';
 import { store, watch } from '../../sim/store.ts';
 import { collectEntries, isCurrentEntry, orderEntries, withoutLivery, type FavoriteEntry } from './entries.ts';
-
-/** The sim's horizontal marketplace tile: its hover handler reads `item.isOwned` (see the gallery). */
-interface HorizontalTileManipulator {
-  item?: { isOwned: boolean; isOwnedBySubscription: boolean; isFavorite: boolean };
-}
 
 /** A row on screen and its components once created. */
 interface Row {
@@ -191,8 +186,7 @@ export class FavoritesPanel {
         row.card = card;
         // Inside the card: the pointer on the icon keeps the row hovered.
         card.element.appendChild(iconHost);
-        const horizontal = card.manipulator<HorizontalTileManipulator>();
-        if (horizontal) horizontal.item = { isOwned: true, isOwnedBySubscription: false, isFavorite: false };
+        markOwned(card);
         card.onClick(scope, () => this.load(row.entry));
         this.fillRow(row);
       },

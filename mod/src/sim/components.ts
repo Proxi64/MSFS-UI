@@ -58,6 +58,26 @@ export interface DropdownManipulator {
   setEmptyTitle(title: string): void;
 }
 
+/**
+ * Events the sim's aircraft and marketplace tiles send to the page on a click or a hover. The mod writes the tiles'
+ * texts itself: the tiles' own events carry no aircraft, and the page would take them for its own grid's.
+ */
+export const TILE_EVENTS = ['tileClick', 'tileClickDisabled', 'tileHover'] as const;
+
+/** The sim's horizontal marketplace tile (MarketplaceTileHorizontalManipulator), as far as its item goes. */
+interface HorizontalTileManipulator {
+  item?: { isOwned: boolean; isOwnedBySubscription: boolean; isFavorite: boolean };
+}
+
+/**
+ * Gives a horizontal marketplace tile an owned item: its hover handler reads `item.isOwned`, and does nothing more for
+ * an owned one (the mod writes the tile's texts and image itself).
+ */
+export function markOwned(card: SimComponent): void {
+  const horizontal = card.manipulator<HorizontalTileManipulator>();
+  if (horizontal) horizontal.item = { isOwned: true, isOwnedBySubscription: false, isFavorite: false };
+}
+
 /** Time allowed for a component to load before its creation is given up. */
 const LOAD_TIMEOUT_MS = 5000;
 
