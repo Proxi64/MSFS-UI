@@ -217,5 +217,6 @@ The sim's UI engine is Coherent GT, based on an old WebKit. Findings (1.9.18):
 | Console | `console.log` passes only its first argument to the inspector | One string per message |
 | Canvas | `getImageData` is not supported | Images cannot be analysed |
 | Data | `FlightConditions` is published only after `UpdateFlightConditions.request("")`; updates may arrive out of order | Requested on mount; grace delay after a change |
+| Data | An unknown path of the data model fails nowhere: `.requestRange` answers 0, as for an empty array, and `()` answers `undefined`. An array the sim knows answers its size to `()`, even when it is empty (measured on 1.9.21, 2026-10-31: `Configurator.Items` and `.Liveries` 0 at the start, then the last sizes once the aircraft selection is left; `AircraftList` `undefined` until the selection is opened) | A live check reads the contents where they are filled (`Configurator.Items` and `.Liveries` in the aircraft selection), and takes an empty array for a known one only when `()` answers a number |
 | Start-up | The sim activates Free Flight behind the scenes, then resets the flight conditions | A remembered choice is applied when the panel is really on screen |
 | In flight | The `mainUi` page and the mod stay loaded; the pause menu is `PauseFreeFlightManipulator`; `SimVar` does not exist in `mainUi` | — |

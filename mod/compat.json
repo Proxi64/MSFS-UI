@@ -200,6 +200,16 @@
     },
     {
       "group": "Data model (read)",
+      "label": "Game.Aircraft.Configurator.Items (variants)",
+      "run": "(ctx) => { const list = ctx.aircraft.Configurator.Items; const known = typeof list() === 'number'; return ctx.aircraft.Configurator.Details().then((on) => { if (!on || !on.variationId) return { ok: true, detail: known ? 'known to the sim, configurator released: checked in aircraft selection' : 'not checked: open aircraft selection, then check again' }; return list.requestRange(0, 1000).then((n) => (n > 0 ? list.getElement(0) : Promise.resolve(null)).then((v) => n > 0 ? { ok: !!v && typeof v.id === 'string' && typeof v.title === 'string' && typeof v.isSelected === 'boolean', detail: n + ' variants' } : { ok: known, detail: known ? 'no variant' : 'unknown to the sim' })); }); }"
+    },
+    {
+      "group": "Data model (read)",
+      "label": "Game.Aircraft.Configurator.Liveries",
+      "run": "(ctx) => { const list = ctx.aircraft.Configurator.Liveries; const known = typeof list() === 'number'; return ctx.aircraft.Configurator.Details().then((on) => { if (!on || !on.variationId) return { ok: true, detail: known ? 'known to the sim, configurator released: checked in aircraft selection' : 'not checked: open aircraft selection, then check again' }; return list.requestRange(0, 1000).then((n) => (n > 0 ? list.getElement(0) : Promise.resolve(null)).then((v) => n > 0 ? { ok: !!v && typeof v.id === 'string' && typeof v.title === 'string' && typeof v.imageUrl === 'string' && typeof v.directoryPath === 'string' && typeof v.isSelected === 'boolean', detail: n + ' liveries' } : { ok: known, detail: known ? 'no livery' : 'unknown to the sim' })); }); }"
+    },
+    {
+      "group": "Data model (read)",
       "label": "Game.Aircraft.CurrentIdentification (Tail number)",
       "run": "(ctx) => ctx.aircraft.UpdateCurrentAircraftIdentification.request().then(() => ctx.aircraft.CurrentIdentification()).then((v) => { const field = v && v.identificationInfos && v.identificationInfos.find((i) => i.dataName === 'TT:MENU.AIRCRAFT.TAIL_NUMBER'); return { ok: !!field, detail: field ? field.value + ', at most ' + field.allowedLength + ' characters' : 'field missing' }; })"
     },
