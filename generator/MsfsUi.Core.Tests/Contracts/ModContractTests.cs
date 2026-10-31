@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using MsfsUi.Core.Compatibility;
 using MsfsUi.Core.Features;
 
@@ -31,6 +32,25 @@ public sealed class ModContractTests
 
         var packageJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(ModFolder(), "package.json")));
         Assert.AreEqual(packageJson.RootElement.GetProperty("version").GetString(), catalog.ModVersion);
+    }
+
+    /// <summary>
+    /// The app's version files follow the mod's (<c>modVersion</c>): the build's, and the package manifest's, which only
+    /// <c>winapp run</c> reads (the app's development identity; the release is unpackaged): it was left at 2.0.0.0 for
+    /// four versions.
+    /// </summary>
+    [TestMethod]
+    public void TheAppVersionFilesHaveTheModVersion()
+    {
+        var version = RealCatalog().ModVersion;
+        var generator = Path.Combine(ModFolder(), "..", "generator");
+
+        var props = XDocument.Load(Path.Combine(generator, "Directory.Build.props"));
+        Assert.AreEqual(version, props.Descendants("Version").Single().Value, "Directory.Build.props");
+
+        var manifest = XDocument.Load(Path.Combine(generator, "MsfsUi.App", "Package.appxmanifest"));
+        XNamespace appx = "http://schemas.microsoft.com/appx/manifest/foundation/windows10";
+        Assert.AreEqual($"{version}.0", manifest.Root!.Element(appx + "Identity")!.Attribute("Version")!.Value, "Package.appxmanifest");
     }
 
     [TestMethod]

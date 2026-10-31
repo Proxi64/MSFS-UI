@@ -196,7 +196,7 @@ The app does not depend on its own location (no path built from its exe), so it 
 
 A GitHub release: tag `v<version>` (`v1.2.0` and later; the first one, `1.0.1`, has no `v`) on `main`, the notes from `CHANGELOG.md` with the installation steps and the zip's SHA-256, and the zip attached. The owner pushes and publishes (GitHub Desktop, the GitHub site); GitHub shows the SHA-256 of each attached file, to compare with the local zip.
 
-The version comes from `mod/features.json` (`modVersion`) and must equal `<Version>` in `generator/Directory.Build.props`. The `release\` folder is ignored by Git. Afterwards `mod/dist/main.js` is the release module: `npm run check` builds the development one again.
+The version comes from `mod/features.json` (`modVersion`) and must equal `<Version>` in `generator/Directory.Build.props` and, as `x.y.z.0`, the `Identity` of `generator/MsfsUi.App/Package.appxmanifest` (read only by `winapp run`, the app's development identity; the release is unpackaged): a test checks all three (`TheAppVersionFilesHaveTheModVersion`). The `release\` folder is ignored by Git. Afterwards `mod/dist/main.js` is the release module: `npm run check` builds the development one again.
 
 The folder (about 217 MB, 81 MB zipped) runs on any Windows 10 1809+ x64 machine without installing anything: .NET and the Windows App SDK are inside. The app references only the **WinUI component** of the Windows App SDK (`Microsoft.WindowsAppSDK.WinUI`, with `Microsoft.Windows.SDK.BuildTools.MSIX` as a component used on its own requires), not the `Microsoft.WindowsAppSDK` metapackage, whose AI, ML, Search and Widgets components would add about 60 MB.
 
