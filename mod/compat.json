@@ -22,7 +22,8 @@
     { "label": "Statistic row", "guid": "{E43EDD70-0B52-48D1-BC1D-2E3764CA00BF}", "name": "Fleet_Details_Listitem", "attributes": ["Title", "ValueText", "ValueIcon"], "states": ["State_Background_Dark", "State_Background_Light", "State_Value_Text", "State_Value_Icon", "State_Arrow"], "children": ["Title", "ValueText", "ValueIcon", "Background"] },
     { "label": "Aircraft tile", "guid": "{4624E83D-9CA8-48D6-B42C-FE4E2810951F}", "name": "TileButton_Fleet", "attributes": ["AircraftImage", "AircraftName", "Subtitle", "Distance"], "states": ["Selected", "Disabled", "Hover"], "children": ["ImageBlock", "Distance", "Content", "Background"] },
     { "label": "Horizontal tile", "guid": "{35A4F244-E2BB-4DF1-984E-BCBE663FC209}", "name": "Marketplace_Tile_Horizontal", "attributes": ["Image", "Title", "Creator"], "states": ["Selected", "Disabled", "Hover"], "children": ["Title", "Creator", "Details", "Rating_Overview", "Separator", "Banner", "WishlistBlock", "TitleBlock", "ImageBlock", "Image"] },
-    { "label": "Dropdown", "guid": "{3321B59E-EA1D-4C72-8D69-3F1BB530437C}", "name": "Dropdown", "attributes": ["Title", "List_Size"], "states": ["State_Unwrapped", "Disabled"], "children": ["Content", "List"] }
+    { "label": "Dropdown", "guid": "{3321B59E-EA1D-4C72-8D69-3F1BB530437C}", "name": "Dropdown", "attributes": ["Title", "List_Size"], "states": ["State_Unwrapped", "Disabled"], "children": ["Content", "List"] },
+    { "label": "Configure tile", "guid": "{7460ABAD-0A7C-426C-A08F-322151372559}", "name": "TileButton_Watermark_Small", "children": ["Content", "TextBlock", "Title", "Shortcut", "Watermark", "Corner", "Icon"] }
   ],
   "options": [
     { "label": "Show the white dot cursor in freelook (re-validated to save the profile)", "section": "MENU_OPTIONS_FLIGHT_INTERFACE", "id": "OptionsGeneralItemGUID_{666BFED5-26A0-4C7D-BF27-D717AFCAF33D}" }
@@ -42,6 +43,7 @@
     "TileButton_Watermark_Small_Cockpit",
     "Scroll",
     "Header",
+    "Subtitle",
     "Worldmap_Filters_Legend",
     "Worldmap_Filters_Layers",
     "Worldmap_Filters_Display"
@@ -118,10 +120,10 @@
       "names": ["JS_LISTENER_INPUT_STACK", "JS_LISTENER_INPUTBAR", "ENTER_INPUT_FIELD", "EXIT_INPUT_FIELD", "REGISTER_INPUT_BAR", "SET_INPUT_BAR", "REMOVE_INPUT_BAR", "SCANNING"]
     },
     { "group": "CommBus", "names": ["ADD_VIEW_LISTENER", "JS_LISTENER_COMM_BUS", "EVENT_FROM_VIEW_LISTENER", "COMM_BUS_WASM_CALLBACK"] },
-    { "group": "Styles", "names": ["img-fade--enabled"] },
+    { "group": "Styles", "names": ["img-fade--enabled", "--rotation"] },
     { "group": "Sim look", "names": ["blurredBackground", "inputLocker"] }
   ],
-  "files": ["components/shared/resources/Icons/General/Sort.svg"],
+  "files": ["components/shared/resources/Icons/General/Sort.svg", "components/shared/resources/Icons/General/ArrowFull.svg"],
   "colorVariables": ["--colorPrimary", "--colorGradient", "--colorSecondary", "--colorComplementary1", "--colorComplementary2", "--fontSizeXS", "--unscaledScreenHeight", "--backgroundOpacity"],
   "translations": [
     "TT:GENERIC.LIST",

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { overflows, rowCount, statisticsRoom, thumbnailSize, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
+import { overflows, rowCount, statisticsRoom, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
 import { actionWidths as showcaseActionWidths, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
 import { LiveryStepper } from '../src/features/aircraft-setup/livery-stepper.ts';
 import { orderLiveries } from '../src/sim/livery-order.ts';
@@ -48,9 +48,8 @@ describe('orderLiveries', () => {
 });
 
 describe('setup panel layout', () => {
-  // Steps of the sim at 1080 lines: a variant tile and its gap (36 + 6), a row of thumbnails and its gap (75 + 6).
+  // A variant tile and its gap at 1080 lines (36 + 6).
   const variant = 42;
-  const liveryStep = 81;
 
   it('puts up to three variants per row, fewer when the widest name needs it', () => {
     assert.equal(variantsPerRow(8, 480, 100, 6), 3);
@@ -62,26 +61,11 @@ describe('setup panel layout', () => {
     assert.equal(rowCount(0, 3), 0);
   });
 
-  it('gives the variants what they need when everything fits', () => {
-    assert.equal(variantsHeight(600, { count: 2, step: variant }, { count: 3, step: liveryStep }), 84);
-    assert.equal(variantsHeight(600, { count: 0, step: variant }, { count: 3, step: liveryStep }), 0);
-  });
-
-  it('keeps two rows of liveries in view under many variants (Phenom 300E: 8 variants, one per row)', () => {
-    const height = variantsHeight(450, { count: 8, step: variant }, { count: 6, step: liveryStep });
-    assert.equal(height, 450 - 2 * liveryStep);
-    assert.equal(overflows({ count: 8, step: variant }, height), true, 'the variants scroll');
-  });
-
-  it('keeps one row of liveries when the variant has a single livery (iFly 737 MAX: one variant per livery)', () => {
-    const height = variantsHeight(500, { count: 30, step: variant }, { count: 1, step: liveryStep });
-    assert.equal(height, 500 - liveryStep);
-  });
-
-  it('keeps three rows of variants when the room is short, and never more than the room', () => {
-    assert.equal(variantsHeight(250, { count: 10, step: variant }, { count: 5, step: liveryStep }), 3 * variant);
-    assert.equal(variantsHeight(100, { count: 10, step: variant }, { count: 5, step: liveryStep }), 100);
-    assert.equal(variantsHeight(-20, { count: 10, step: variant }, { count: 5, step: liveryStep }), 0);
+  it('gives the variants what they need when it fits, never more than the room', () => {
+    assert.equal(variantsHeight(600, { count: 2, step: variant }), 84);
+    assert.equal(variantsHeight(600, { count: 0, step: variant }), 0);
+    assert.equal(variantsHeight(250.6, { count: 30, step: variant }), 250, 'iFly 737 MAX: one variant per livery');
+    assert.equal(variantsHeight(-20, { count: 10, step: variant }), 0);
   });
 
   it('tells when a list scrolls, with the pixel its height loses when rounded down', () => {
@@ -91,15 +75,10 @@ describe('setup panel layout', () => {
     assert.equal(overflows({ count: 3, step: variant }, 124.9), true);
   });
 
-  it('sizes three livery thumbnails per row, whole pixels wide (measured on 1.9.21 at 1440 lines: 171 x 81)', () => {
-    assert.deepEqual(thumbnailSize(530, 8), { width: 171, height: 81 });
-    assert.deepEqual(thumbnailSize(480, 6), { width: 156, height: 73 });
-  });
-
-  it('shows the statistics only when the lists keep all they need', () => {
+  it('shows the statistics only when the variants keep all they need', () => {
     const statistics = { count: 3, row: 36, unit: 1, gap: 6 };
     assert.equal(statisticsRoom(statistics, 500, 386), 114);
-    assert.equal(statisticsRoom(statistics, 500, 387), 0, 'a list would scroll');
+    assert.equal(statisticsRoom(statistics, 500, 387), 0, 'the list would scroll');
     assert.equal(statisticsRoom({ ...statistics, count: 0 }, 500, 0), 0);
     assert.equal(statisticsRoom({ ...statistics, unit: 1.078 }, 500, 0), 123, 'rounded up');
   });
@@ -107,7 +86,7 @@ describe('setup panel layout', () => {
   it('does not scroll a list given its whole rows rounded down (measured 2026-10-30, 1164 lines)', () => {
     // Two rows of 42 units at 1.078 pixels per unit: 90.55 pixels, the list 90 high (variantsHeight rounds down).
     const rows = { count: 2, step: 42 * 1.078 };
-    const height = variantsHeight(500, rows, { count: 0, step: liveryStep });
+    const height = variantsHeight(90.9, rows);
     assert.equal(height, 90);
     assert.equal(overflows(rows, height), false);
   });
