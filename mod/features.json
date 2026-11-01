@@ -122,7 +122,7 @@
     {
       "id": "aircraftGallery",
       "title": "Aircraft gallery and list",
-      "description": "Replaces the aircraft list with a gallery or a compact list beside the liveries of the current aircraft, or with large tiles scrolling sideways (Showcase), with favourite liveries (their aircraft first), a filter and the sim's sort orders.",
+      "description": "Replaces the aircraft list with a gallery or a compact list beside the liveries of the current aircraft, or with large tiles scrolling sideways (Showcase), with favourite liveries (their aircraft first), a filter and sorts by model, manufacturer and studio.",
       "screen": "Aircraft selection",
       "enabledByDefault": true,
       "options": []

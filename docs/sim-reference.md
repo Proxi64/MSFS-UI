@@ -99,7 +99,7 @@ There is **no command** to zoom or move the map from the menu.
 | `Game.Aircraft.FilteredCategory` | text | Active category tab |
 | `Game.Aircraft.GetAircraftFromVariationId.request(id)` | action | Details of a variant; for a variant other than the list's, gives an `aircraftId` that `SetAircraftForConfigurator` does not load |
 | `Game.Aircraft.GetAircraftSortingOptions.request("")` | action → list | Sort options, as translation keys: `TT:MENU.ACPROPUI_MAX_RANGE`, `TT:MENU.ACPROPUI_MAX_ALTITUDE`, `TT:MENU.NAME`, `TT:MENU.PAYLOAD`, `TT:MENU.AIRCRAFT_SPEED`. The **first** is the sim's own order (its sort dropdown starts on it, not reversed): Max Range |
-| `Game.Aircraft.SetAircraftSortingOption.request("<option>")` | action | Sorts `AircraftList`; a `!` prefix reverses the order. The sim's grid follows; the order stays until another sort is sent (the mod puts the first option back when the gallery closes) |
+| `Game.Aircraft.SetAircraftSortingOption.request("<option>")` | action | Sorts `AircraftList`; a `!` prefix reverses the order. The sim's grid follows; the order stays until another sort is sent. The mod sends none since the Showcase view (its sorts are made on its tiles); 2.0.8 and earlier sent the first option back when the gallery closed |
 | `Game.Aircraft.Configurator.SetAircraftForConfigurator.request("<aircraftId>\|\|<variationIndex>")` | action | Sets the configurator (and the current aircraft); values of `AircraftList` |
 | `Game.Aircraft.Configurator.Details` | `AircraftDetails` | The configurator's aircraft |
 | `Game.Aircraft.Configurator.Items` | array | Variants: `id` (= `variationId`), `title`, `imageUrl`, `isSelected`, `isDisabled` |
