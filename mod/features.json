@@ -102,7 +102,7 @@
     {
       "id": "aircraftSetup",
       "title": "Aircraft setup panel",
-      "description": "A panel in the aircraft selection with the variants, the liveries as thumbnails, favourite liveries and the tail number.",
+      "description": "A panel in the aircraft selection with the variants and the tail number; in the Showcase view also the liveries (the current one large, the others in a strip), favourite liveries and the Fuel, Identification and Configure buttons on one row.",
       "screen": "Aircraft selection",
       "enabledByDefault": true,
       "options": [
@@ -110,7 +110,7 @@
           "id": "widenColumn",
           "type": "number",
           "title": "Widen the left column",
-          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width. In the gallery's side by side layout the column is 400 units wide instead.",
+          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width. In Showcase it is never narrower than the width where the bottom row's three labels show whole; in Gallery and List the column is 400 units wide instead.",
           "default": 50,
           "min": 0,
           "max": 200,
@@ -122,7 +122,7 @@
     {
       "id": "aircraftGallery",
       "title": "Aircraft gallery and list",
-      "description": "Replaces the aircraft list with a gallery or a compact list beside the liveries of the current aircraft, with favourite liveries (their aircraft first), a filter and the sim's sort orders.",
+      "description": "Replaces the aircraft list with a gallery or a compact list beside the liveries of the current aircraft, or with large tiles scrolling sideways (Showcase), with favourite liveries (their aircraft first), a filter and the sim's sort orders.",
       "screen": "Aircraft selection",
       "enabledByDefault": true,
       "options": []

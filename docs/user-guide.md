@@ -137,43 +137,51 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 | **Hidden** | Shows the hidden aircraft only (see *Hiding aircraft* below). Left of *Favorites*; the two are never on together |
 | **Favorites** | Shows the favourites only, with one tile per favourite livery |
 | Sort | **Name** (natural order: ATR 42, ATR 72, Cessna 172), **Studio** (then name) or **Max Range** (the sim's sort); the arrow reverses the order. A new order starts from the top |
-| **Gallery** / **List** / **Default** | Tiles in columns; one compact row per aircraft; the mod's view in the sim's layout: large tiles in two rows, scrolling sideways |
+| **Gallery** / **List** / **Showcase** | Tiles in columns; one compact row per aircraft; large tiles in two rows, scrolling sideways, with the current aircraft's liveries in the setup panel. The three tabs have the same width |
 
 - **Favourites are liveries**: an aircraft is a favourite as soon as one of its liveries is (of any of its variants). Favourite aircraft always come first, whatever the sort. The order is set when the screen opens and kept while it stays open, so that an aircraft does not jump away when you mark one of its liveries; it is set again on a new sort, search, filter or category tab.
 - **Gallery**: the sim's aircraft tiles, with the name, the variant and the studio on three lines. **List**: one row per aircraft, the thumbnail then *name - studio - variant* on one line.
 - Both views scroll with the wheel or the sim's scroll bar; a text too long for its tile scrolls on hover.
 - **Click** selects the aircraft, exactly like a tile of the sim; **hover** shows it in the header of the left column, unless the setup panel is shown: the header then stays on the selected aircraft, whose variants and tail number the panel shows.
-- **No heart on the aircraft**: the hearts (in the top right corner, full on a favourite) are on the liveries (the setup panel's thumbnails, or the livery column in the side by side layout). The **Favorites** filter shows one tile per favourite livery, with its heart to remove it; a click loads the aircraft with that livery. Switching the **Hidden** or **Favorites** filter scrolls the list back to the top.
+- **No heart on the aircraft**: the hearts (in the top right corner, full on a favourite) are on the liveries (the livery column of Gallery and List, or the large livery and the strip of the Showcase panel). The **Favorites** filter shows one tile per favourite livery, with its heart to remove it; a click loads the aircraft with that livery. Switching the **Hidden** or **Favorites** filter scrolls the list back to the top.
 - **Hiding aircraft**: every aircraft tile and row has a slashed eye in its top right corner (not the Favorites tiles, nor the liveries). A click hides the aircraft, with all its variants: it leaves the three views. The **Hidden** filter shows the hidden aircraft; a click on the eye there brings one back, and the view says *No hidden aircraft: click the eye on an aircraft to hide it.* when none is hidden. An aircraft with a favourite livery stays among the favourites, darkened, with a large slashed eye on its image. The count shows the aircraft shown / those of the tab.
 - On opening, the gallery scrolls to the selected aircraft. The view, the Hidden and Favorites filters and the sort are remembered.
-- **Default** is drawn by the mod too, with the same bar, filters, sorts, eyes and hearts as Gallery and List, in the sim's own layout: its large tiles in two rows, scrolling sideways. The grid stops on whole columns, aligned on the scroll bar: one wheel notch moves one column, and a column dragged by the bar settles on the nearest one.
+- **Showcase** (the *Default* view of earlier versions; a remembered Default opens Showcase) is drawn by the mod too, with the same bar, filters, sorts, eyes and hearts as Gallery and List, in the sim's own layout: its large tiles in two rows, scrolling sideways. The grid stops on whole columns, aligned on the scroll bar: one wheel notch moves one column, and a column dragged by the bar settles on the nearest one. Its setup panel shows the liveries (see below).
 
-**Layout** (option of the feature in MSFS-UI-GENERATOR):
-
-| Layout | What the aircraft selection shows |
-|---|---|
-| **Classic** | The gallery fills the right side; the liveries are small thumbnails in the setup panel |
-| **Side by side** (default) | The aircraft on the left part of the gallery, three per row; the liveries of the current aircraft on the right part, two per row, as large as the aircraft tiles. The left column keeps the variants, the tail number and the Fuel and Identification buttons, without the livery thumbnails, and is narrower (400 layout units) |
-
-In the side by side layout:
-- the bar is split over the two columns: search, count, *Hidden* and *Favorites* above the aircraft; sort, direction, *Gallery*, *List* and *Default* above the liveries (the count shortens first when the controls do not fit). In the Classic layout the bar stays on one line;
+**Gallery and List** are always laid out side by side (there is no *Layout* option any more; a settings file that still holds one is read without complaint):
+- the aircraft on the left part of the gallery, three per row; the liveries of the current aircraft on the right part, two per row, as large as the aircraft tiles;
+- the bar is split over the two columns: search, count, *Hidden* and *Favorites* above the aircraft; sort, direction, *Gallery*, *List* and *Showcase* above the liveries (the count shortens first when the controls do not fit);
 - each livery tile shows the livery's thumbnail whole, its name and its tail number (the one you chose for it, else the `atc_id` of its `livery.cfg`, else a registration found in its name; nothing when none is found);
 - **List** shows both sides as rows, on two lines: the aircraft's name then *studio · variant*; the livery's name then its tail number;
-- a click on a livery changes it, as in the setup panel; the heart marks it as a favourite; hovering shows its name above the column, which opens on the selected livery;
-- **Default** has no livery column: the setup panel shows its thumbnails.
+- a click on a livery changes it, as in the setup panel; the heart marks it as a favourite; hovering shows its name above the column, which opens on the selected livery.
 
 ### Aircraft setup panel
 
-**Where:** aircraft selection, left column, in place of the aircraft's statistics. The column is widened (option *Widen the left column*, 50 layout units by default; 0 keeps the sim's width). In the gallery's side by side layout, the panel has no livery thumbnails (they are in the gallery) and the column is 400 units wide instead.
+**Where:** aircraft selection, left column, in place of the aircraft's statistics.
+
+**In Gallery and List** the liveries are in the gallery, so the column is 400 layout units wide and holds the variants, the tail number and the Fuel and Identification buttons:
 
 | Section | Content |
 |---|---|
 | **Variant** | One tile per variant, up to three per row (fewer when the names are long); a click changes the variant (the sim then puts back its first livery) |
-| **Livery** | The livery thumbnails, three per row, favourites first; the active one is framed. Its name shows next to the title, the hovered one's on hover. A click changes the livery. A heart on each thumbnail marks it as a favourite (for the variant shown) |
 | **Tail number** | The tail number of the current livery (letters, digits, dash; 9 characters at most) |
 | Buttons | **Fuel and Payload** and **Identification** open those tabs of the sim's configurator directly |
 
-The variants and the liveries share the panel's height. Each list scrolls with the mouse wheel and shows the sim's scroll bar when it needs more room. Under many variants (some aircraft make one variant per livery), the liveries keep at least two rows in view, and the variants at least three; the variants list opens on the selected one.
+The variants list scrolls with the mouse wheel and shows the sim's scroll bar when it needs more room; with many variants (some aircraft make one variant per livery) it keeps at least three rows in view and opens on the selected variant.
+
+**In Showcase** the panel is rebuilt at fixed places: every part is at the same place whatever the aircraft, its variants and its liveries (the statistics are not shown). The column is widened (option *Widen the left column*, 50 layout units by default), and never narrower than the width where the labels of the bottom row show whole, whatever the option. From top to bottom, as wide as the sim's title block:
+
+| Part | Content |
+|---|---|
+| Title block | The sim's: name, studio, variant (one line is kept for the variant of aircraft that have none) |
+| **Variant** | The sim's dropdown showing the selected variant (disabled with a single variant). Opened, its list lies over the large livery and ends on the large livery's bottom edge |
+| **Livery** | Its header: the title and the name of the current livery (the hovered small livery's on hover) |
+| Current livery | Large, with the sim's arrows for the previous and the next livery, its position (*3 / 14*) and its heart. The wheel over it steps through the liveries, one notch each. The arrow toward the end is disabled at the first and the last livery |
+| Strip of liveries | Small liveries in rows filling the room down to the tail number, scrolling sideways, favourites first, a heart on each; the shown one is outlined and scrolled into view. A click chooses the livery |
+| **Tail number** | The tail number of the current livery |
+| Bottom row | **Fuel and Payload**, **Identification** and the sim's **Configure your aircraft** tile, reduced to one row |
+
+Liveries are in the panel's order: favourites first, kept while the variant stays. A step (arrow or wheel) shows at once and is sent to the sim after 300 ms of quiet, so that quick steps end on the last livery chosen; unavailable liveries are skipped. A click in the strip is sent at once.
 
 Everything happens without opening the configurator and its 3D preview. Typing in the tail number field turns the sim's keyboard shortcuts off until you click elsewhere; the number is sent when you leave the field or press Enter.
 
