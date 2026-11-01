@@ -8,15 +8,28 @@ import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import type { SimComponent } from '../../sim/components.ts';
 import { ConfigureTile } from './configure-tile.ts';
-import type { LiveryStrip } from './livery-strip.ts';
+import type { LiveryStrip, StripPlace } from './livery-strip.ts';
 import { GAP } from './setup-layout.ts';
-import { actionWidths, rowNeed, showcasePlaces, type ShowcasePlaces, type Span } from './showcase-layout.ts';
+import { rowNeed, showcasePlaces, type ShowcasePlaces, type Span } from './showcase-layout.ts';
 import type { VariantDropdown } from './variant-dropdown.ts';
 
 /** The livery header, in layout units (a section header of core/theme.css): its height in whole pixels. */
 const HEADER_HEIGHT = 36;
 /** Layout passes (250 ms each) the bottom row may stay too narrow, the left column widening, before it is logged. */
 const MISFIT_PASSES = 8;
+
+/**
+ * Transitional (the next task wires the new places): widths of the three buttons of the old bottom row in a row
+ * `width` wide, each button its need (rounded up), the remainder shared equally in whole pixels, the last button taking
+ * the rest; null when the needs do not fit.
+ */
+function actionWidths(width: number, gap: number, needs: readonly [number, number, number]): [number, number, number] | null {
+  const wanted = needs.map((need) => Math.ceil(need));
+  const remainder = width - 2 * gap - (wanted[0]! + wanted[1]! + wanted[2]!);
+  if (remainder < 0) return null;
+  const share = Math.floor(remainder / 3);
+  return [wanted[0]! + share, wanted[1]! + share, wanted[2]! + remainder - 2 * share];
+}
 
 /** The panel's parts the Showcase mode places. */
 export interface ShowcaseParts {
@@ -81,8 +94,8 @@ export class ShowcaseMode {
    */
   places(rect: DOMRect, details: HTMLElement, unit: number): ShowcasePlaces | null {
     const height = details.getBoundingClientRect().bottom - rect.top;
-    const places = showcasePlaces(rect.width, height, Math.round(HEADER_HEIGHT * unit), unit);
-    return places.strip.thumbHeight >= 1 ? places : null;
+    const places = showcasePlaces(rect.width, height, Math.round(HEADER_HEIGHT * unit), unit, false);
+    return places.grid.thumbHeight >= 1 ? places : null;
   }
 
   /**
@@ -93,13 +106,18 @@ export class ShowcaseMode {
    */
   layout(rect: DOMRect, places: ShowcasePlaces, tile: HTMLElement, column: HTMLElement | null, unit: number): void {
     const parts = this.parts;
-    setStyle(parts.root.style, 'height', `${places.actions.top}px`);
+    // Transitional rows: the bottom block's two rows stand for the old tail and buttons rows.
+    const row = Math.round((places.bottom.height - Math.round(GAP * unit)) / 2);
+    const tailRow: Span = { top: places.bottom.top, height: row };
+    const actions: Span = { top: places.bottom.top + places.bottom.height - row, height: row };
+    const strip: StripPlace = { top: places.grid.top, height: places.grid.thumbHeight, rows: 1, thumbWidth: places.grid.thumbWidth, thumbHeight: places.grid.thumbHeight };
+    setStyle(parts.root.style, 'height', `${actions.top}px`);
     placeSpan(parts.dropdownHost, places.variants);
     placeSpan(parts.liveryHeader, places.header);
     placeSpan(parts.largeHost, places.livery);
-    parts.strip.layout(places.strip, unit);
-    placeSpan(parts.tailRow, places.tail);
-    placeSpan(parts.actions, places.actions);
+    parts.strip.layout(strip, unit);
+    placeSpan(parts.tailRow, tailRow);
+    placeSpan(parts.actions, actions);
 
     // Fuel and Payload, Identification and Configure in whole pixels, each label whole (showcase-layout.ts); until the
     // labels are measured, and while the left column widens to fit them (index.ts), the row is shared in thirds.
@@ -118,9 +136,9 @@ export class ShowcaseMode {
     setStyle(parts.actions.style, 'width', `${widths[0] + gap + widths[1]}px`);
     this.configure.place(tile, {
       left: rect.left + widths[0] + gap + widths[1] + gap,
-      top: rect.top + places.actions.top,
+      top: rect.top + actions.top,
       width: widths[2],
-      height: places.actions.height,
+      height: actions.height,
     });
 
     // The variants' list ends on the large livery's bottom edge.
@@ -187,7 +205,7 @@ export class ShowcaseMode {
     if ((this.needs && this.needs.key === key) || buttons.length < 2) return;
     const widths: [number, number, number] = [textButtonNeed(buttons[0]!), textButtonNeed(buttons[1]!), this.configure.need()];
     if (widths.every((need) => need > 0)) {
-      this.needs = { key, widths, row: { need: rowNeed(widths, gap), frame } };
+      this.needs = { key, widths, row: { need: rowNeed({ tail: 0, field: 0, fuel: widths[0], identification: widths[1], configure: widths[2] }, gap), frame } };
     } else if (!this.needsMissed) {
       this.needsMissed = true;
       logError(`the bottom row's labels could not be measured (${widths.map(Math.ceil).join(', ')})`);

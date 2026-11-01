@@ -16,7 +16,10 @@ import { isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../
 import { liveryFolder } from '../../sim/liveries.ts';
 import { createRealScroll, removeFromList } from '../../sim/real-scroll.ts';
 import { GAP } from './setup-layout.ts';
-import { STRIP_BAR_UNITS, stripCell, stripReveal, type ShowcasePlaces } from './showcase-layout.ts';
+import { STRIP_BAR_UNITS, stripCell, stripReveal, type Span } from './showcase-layout.ts';
+
+/** The strip's place (transitional: the next task replaces the strip by the grid of ShowcasePlaces). */
+export type StripPlace = Span & { rows: number; thumbWidth: number; thumbHeight: number };
 
 /**
  * How near the visible part the thumbnails get components, in layout units: closer than the gallery's (its tiles are
@@ -62,7 +65,7 @@ export class LiveryStrip {
   private liveries: readonly ConfiguratorLivery[] = [];
   private favorites: FavoriteLivery[] = [];
   /** The strip as last laid out (null until then). */
-  private place: ShowcasePlaces['strip'] | null = null;
+  private place: StripPlace | null = null;
   private gap = 0;
   /** Sizes last given to the cells: the list measures its content again when they change. */
   private sizes = '';
@@ -109,7 +112,7 @@ export class LiveryStrip {
    * At each layout pass of the Showcase panel: the strip's host at its place, its scroll bar in the room under the rows
    * (`STRIP_BAR_UNITS`); the thumbnails in whole pixels (variables written only when they change).
    */
-  layout(strip: ShowcasePlaces['strip'], unit: number): void {
+  layout(strip: StripPlace, unit: number): void {
     const style = this.host.style;
     setStyle(style, 'top', `${strip.top}px`);
     setStyle(style, 'height', `${strip.height + Math.ceil(STRIP_BAR_UNITS * unit)}px`);

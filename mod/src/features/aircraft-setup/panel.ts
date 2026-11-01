@@ -27,7 +27,7 @@ import { ANSWER_TIMEOUT_MS, store, watch } from '../../sim/store.ts';
 import { CONFIGURE_TILE } from './configure-tile.ts';
 import { LargeLivery } from './large-livery.ts';
 import { LiveryStrip } from './livery-strip.ts';
-import { GAP, overflows, PADDING_TOP, rowCount, statisticsRoom, VARIANT_HEIGHT, variantsHeight } from './setup-layout.ts';
+import { GAP, overflows, PADDING_TOP, rowCount, SCROLL_BAR_ROOM, statisticsRoom, VARIANT_HEIGHT, variantsHeight } from './setup-layout.ts';
 import type { ShowcasePlaces } from './showcase-layout.ts';
 import { ShowcaseMode, type BottomRow } from './showcase-mode.ts';
 import { StatisticRows, type AircraftStatistic } from './statistics.ts';
@@ -38,8 +38,6 @@ import { VariantsList } from './variants.ts';
 const RELOAD_DELAY_MS = 80;
 /** A row of the statistics, in layout units (the sim's rows: 48 pixels at 1440 lines). */
 const STATISTIC_HEIGHT = 36;
-/** Room left on the right of a list that scrolls, for the sim's scroll bar, in layout units. */
-const SCROLL_BAR_ROOM = 24;
 const FLOW = {
   fuel: 'GOTO_WORLDMAP_PLANECONFIGURATION_FUEL_XML',
   identification: 'GOTO_WORLDMAP_PLANECONFIGURATION_IDENTIFICATION_XML',

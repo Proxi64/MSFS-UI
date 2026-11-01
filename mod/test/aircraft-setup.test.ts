@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { overflows, rowCount, statisticsRoom, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
-import { actionWidths as showcaseActionWidths, columnExtra, rowNeed, showcasePlaces, stripCell, stripReveal } from '../src/features/aircraft-setup/showcase-layout.ts';
+import { bottomColumns, columnExtra, gridCell, gridReveal, rowNeed, showcasePlaces, stripCell, stripReveal } from '../src/features/aircraft-setup/showcase-layout.ts';
 import { LiverySends, LiveryStepper } from '../src/features/aircraft-setup/livery-stepper.ts';
 import { orderLiveries } from '../src/sim/livery-order.ts';
 import {
@@ -189,66 +189,101 @@ describe('showcase panel layout', () => {
 
   it('showcasePlaces keeps every part in place', () => {
     for (const [width, height, unit] of sizes) {
-      const gap = Math.round(6 * unit);
-      const headerHeight = Math.round(24 * unit);
-      const places = showcasePlaces(width, height, headerHeight, unit);
-      const { variants, header, livery, strip, tail, actions } = places;
-      assert.equal(variants.top, Math.round(6 * unit));
-      assert.equal(header.top, variants.top + variants.height + gap);
-      assert.equal(header.height, headerHeight);
-      assert.equal(livery.top, header.top + header.height + gap);
-      assert.equal(strip.top, livery.top + livery.height + gap);
-      assert.equal(actions.top + actions.height, height);
-      assert.equal(tail.top + tail.height + gap, actions.top);
-      assert.equal(livery.height, Math.round(width * 0.47));
-      assert.ok(strip.rows >= 1);
-      assert.equal(strip.height, strip.rows * strip.thumbHeight + (strip.rows - 1) * gap);
-      assert.ok(strip.top + strip.height + 8 * unit <= tail.top - gap, `strip clears the tail row at ${width}`);
-      const leftover = tail.top - gap - Math.ceil(8 * unit) - (strip.top + strip.height);
-      assert.ok(leftover >= 0 && leftover < strip.rows, `strip fills its height at ${width} x ${height}: ${leftover} left`);
-      assert.equal(strip.thumbWidth, Math.round(strip.thumbHeight / 0.47));
-      const tops = [variants.top, header.top, livery.top, strip.top, tail.top, actions.top];
-      for (let i = 1; i < tops.length; i++) assert.ok(tops[i] > tops[i - 1]);
-      for (const span of [variants, header, livery, strip, tail, actions]) {
-        assert.ok(Number.isInteger(span.top) && Number.isInteger(span.height));
+      for (const scrolls of [false, true]) {
+        const gap = Math.round(6 * unit);
+        const row = Math.round(30 * unit);
+        const bar = scrolls ? Math.round(24 * unit) : 0;
+        const headerHeight = Math.round(24 * unit);
+        const places = showcasePlaces(width, height, headerHeight, unit, scrolls);
+        const { variants, header, livery, grid, bottom } = places;
+        assert.equal(variants.top, Math.round(6 * unit));
+        assert.equal(variants.height, headerHeight);
+        assert.equal(header.top, variants.top + variants.height + gap);
+        assert.equal(header.height, headerHeight);
+        assert.equal(livery.top, header.top + header.height + gap);
+        assert.equal(livery.height, Math.round(width * 0.47));
+        assert.equal(grid.top, livery.top + livery.height + gap);
+        assert.equal(grid.top + grid.height + gap, bottom.top);
+        assert.equal(bottom.top + bottom.height, height);
+        assert.equal(bottom.height, 2 * row + gap);
+        assert.equal(grid.columns, 4);
+        assert.equal(grid.thumbWidth, Math.floor((width - 3 * gap - bar) / 4));
+        assert.equal(grid.thumbHeight, Math.round(grid.thumbWidth * 0.47));
+        assert.equal(grid.rowStep, grid.thumbHeight + gap);
+        for (const span of [variants, header, livery, grid, bottom]) assert.ok(Number.isInteger(span.top) && Number.isInteger(span.height));
+        assert.ok(Number.isInteger(grid.thumbWidth) && Number.isInteger(grid.thumbHeight) && Number.isInteger(grid.rowStep));
       }
-      assert.ok(Number.isInteger(strip.rows) && Number.isInteger(strip.thumbWidth) && Number.isInteger(strip.thumbHeight));
     }
   });
 
-  it('shows three rows of small liveries on the owner panel', () => {
-    assert.equal(showcasePlaces(691, 765, 32, 1.333).strip.rows, 3);
+  it('showcasePlaces on the owner panel (691 x 765, unit 1.333)', () => {
+    const places = showcasePlaces(691, 765, 32, 1.333, false);
+    assert.deepEqual(places.variants, { top: 8, height: 32 });
+    assert.deepEqual(places.header, { top: 48, height: 32 });
+    assert.deepEqual(places.livery, { top: 88, height: 325 });
+    assert.equal(places.grid.thumbWidth, 166);
+    assert.equal(places.grid.thumbHeight, 78);
+    assert.equal(places.grid.rowStep, 86);
+    assert.deepEqual(places.bottom, { top: 765 - 88, height: 88 });
+    assert.equal(showcasePlaces(691, 765, 32, 1.333, true).grid.thumbWidth, Math.floor((691 - 24 - 32) / 4));
   });
 
   it('gives the same places whatever the aircraft: they depend on the size only', () => {
-    assert.deepEqual(showcasePlaces(691, 932, 32, 1.333), showcasePlaces(691, 932, 32, 1.333));
+    assert.deepEqual(showcasePlaces(691, 932, 32, 1.333, true), showcasePlaces(691, 932, 32, 1.333, true));
   });
 
-  it('actionWidths gives each button its need and shares the rest', () => {
-    const widths = showcaseActionWidths(691, 8, [150, 130, 200]);
-    assert.ok(widths);
-    assert.ok(widths.every(Number.isInteger));
-    assert.equal(widths[0] + widths[1] + widths[2] + 2 * 8, 691);
-    assert.ok(widths[0] >= 150 && widths[1] >= 130 && widths[2] >= 200);
-    const extra = [widths[0] - 150, widths[1] - 130, widths[2] - 200];
-    assert.equal(extra[0], extra[1]);
-    assert.ok(extra[2] >= extra[1]);
-    assert.equal(showcaseActionWidths(400, 8, [150, 130, 200]), null);
+  const needs = { tail: 120, field: 150, fuel: 160, identification: 200, configure: 250 };
+
+  it('bottomColumns gives the right column the wider of its rows, the tile the rest', () => {
+    // Rows: 120 + 8 + 150 = 278 and 160 + 8 + 200 = 368; the tile 691 - 8 - 368 = 315.
+    assert.deepEqual(bottomColumns(691, 8, needs), { configure: 315, right: 368, tailTitle: 120, fuel: 160 });
+    const wide = bottomColumns(691, 8, { ...needs, tail: 200, field: 200 });
+    assert.deepEqual(wide, { configure: 275, right: 408, tailTitle: 200, fuel: 160 });
+    const columns = bottomColumns(691, 8, { ...needs, tail: 120.2, field: 150.1 });
+    assert.ok(columns);
+    assert.equal(columns.configure + 8 + columns.right, 691);
+    assert.ok(Object.values(columns).every(Number.isInteger));
   });
 
-  it('rowNeed adds the needs rounded up and the two gaps', () => {
-    assert.equal(rowNeed([204.3, 163, 303.2], 8), 205 + 163 + 304 + 16);
+  it('bottomColumns is null when the tile does not get its need', () => {
+    assert.ok(bottomColumns(626, 8, needs), 'exactly the need');
+    assert.equal(bottomColumns(625, 8, needs), null);
   });
 
-  it('columnExtra widens the left column to the bottom row, in whole units (measured 2026-11-01 at 1440 lines)', () => {
-    // Needs 204, 163 and 303 pixels, gaps of 8, the column 2 pixels wider than the panel, the sim's 470 units.
-    const need = rowNeed([204, 163, 303], 8);
-    const extra = columnExtra(need, 2, 4 / 3, 470);
-    assert.equal(extra, 47);
-    assert.ok(Math.floor((470 + extra) * (4 / 3)) - 2 >= need, 'the row fits at that extra');
-    assert.ok(Math.floor((470 + extra - 1) * (4 / 3)) - 2 < need + 1, 'one unit less is too narrow');
+  it('rowNeed adds the right column, the gap and the tile, rounded up', () => {
+    assert.equal(rowNeed(needs, 8), 368 + 8 + 250);
+    assert.equal(rowNeed({ ...needs, fuel: 160.2, configure: 249.5 }, 8), 369 + 8 + 250);
+  });
+
+  it('columnExtra widens the left column to the bottom block, in whole units (measured 2026-11-01 at 1440 lines)', () => {
+    // A need of 515 pixels, the column 2 pixels wider than the panel, the sim's 470 units.
+    const extra = columnExtra(515, 2, 4 / 3, 470);
+    assert.equal(extra, Math.ceil(518 / (4 / 3) - 470));
+    assert.ok(Math.floor((470 + extra) * (4 / 3)) - 2 >= 515, 'the block fits at that extra');
+    assert.ok(Math.floor((470 + extra - 1) * (4 / 3)) - 2 < 516, 'one unit less is too narrow');
     assert.equal(columnExtra(515, 2, 1, 470), 48, 'at 1080 lines');
-    assert.ok(columnExtra(400, 2, 1, 470) < 0, 'a short row needs no extra: the option decides');
+    assert.ok(columnExtra(400, 2, 1, 470) < 0, 'a short block needs no extra: the option decides');
+  });
+
+  it('gridCell places the liveries four to a row, row-major', () => {
+    assert.deepEqual([0, 3, 4, 9].map(gridCell), [
+      { row: 0, column: 0 },
+      { row: 0, column: 3 },
+      { row: 1, column: 0 },
+      { row: 2, column: 1 },
+    ]);
+  });
+
+  it('gridReveal keeps a whole row in view, aligns another on the edge it was beyond, within the scroll range', () => {
+    // Rows 87 apart, a view of 270 (3 rows plus 9), 10 rows: at most 870 - 270 = 600.
+    assert.equal(gridReveal(0, 87, 270, 0, 600), null);
+    assert.equal(gridReveal(2, 87, 270, 0, 600), null, 'ends at 261');
+    assert.equal(gridReveal(3, 87, 270, 0, 600), 3 * 87 + 87 - 270, 'cut at the bottom: its bottom on the view bottom');
+    assert.equal(gridReveal(9, 87, 270, 0, 600), 600, 'beyond the bottom, clamped to the end');
+    assert.equal(gridReveal(5, 87, 270, 0, 600), 5 * 87 + 87 - 270, 'beyond the bottom: its bottom on the view bottom');
+    assert.equal(gridReveal(1, 87, 270, 200, 600), 87, 'cut at the top: on the top');
+    assert.equal(gridReveal(0, 87, 270, 400, 600), 0, 'above the view: on the top');
+    assert.equal(gridReveal(1, 87, 270, 0, 0), null, 'nothing to scroll');
   });
 
   it('stripCell places the liveries column-major, the first row on top', () => {

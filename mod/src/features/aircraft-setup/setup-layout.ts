@@ -12,6 +12,8 @@ import type { Rows } from '../../core/virtual-list.ts';
 export const VARIANT_HEIGHT = 36;
 export const GAP = 6;
 export const PADDING_TOP = 6;
+/** Room left on the right of a list that scrolls, for the sim's scroll bar, in layout units. */
+export const SCROLL_BAR_ROOM = 24;
 
 /** The proportions of the sim's livery images (about 2:1). */
 export const LIVERY_RATIO = 0.47;

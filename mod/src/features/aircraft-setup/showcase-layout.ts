@@ -1,16 +1,17 @@
 // Fixed places of the Showcase setup panel, without the sim (tested by test/aircraft-setup.test.ts). Top to bottom:
-// the variants in a one-row dropdown, the livery header, the current livery large, a strip of small liveries scrolling
-// sideways, the tail number row and a row of three buttons. Every part keeps the same place for a given panel size,
-// whatever the aircraft: the number of variants or liveries changes what a part shows, never where it is.
+// the variants in a one-row dropdown, the livery header, the current livery large, a grid of small liveries four to a
+// row scrolling down, and a block of two rows (the tail number, then Fuel and Identification) beside the Configure
+// tile. Every part keeps the same place for a given panel size, whatever the aircraft: the number of variants or
+// liveries changes what a part shows, never where it is.
 
-import { GAP, LIVERY_RATIO, PADDING_TOP } from './setup-layout.ts';
+import { GAP, LIVERY_RATIO, PADDING_TOP, SCROLL_BAR_ROOM } from './setup-layout.ts';
 
 /** Layout units: height of the dropdown, of the tail number row (as `.msfs-ui-setup__tail`) and of the buttons' row. */
 const ROW_HEIGHT = 30;
-/** Layout units the sim's horizontal scroll bar takes under the strip of small liveries. */
+/** Layout units the sim's horizontal scroll bar takes under the strip of small liveries (replaced in the next task). */
 export const STRIP_BAR_UNITS = 8;
-/** Small liveries per row that would fill the strip's width: only used to choose the number of rows. */
-const STRIP_COLUMNS = 4;
+/** Small liveries per row of the grid. */
+const GRID_COLUMNS = 4;
 
 /** A part's place, in pixels from the panel's top. */
 export interface Span {
@@ -19,61 +20,68 @@ export interface Span {
 }
 
 export interface ShowcasePlaces {
+  /** One row, as high as the livery header. */
   variants: Span;
   header: Span;
   /** As wide as the panel. */
   livery: Span;
-  strip: Span & { rows: number; thumbWidth: number; thumbHeight: number };
-  tail: Span;
-  /** Ends on the panel's bottom. */
-  actions: Span;
+  /** Four whole thumbnails across, `rowStep` pixels from one row to the next; it scrolls down. */
+  grid: Span & { columns: 4; thumbWidth: number; thumbHeight: number; rowStep: number };
+  /** Two rows and their gap, ending on the panel's bottom. */
+  bottom: Span;
 }
 
 /**
  * The places of the panel's parts in whole pixels, for a panel `width` x `height` pixels, a livery header
- * `headerHeight` pixels high and `unit` pixels per layout unit. The parts from the variants to the strip follow each
- * other with one gap between; the buttons end on the bottom, the tail row sits one gap above them, and the strip fills
- * everything from its top to the tail row less one gap and its bar room (the owner, 2026-11-01: no gap under the strip).
- * Its rows are the whole number nearest to what thumbnails four to a row would give (3 on the owner's screen); they
- * share the height, keeping the sim's proportions, so a row no longer holds a whole number of them: the strip scrolls
- * sideways and its last column shows in part, which tells there are more.
+ * `headerHeight` pixels high and `unit` pixels per layout unit. The parts from the variants to the grid follow each
+ * other with one gap between; the bottom block ends on the bottom and the grid fills everything from its top to one gap
+ * above the block. `scrolls`: the liveries do not fit the grid, so a vertical scroll bar takes its room on the right
+ * and the four thumbnails share the rest of the width (whole pixels; the sim's proportions).
  */
-export function showcasePlaces(width: number, height: number, headerHeight: number, unit: number): ShowcasePlaces {
+export function showcasePlaces(width: number, height: number, headerHeight: number, unit: number, scrolls: boolean): ShowcasePlaces {
   const gap = Math.round(GAP * unit);
   const row = Math.round(ROW_HEIGHT * unit);
-  const variants = { top: Math.round(PADDING_TOP * unit), height: row };
+  const variants = { top: Math.round(PADDING_TOP * unit), height: headerHeight };
   const header = { top: variants.top + variants.height + gap, height: headerHeight };
   const livery = { top: header.top + header.height + gap, height: Math.round(width * LIVERY_RATIO) };
-  const actions = { top: height - row, height: row };
-  const tail = { top: actions.top - gap - row, height: row };
+  const bottomHeight = 2 * row + gap;
+  const bottom = { top: height - bottomHeight, height: bottomHeight };
 
-  const stripTop = livery.top + livery.height + gap;
-  const room = tail.top - gap - Math.ceil(STRIP_BAR_UNITS * unit) - stripTop;
-  const fourWidth = Math.floor((width - (STRIP_COLUMNS - 1) * gap) / STRIP_COLUMNS);
-  const fourHeight = Math.round(fourWidth * LIVERY_RATIO);
-  const rows = Math.max(1, Math.round((room + gap) / (fourHeight + gap)));
-  const thumbHeight = Math.floor((room - (rows - 1) * gap) / rows);
-  const thumbWidth = Math.round(thumbHeight / LIVERY_RATIO);
-  const strip = { top: stripTop, height: rows * thumbHeight + (rows - 1) * gap, rows, thumbWidth, thumbHeight };
-  return { variants, header, livery, strip, tail, actions };
+  const gridTop = livery.top + livery.height + gap;
+  const bar = scrolls ? Math.round(SCROLL_BAR_ROOM * unit) : 0;
+  const thumbWidth = Math.floor((width - (GRID_COLUMNS - 1) * gap - bar) / GRID_COLUMNS);
+  const thumbHeight = Math.round(thumbWidth * LIVERY_RATIO);
+  const grid = { top: gridTop, height: bottom.top - gap - gridTop, columns: GRID_COLUMNS as 4, thumbWidth, thumbHeight, rowStep: thumbHeight + gap };
+  return { variants, header, livery, grid, bottom };
+}
+
+/** What the bottom block's parts need, in pixels (measured by the caller). */
+export interface BottomNeeds {
+  tail: number;
+  field: number;
+  fuel: number;
+  identification: number;
+  configure: number;
 }
 
 /**
- * Widths of the three buttons of the bottom row in a row `width` wide, `gap` pixels apart. Each button gets its need
- * (rounded up to whole pixels); the remainder is shared equally in whole pixels, the last button taking the rest.
- * Null when the needs do not fit.
+ * The columns of the bottom block in a row `width` wide, `gap` pixels apart, whole pixels: the right column (the tail
+ * number's title and field above Fuel and Identification) is as wide as the wider of its two rows, `title + gap + field`
+ * or `fuel + gap + identification`; the Configure tile takes the rest. In the right column the tail title and the Fuel
+ * button keep their need, the field and Identification take the rest of their rows. Null when the tile gets less than
+ * its own need.
  */
-export function actionWidths(width: number, gap: number, needs: readonly [number, number, number]): [number, number, number] | null {
-  const wanted = needs.map((need) => Math.ceil(need));
-  const remainder = width - 2 * gap - (wanted[0] + wanted[1] + wanted[2]);
-  if (remainder < 0) return null;
-  const share = Math.floor(remainder / 3);
-  return [wanted[0] + share, wanted[1] + share, wanted[2] + remainder - 2 * share];
+export function bottomColumns(width: number, gap: number, needs: BottomNeeds): { configure: number; right: number; tailTitle: number; fuel: number } | null {
+  const tailTitle = Math.ceil(needs.tail);
+  const fuel = Math.ceil(needs.fuel);
+  const right = Math.max(tailTitle + gap + Math.ceil(needs.field), fuel + gap + Math.ceil(needs.identification));
+  const configure = width - gap - right;
+  return configure < Math.ceil(needs.configure) ? null : { configure, right, tailTitle, fuel };
 }
 
-/** The width the bottom row needs, in whole pixels: the three buttons' needs (rounded up) and the two gaps. */
-export function rowNeed(needs: readonly [number, number, number], gap: number): number {
-  return Math.ceil(needs[0]) + Math.ceil(needs[1]) + Math.ceil(needs[2]) + 2 * gap;
+/** The width the bottom block needs, in whole pixels: its right column, the gap and the Configure tile (bottomColumns). */
+export function rowNeed(needs: BottomNeeds, gap: number): number {
+  return Math.ceil(needs.configure) + gap + Math.max(Math.ceil(needs.tail) + gap + Math.ceil(needs.field), Math.ceil(needs.fuel) + gap + Math.ceil(needs.identification));
 }
 
 /**
@@ -85,6 +93,25 @@ export function columnExtra(need: number, frame: number, unit: number, base: num
   return Math.ceil((need + frame + 1) / unit - base);
 }
 
+/** The place of livery `index` in the grid of small liveries: four to a row, row-major, the first on top left. */
+export function gridCell(index: number): { row: number; column: number } {
+  return { row: Math.floor(index / GRID_COLUMNS), column: index % GRID_COLUMNS };
+}
+
+/**
+ * The scroll position, in pixels, that brings row `row` of the grid (`rowStep` pixels per row, gap included) into a
+ * view `view` pixels high scrolled to `scroll`: null when the row is already whole in view; otherwise whole rows: a
+ * row above the view, or cut at its top, on the view's top; one below it, or cut at the bottom, with its bottom on the
+ * view's bottom; within 0 to `max`, the largest scroll.
+ */
+export function gridReveal(row: number, rowStep: number, view: number, scroll: number, max: number): number | null {
+  const top = row * rowStep;
+  const bottom = top + rowStep;
+  if (top >= scroll && bottom <= scroll + view) return null;
+  return Math.max(0, Math.min(max, top < scroll ? top : bottom - view));
+}
+
+// Until the next task replaces the strip of small liveries by the grid.
 /** The place of livery `index` in the strip of small liveries: column-major, `rows` to a column, the first on top. */
 export function stripCell(index: number, rows: number): { column: number; row: number } {
   return { column: Math.floor(index / rows), row: index % rows };
