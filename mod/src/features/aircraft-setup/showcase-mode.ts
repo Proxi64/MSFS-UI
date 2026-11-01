@@ -3,7 +3,7 @@
 // tail number over Fuel and Identification on the right, as wide as their labels need; and what that block needs, for the
 // left column's width (index.ts).
 
-import { setStyle, setVariable, toggleClass } from '../../core/dom.ts';
+import { setStyle, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import type { SimComponent } from '../../sim/components.ts';
@@ -47,6 +47,23 @@ export interface BottomRow {
   frame: number;
 }
 
+/** What the bottom block needed when last measured whole (the tile included), for `unit` and the labels of `key`. */
+export interface MeasuredBottom {
+  unit: number;
+  key: string;
+  parts: BottomNeeds;
+  row: BottomRow;
+}
+
+/**
+ * The last whole measure, kept by index.ts across the screen's activations: at the next entry at the same unit, the block
+ * and the left column take their widths from the first pass, instead of moving once the sim gives its tile a size (1.2
+ * to 3.9 s after; measured on 1.9.21, 2026-11-01).
+ */
+export interface BottomMemory {
+  last: MeasuredBottom | null;
+}
+
 /** A small text button of the sim: its label (the marquee's content, on one line), or null. */
 function buttonLabel(button: SimComponent): { label: HTMLElement; text: HTMLElement } | null {
   const label = button.element.querySelector<HTMLElement>('[name="Content"] > [name="Text"]');
@@ -83,12 +100,17 @@ export class ShowcaseMode {
    * null and `key` empty while the tile has no size yet (the right column's needs are known: its labels show whole).
    */
   private needs: { key: string; parts: BottomNeeds; row: BottomRow | null } | null = null;
+  private readonly memory: BottomMemory;
   private unmeasured = 0;
   private misfits = 0;
 
-  constructor(scope: Scope, parts: ShowcaseParts) {
+  /** `memory`: the last whole measure of an earlier entry, taken while the unit is the same, and kept up to date. */
+  constructor(scope: Scope, parts: ShowcaseParts, memory: BottomMemory) {
     this.parts = parts;
+    this.memory = memory;
     this.configure = new ConfigureTile(scope);
+    const last = memory.last;
+    if (last && last.unit === uiUnit()) this.needs = { key: last.key, parts: last.parts, row: last.row };
     scope.add(() => this.leave());
   }
 
@@ -186,8 +208,15 @@ export class ShowcaseMode {
     };
     const tileMeasured = needs.configure > 0;
     if (needs.tail > 0 && needs.fuel > 0 && needs.identification > 0) {
-      this.needs = { key: tileMeasured ? key : '', parts: needs, row: tileMeasured ? { need: rowNeed(needs, gap), frame } : null };
-      if (tileMeasured) this.unmeasured = 0;
+      if (tileMeasured) {
+        const row = { need: rowNeed(needs, gap), frame };
+        this.needs = { key, parts: needs, row };
+        this.memory.last = { unit, key, parts: needs, row };
+        this.unmeasured = 0;
+      } else if (!this.needs || !this.needs.row) {
+        // Until the tile has a size, the right column's needs; a whole measure (an earlier entry's) stays meanwhile.
+        this.needs = { key: '', parts: needs, row: null };
+      }
     }
     if ((!tileMeasured || !this.needs) && ++this.unmeasured === UNMEASURED_PASSES) {
       logError(`the bottom block's labels could not be measured (${JSON.stringify(needs)})`);

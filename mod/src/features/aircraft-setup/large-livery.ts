@@ -151,8 +151,12 @@ export class LargeLivery {
     if (this.stepper.pending() !== null) this.send();
   }
 
-  /** The livery under the pointer in the grid (null: none), named by the header instead of the one shown. */
+  /**
+   * The livery under the pointer in the grid (null: none), named by the header instead of the one shown. Also null when
+   * the grid goes (another view, the panel hidden): no mouseleave comes then. Drawn only when it changes.
+   */
   hover(id: string | null): void {
+    if (id === this.hovered) return;
     this.hovered = id;
     this.draw();
   }

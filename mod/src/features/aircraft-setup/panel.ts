@@ -31,7 +31,7 @@ import { LargeLivery } from './large-livery.ts';
 import { LiveryGrid } from './livery-grid.ts';
 import { GAP, overflows, PADDING_TOP, rowCount, SCROLL_BAR_ROOM, statisticsRoom, VARIANT_HEIGHT, variantsHeight } from './setup-layout.ts';
 import type { ShowcasePlaces } from './showcase-layout.ts';
-import { ShowcaseMode, type BottomRow } from './showcase-mode.ts';
+import { ShowcaseMode, type BottomMemory, type BottomRow } from './showcase-mode.ts';
 import { StatisticRows, type AircraftStatistic } from './statistics.ts';
 import { TailNumberField } from './tail-field.ts';
 import { TitleBlock } from './title-block.ts';
@@ -95,7 +95,8 @@ export class SetupPanel {
   /** Number of the last reload: an older one that finishes later is ignored. */
   private reloadNumber = 0;
 
-  constructor(page: Manipulator, scope: Scope, beforeLayout: () => void) {
+  /** `bottom`: the Showcase bottom block's last measure, kept across the screen's activations (index.ts). */
+  constructor(page: Manipulator, scope: Scope, beforeLayout: () => void, bottom: BottomMemory) {
     this.page = page;
     this.scope = scope;
     this.beforeLayout = beforeLayout;
@@ -136,7 +137,7 @@ export class SetupPanel {
       actions: this.actions,
       actionButtons: this.actionButtons,
       dropdown: this.dropdown,
-    });
+    }, bottom);
     this.tail = new TailNumberField(scope, () => this.selectedLivery());
     this.title = new TitleBlock(scope);
   }
@@ -268,6 +269,8 @@ export class SetupPanel {
     }
     this.showcase.leave();
     this.showcaseLaidOut = false;
+    // The grid is hidden without a mouseleave: the header would keep naming the livery last under the pointer.
+    this.large.hover(null);
     setStyle(style, 'height', `${rect.height}px`);
     if (Math.round(rect.width) !== this.fittedWidth) {
       this.fittedWidth = Math.round(rect.width);
@@ -334,6 +337,7 @@ export class SetupPanel {
   private hide(): void {
     this.root.style.display = 'none';
     setSetupPanelShown(false);
+    this.large.hover(null);
   }
 
   /** The sim's list measures its content again (after a change of height or of content). */
@@ -380,7 +384,9 @@ export class SetupPanel {
       | (AircraftNameFields & { details?: AircraftStatistic[] })
       | null;
     if (this.scope.disposed || number !== this.reloadNumber) return;
-    this.title.render(current);
+    // A read that timed out keeps the title (the watch of CurrentAircraft gives a real null): the sim's own title, of
+    // its own height, would show again and move everything under it.
+    if (current) this.title.render(current);
     this.statistics.render(current && Array.isArray(current.details) ? current.details.filter((statistic) => !!statistic && !!statistic.name) : []);
     await answerWithin(aircraft.UpdateCurrentAircraftIdentification.request(), ANSWER_TIMEOUT_MS, 'the update of the tail number');
   }

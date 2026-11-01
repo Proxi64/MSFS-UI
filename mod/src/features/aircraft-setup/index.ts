@@ -13,12 +13,17 @@ import { liveriesInGallery } from '../../sim/selection-layout.ts';
 import CSS from './aircraft-setup.css';
 import { SetupPanel } from './panel.ts';
 import { columnExtra, showcaseColumnExtra } from './showcase-layout.ts';
+import type { BottomMemory } from './showcase-mode.ts';
 
 /** Width given to the left column in the side by side layout, in layout units from the sim's 470: 400 units. */
 const SIDE_BY_SIDE_EXTRA = -70;
 
 export function aircraftSetup(settings: Settings['aircraftSetup'], scope: Scope): void {
   injectStyle(CSS, scope);
+  // The Showcase bottom block's last measure, kept while the mod runs: from the second entry into the screen on, the
+  // column takes its width at the first pass (the panel gives it at once: showcase-mode.ts). Only the first entry, or the
+  // first after a change of resolution, still widens the column once the sim's tile has a size.
+  const bottom: BottomMemory = { last: null };
   const hooked = onScreenActive(SCREENS.planeSelection, scope, (page, screen) => {
     const column = columnResizer(page, screen);
     let applied = 0;
@@ -36,7 +41,7 @@ export function aircraftSetup(settings: Settings['aircraftSetup'], scope: Scope)
       applied = extra;
       column.resize(extra);
     };
-    const panel = new SetupPanel(page, screen, fitColumn);
+    const panel = new SetupPanel(page, screen, fitColumn, bottom);
     panel.mount();
   });
   if (!hooked) throw new Error('the aircraft selection screen is missing');
