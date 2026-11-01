@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { dropdownListToward, dropdownScrollPosition } from '../src/sim/dropdown-list.ts';
+import { dropdownListToward, dropdownListWithin, dropdownScrollPosition } from '../src/sim/dropdown-list.ts';
 
 describe('the sim dropdown list toward an obstacle under it', () => {
   const metrics = { item: 33, edge: 6, padding: 9, spacing: 3 };
@@ -58,5 +58,21 @@ describe('the sim dropdown list scrolled to an item', () => {
 
   it('stops at the end of the list', () => {
     assert.equal(dropdownScrollPosition({ index: 30, step: 36, height: 32, edge: 6, max: 500 }), 500);
+  });
+});
+
+describe('the sim dropdown list ending on a given line', () => {
+  const metrics = { item: 33, edge: 6, padding: 9, spacing: 3 };
+
+  it('is as high as the room, the sim scroll filling it, when all the items fit', () => {
+    assert.deepEqual(dropdownListWithin({ count: 5, below: 321, unit: 1 }, metrics), { size: 321.5, scroll: null });
+  });
+
+  it('keeps whole items in its scrolling area and the room left empty at the bottom when they scroll', () => {
+    // 321: nine whole items take 300 (33 x 9 + 3), a tenth would take 333: 21 left under the scrolling area.
+    assert.deepEqual(dropdownListWithin({ count: 20, below: 321, unit: 1 }, metrics), { size: 321.5, scroll: 300 });
+    assert.deepEqual(dropdownListWithin({ count: 20, below: 321, unit: 4 / 3 }, metrics), { size: 321.375, scroll: 300 });
+    // Ten items need 339 (33 x 10 + 9), more than 321: they scroll, nine whole ones.
+    assert.deepEqual(dropdownListWithin({ count: 10, below: 321, unit: 1 }, metrics), { size: 321.5, scroll: 300 });
   });
 });

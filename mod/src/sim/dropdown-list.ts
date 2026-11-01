@@ -60,6 +60,27 @@ export function dropdownListToward(list: ListToward, metrics: DropdownMetrics, l
   return sized(true, above);
 }
 
+/** A list ending on a given line whatever its items (dropdownListWithin), in layout units. */
+export interface ListWithin {
+  /** The list's box, and the room of its scrolling area: the box less the room whole items leave, or null when it is the box. */
+  size: number;
+  scroll: number | null;
+}
+
+/**
+ * The list of `count` items going down exactly `below` layout units (the owner's rule: it always ends there). All the
+ * items fit (the sim's edge above and below them): the box is `below` and the sim's scroll fills it, the room under the
+ * last item empty. Otherwise the scrolling area keeps whole items only (`scroll`: n items, the edge above, no gap after
+ * the last, so that no part of the next shows) and the box, `below`, shows the room left under it, empty. Half a pixel
+ * more on the box: the engine rounds the height down. `unit`: pixels per layout unit.
+ */
+export function dropdownListWithin(list: { count: number; below: number; unit: number }, metrics: DropdownMetrics): ListWithin {
+  const size = list.below + 0.5 / list.unit;
+  if (list.count * metrics.item + metrics.padding <= list.below) return { size, scroll: null };
+  const items = Math.max(1, Math.floor((list.below - metrics.edge + metrics.spacing) / metrics.item));
+  return { size, scroll: items * metrics.item + metrics.edge - metrics.spacing };
+}
+
 /** Where a list opened on the item `index` is scrolled (scrollDropdownTo), in pixels. */
 export interface ScrollTo {
   index: number;

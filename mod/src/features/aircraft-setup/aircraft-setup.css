@@ -144,6 +144,7 @@
 .msfs-ui-setup__dropdown > * > [name="Content"] > * { justify-content: flex-end !important; }
 .msfs-ui-setup__dropdown [name="List"] [name="Content"] { left: calc(var(--u) * 12) !important; }
 .msfs-ui-setup__dropdown [name="List"] { top: 100% !important; }
+.msfs-ui-setup__dropdown [name="List"] [name="Scroll"] { height: var(--msfs-ui-variants-scroll, 100%) !important; }
 
 /*
  * The title block on three lines (title-block.ts): the sim's lines hidden, the mod's in their place in the sim's sizes,
@@ -261,6 +262,16 @@
  */
 .msfs-ui-setup__large-button [name="Image"],
 .msfs-ui-setup__grid-button [name="Image"] { left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important; }
+/*
+ * The same on hover (the owner's mark, 2026-11-01): the sim's Hover state brings its Focus (a white veil) and FX
+ * (the shine) in at 3 units from the edges and the corner marks with them, so the image seemed to stop short again.
+ * The veil and the shine take the button's whole box too; the corner marks, the Hover's cue, stay where they are
+ * (the image itself never moves).
+ */
+.msfs-ui-setup__large-button [name="Focus"],
+.msfs-ui-setup__large-button [name="FX"],
+.msfs-ui-setup__grid-button [name="Focus"],
+.msfs-ui-setup__grid-button [name="FX"] { left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important; }
 /*
  * The last resort of a column too wide (showcase-layout.ts): the large livery gives up height, cropped toward the top as
  * on the owner's mockup (2026-11-01: 12 % of the cut above, the rest below): the fin stays whole, the bottom goes.
