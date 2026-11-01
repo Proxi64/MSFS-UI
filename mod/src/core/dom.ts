@@ -32,7 +32,7 @@ export function setVariable(style: CSSStyleDeclaration, name: string, value: str
 }
 
 /** Sets a style property only when its value changes (the layout passes write them every 250 ms). */
-export function setStyle(style: CSSStyleDeclaration, property: 'marginLeft' | 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height' | 'minHeight', value: string): void {
+export function setStyle(style: CSSStyleDeclaration, property: 'marginLeft' | 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height' | 'fontSize', value: string): void {
   if (style[property] !== value) style[property] = value;
 }
 

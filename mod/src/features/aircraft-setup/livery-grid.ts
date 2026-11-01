@@ -1,8 +1,9 @@
 // The Showcase panel's grid of small liveries, under the large one (panel.ts): the sim's livery buttons in the sim's
-// vertical scrolling list, four to a row, row-major (showcase-layout.ts: gridCell), in the large livery's order
-// (favourites first), a heart on each. Only the thumbnails near the visible part get components, from a pool
-// (sim/component-pool.ts): an aircraft may have hundreds of liveries. A click chooses the livery as the large one's steps
-// do (large-livery.ts); the livery the large one shows is outlined (Selected) and brought into view when it changes.
+// vertical scrolling list, three to a row, row-major (showcase-layout.ts: gridCell), in the large livery's order
+// (favourites first), a heart on each. Two whole rows show, and the list rests on whole rows: never a cut thumbnail
+// (sim/step-scroll.ts). Only the thumbnails near the visible part get components, from a pool (sim/component-pool.ts): an
+// aircraft may have hundreds of liveries. A click chooses the livery as the large one's steps do (large-livery.ts); the
+// livery the large one shows is outlined (Selected) and brought into view when it changes.
 
 import { el, setStyle, setVariable, toggleClass } from '../../core/dom.ts';
 import { iconToggle } from '../../core/icon-toggle.ts';
@@ -14,12 +15,12 @@ import { COMPONENTS, createComponent, type SimComponent } from '../../sim/compon
 import { isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { liveryFolder } from '../../sim/liveries.ts';
 import { createRealScroll, removeFromList } from '../../sim/real-scroll.ts';
-import { GAP } from './setup-layout.ts';
-import { GRID_COLUMNS, gridCell, gridReveal, type GridPlace } from './showcase-layout.ts';
+import { keepOnSteps } from '../../sim/step-scroll.ts';
+import { GRID_COLUMNS, GRID_ROWS, gridCell, gridReveal, type GridPlace } from './showcase-layout.ts';
 
 /**
  * How near the visible part the thumbnails get components, in layout units: closer than the gallery's (its tiles are
- * larger), so that a long grid keeps about 30 alive (7 or 8 rows of 4) where the gallery's margins would keep about 50;
+ * larger), so that a long grid keeps about 20 alive (6 or 7 rows of 3) where the gallery's margins would keep about 30;
  * still more than a wheel step ahead.
  */
 const GRID_MARGINS: PoolMargins = { create: 150, keep: 250 };
@@ -53,7 +54,7 @@ export class LiveryGrid {
   private readonly list = createRealScroll('y', 'msfs-ui-setup__grid-list');
   private readonly pooled: PooledCells<Cell>;
   private cells: Cell[] = [];
-  /** The row hosts in the list, four cells each. */
+  /** The row hosts in the list, three cells each. */
   private rows: HTMLElement[] = [];
   private cellScope: Scope | null = null;
   /** The ids in order the cells were built for. */
@@ -83,6 +84,19 @@ export class LiveryGrid {
     });
     // The sim's list scrolls itself (wheel, scroll bar): the thumbnails coming into view get their components.
     scope.listen(this.list, 'ui-scroll', () => this.materialize());
+    keepOnSteps(scope, {
+      list: this.list,
+      host,
+      step: () => (this.place && this.place.scrolls ? this.place.rowStep : 0),
+      max: () => {
+        if (this.list.updateSizes) this.list.updateSizes();
+        return this.maxScroll();
+      },
+      scrollTo: (position) => {
+        this.list.scrollToPosition(position);
+        this.materialize();
+      },
+    });
   }
 
   /** How many liveries the grid shows: its form depends on it (showcase-layout.ts: gridFor). */
@@ -109,18 +123,18 @@ export class LiveryGrid {
   }
 
   /** At each layout pass of the Showcase panel: the grid's host at its place, the thumbnails in whole pixels (only written when they change). */
-  layout(place: GridPlace, unit: number): void {
+  layout(place: GridPlace): void {
     const style = this.host.style;
-    const gap = Math.round(GAP * unit);
     this.place = place;
     setStyle(style, 'top', `${place.top}px`);
     setStyle(style, 'height', `${place.height}px`);
     setVariable(style, '--grid-w', `${place.thumbWidth}px`);
-    setVariable(style, '--grid-last-w', `${place.lastWidth}px`);
     setVariable(style, '--grid-h', `${place.thumbHeight}px`);
-    setVariable(style, '--grid-gap', `${gap}px`);
+    setVariable(style, '--grid-column-gap', `${place.columnGap}px`);
+    setVariable(style, '--grid-last-gap', `${place.lastGap}px`);
+    setVariable(style, '--grid-row-gap', `${place.rowStep - place.thumbHeight}px`);
     toggleClass(this.list, 'is-scrolling', place.scrolls);
-    const sizes = `${place.thumbWidth}/${place.thumbHeight}/${gap}/${place.height}/${place.scrolls}`;
+    const sizes = `${place.thumbWidth}/${place.rowStep}/${place.columnGap}/${place.height}/${place.scrolls}`;
     if (sizes !== this.sizes) {
       this.sizes = sizes;
       if (this.list.updateSizes) this.list.updateSizes();
@@ -131,7 +145,7 @@ export class LiveryGrid {
     this.materialize();
   }
 
-  /** The cells again when the liveries change: row hosts of four cells, row-major. */
+  /** The cells again when the liveries change: row hosts of three cells, row-major. */
   private build(): void {
     const key = this.liveries.map((livery) => livery.id).join('|');
     if (key === this.key) {
@@ -154,6 +168,7 @@ export class LiveryGrid {
       const place = gridCell(at);
       if (place.column === 0) this.rows.push(el('div', 'msfs-ui-setup__grid-row', this.list));
       const host = el('div', 'msfs-ui-setup__grid-cell', this.rows[this.rows.length - 1]);
+      toggleClass(host, 'is-second', place.column === GRID_COLUMNS - 2);
       toggleClass(host, 'is-last', place.column === GRID_COLUMNS - 1);
       const cell: Cell = { livery, host, slot: null, card: null };
       scope.listen(host, 'mouseenter', () => this.events.hover(cell.livery.id));
@@ -171,20 +186,24 @@ export class LiveryGrid {
     this.pooled.materialize(this.cells, this.list, 'y');
   }
 
+  /** The room the rows leave under the view, in whole rows (the grid's view is two rows). */
+  private maxScroll(): number {
+    const place = this.place;
+    return place ? Math.max(0, this.rows.length - GRID_ROWS) * place.rowStep : 0;
+  }
+
   /**
-   * The selected livery's row whole in view, once the grid is laid out (gridReveal: a click on the row cut at the bottom
-   * moves the grid less than a row); the thumbnails coming into view get their components at once.
+   * The selected livery's row in view on whole rows, once the grid is laid out (gridReveal); the thumbnails coming into
+   * view get their components at once.
    */
   private reveal(): void {
     const place = this.place;
     if (!this.revealWanted || !place || this.cells.length === 0) return;
-    const view = this.list.getBoundingClientRect().height;
-    if (view <= 0) return;
+    if (!(this.list.getBoundingClientRect().height > 0)) return;
     this.revealWanted = false;
     const at = this.cells.findIndex((cell) => cell.livery.id === this.selectedId);
     if (at < 0) return;
-    const max = Math.max(0, this.rows.length * place.rowStep - (place.rowStep - place.thumbHeight) - view);
-    const position = gridReveal(gridCell(at).row, place.rowStep, place.thumbHeight, view, this.list.currentScroll || 0, max);
+    const position = gridReveal(gridCell(at).row, place.rowStep, this.list.currentScroll || 0, this.rows.length);
     if (position === null) return;
     if (this.list.updateSizes) this.list.updateSizes();
     this.list.scrollToPosition(position);

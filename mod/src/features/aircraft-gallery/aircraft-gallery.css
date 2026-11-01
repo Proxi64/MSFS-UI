@@ -104,6 +104,19 @@
 .msfs-ui-gal__body.is-grid .msfs-ui-gal__tile:first-child { margin-bottom: var(--grid-gap); }
 .msfs-ui-gal__body.is-grid .msfs-ui-gal__tile [name="Content"] > [name="Background"] { height: var(--grid-image-h) !important; }
 /*
+ * The tile's banner in Showcase, four lines: the model (AircraftName), the brand (Subtitle, in the name's bold style), the
+ * variant (Distance), both shown here as the Disabled state would hide them for good; and on the lowest line the studio
+ * (the mod's line, in the sim's Distance style), the variant's line left empty when there is none. A text too long is
+ * reduced to fit (gallery-cells.ts).
+ */
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__tile [name="Subtitle"],
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__tile [name="Distance"] { display: flex !important; flex-shrink: 0; }
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__tile [name="Subtitle"] { font-weight: 600 !important; }
+/* Each line at the height of the sim's font (22 pixels at 1164 lines): a text reduced keeps the place of those under it. */
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__tile [name="Content"] > [name="Banner"] > [name="Text"] > * { height: calc(var(--u) * 20.5) !important; align-items: center; }
+.msfs-ui-gal__studio { display: none; position: absolute; left: 0; right: 0; bottom: 0; font-size: var(--fontSizeXS); font-weight: 200; white-space: nowrap; }
+.msfs-ui-gal__body.is-grid .msfs-ui-gal__studio { display: flex; }
+/*
  * The sim's horizontal scroll bar: 75 % of the list's width, centred, and 24 units below it by default (the sim's
  * real-scroll CSS, 1.9.21); here from the grid's left edge to its right one, its bottom on the list's (the block's).
  */

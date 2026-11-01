@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { barColumns, columnOf, defaultGrid, settleColumn, shareTabs, VIEW_TAB_UNITS } from '../src/features/aircraft-gallery/default-grid.ts';
+import { barColumns, columnOf, defaultGrid, shareTabs, VIEW_TAB_UNITS } from '../src/features/aircraft-gallery/default-grid.ts';
 
 describe('default grid', () => {
   it('sizes the owner\'s screen: three columns, the banner over its three lines', () => {
@@ -25,19 +25,6 @@ describe('default grid', () => {
 
   it('gives one column to a narrow room', () => {
     assert.equal(defaultGrid(300, 854, 1440 / 1080).columns, 1);
-  });
-});
-
-describe('settleColumn', () => {
-  it('settles on the multiple of the step nearest the position', () => {
-    assert.equal(settleColumn(0, 548, 3000), 0);
-    assert.equal(settleColumn(300, 548, 3000), 548);
-    assert.equal(settleColumn(260, 548, 3000), 0);
-  });
-
-  it('clamps to the range, max itself when nearer than the last multiple', () => {
-    assert.equal(settleColumn(2990, 548, 3000), 3000);
-    assert.equal(settleColumn(-20, 548, 3000), 0);
   });
 });
 

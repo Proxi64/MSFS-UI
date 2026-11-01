@@ -110,7 +110,7 @@
           "id": "widenColumn",
           "type": "number",
           "title": "Widen the left column",
-          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width. In Showcase it is never narrower than the width where the labels of the panel's bottom block show whole; in Gallery and List the column is 400 units wide instead.",
+          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width. In Showcase it has no effect above 90 units, and the column is never narrower than the width where the labels of the panel's bottom block show whole; in Gallery and List the column is 400 units wide instead.",
           "default": 50,
           "min": 0,
           "max": 200,

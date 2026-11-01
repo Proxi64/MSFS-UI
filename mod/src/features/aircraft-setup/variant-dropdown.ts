@@ -17,6 +17,8 @@ import { translate } from '../../sim/localization.ts';
 
 /** The sim's own word for it (its Manufacture screens). */
 const VARIANT_TITLE = 'TT:MANUFACTURE.BREADCRUMB.VARIATION';
+/** Always this much after the word, in layout units, however long the variant's label. */
+const TITLE_GAP = 12;
 
 export class VariantDropdown {
   private readonly row: HTMLElement;
@@ -24,6 +26,8 @@ export class VariantDropdown {
   private readonly choose: (id: string) => void;
   private dropdown: SimComponent | null = null;
   private variants: ConfiguratorItem[] = [];
+  /** What each variant reads (sim/aircraft-names.ts: variantLabels). */
+  private labels: readonly string[] = [];
   /** The variants and the selected one last given to the dropdown: given again only when they change. */
   private drawn = '';
 
@@ -51,14 +55,15 @@ export class VariantDropdown {
     if (manipulator) manipulator.hideDropdownList();
   }
 
-  render(variants: ConfiguratorItem[]): void {
+  render(variants: ConfiguratorItem[], labels: readonly string[]): void {
     this.variants = variants;
+    this.labels = labels;
     this.draw();
   }
 
   /**
-   * At each layout pass: the selected variant's text starts after the row's title (--msfs-ui-variants-left, in whole
-   * pixels), and the list goes downwards, `below` layout units long (from the row's bottom to the large livery's): the
+   * At each layout pass: the selected variant's text starts one gap after the row's title (--msfs-ui-variants-left, in
+   * whole pixels), and the list goes downwards, `below` layout units long (from the row's bottom to the large livery's): the
    * sim's own scroll for the items that do not fit, the room whole items leave in its top padding
    * (--msfs-ui-variants-top). It ends there whatever the number of variants (the owner's choice, over a list ending
    * anywhere): a short list keeps its items at the top and its room under them.
@@ -68,7 +73,7 @@ export class VariantDropdown {
     if (!dropdown) return;
     const titleBox = this.title.getBoundingClientRect();
     const rowBox = this.row.getBoundingClientRect();
-    setVariable(this.row.style, '--msfs-ui-variants-left', `${Math.ceil(titleBox.right - rowBox.left)}px`);
+    setVariable(this.row.style, '--msfs-ui-variants-left', `${Math.ceil(titleBox.right - rowBox.left + TITLE_GAP * unit)}px`);
     const sized = dropdownListSize({ count: Math.max(1, this.variants.length), below, above: 0, unit }, DROPDOWN_METRICS, 1);
     // Half a pixel more, as dropdownListSize gives a list that scrolls: the engine rounds the height down.
     dropdown.set('List_Size', (sized.up ? sized.size : below + 0.5 / unit).toFixed(2));
@@ -79,14 +84,14 @@ export class VariantDropdown {
     const dropdown = this.dropdown;
     const manipulator = dropdown ? dropdown.manipulator<DropdownManipulator>() : null;
     if (!dropdown || !manipulator) return;
-    const key = this.variants.map((variant) => `${variant.isSelected ? '*' : ''}${variant.id}`).join('|');
+    const key = this.variants.map((variant, at) => `${variant.isSelected ? '*' : ''}${variant.id}=${this.labels[at]}`).join('|');
     if (key !== this.drawn) {
       // Other variants, or another selected: an open list closes (a choice in it has already closed it).
       if (this.drawn) this.close();
       this.drawn = key;
       const items = this.variants.map(
-        (variant): DropdownItem => ({
-          title: translate(variant.title),
+        (variant, at): DropdownItem => ({
+          title: translate(this.labels[at] || variant.title),
           subtitle: '',
           coma: '',
           selectedCallback: () => {

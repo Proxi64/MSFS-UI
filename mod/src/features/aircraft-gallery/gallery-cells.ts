@@ -8,6 +8,8 @@ import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { EYE_SLASH_SVG } from '../../core/icons.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
+import { TextFitter } from '../../core/text-fit.ts';
+import { aircraftNames } from '../../sim/aircraft-names.ts';
 import { PooledCells, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, markOwned, TILE_EVENTS, type SimComponent } from '../../sim/components.ts';
 import type { FavoriteLivery } from '../../sim/favorites.ts';
@@ -23,6 +25,13 @@ export type View = 'gallery' | 'list' | 'showcase';
 export type Axis = 'x' | 'y';
 /** The component a cell shows: an aircraft tile (Gallery, Showcase) or a row (List). */
 type CellKind = 'tile' | 'row';
+
+/** The sim's lines of an aircraft tile, fitted in Showcase; its font (`--fontSizeXS`) and side margins, in layout units. */
+const BANNER_LINES = '[name="AircraftName"], [name="Subtitle"], [name="Distance"], .msfs-ui-gal__studio';
+/** The tile's own text block: the tile holds another Banner and Text for a disabled aircraft. */
+const BANNER_TEXT = '[name="Content"] > [name="Banner"] > [name="Text"]';
+const BANNER_FONT_UNITS = 18;
+const BANNER_SIDE_UNITS = 6;
 
 /** The axis a view scrolls along: Showcase horizontally, as the sim's grid; Gallery and List vertically. */
 export function axisOf(view: View): Axis {
@@ -44,12 +53,14 @@ interface Cell {
 
 /**
  * What a slot of the pool adds to its card for the aircraft tiles: the eye in the corner (hides or brings back the
- * aircraft) next to the heart of the Favorites tiles, and the veil of a hidden aircraft kept for its favourite
- * liveries (a dark layer with a large slashed eye over the thumbnail, a marker only).
+ * aircraft) next to the heart of the Favorites tiles, the veil of a hidden aircraft kept for its favourite liveries (a
+ * dark layer with a large slashed eye over the thumbnail, a marker only), and the studio's line of Showcase (the tile
+ * has three lines of its own).
  */
 interface SlotExtras {
   eye: IconToggle;
   veil: HTMLElement;
+  studio: HTMLElement;
 }
 
 /** What the cells read from the gallery. */
@@ -97,6 +108,7 @@ export class GalleryCells {
   private key = '';
   /** The message shown instead of tiles, if any. */
   private empty = '';
+  private readonly fitter = new TextFitter();
 
   /** `parking`: where the pool keeps its free slots (the gallery's root). */
   constructor(scope: Scope, parking: HTMLElement, body: HTMLElement, context: CellsContext, actions: CellActions) {
@@ -219,6 +231,21 @@ export class GalleryCells {
     this.pooled.materialize(this.cells, this.scroll, this.scrollAxis);
   }
 
+  /** At each layout pass of Showcase: each line of the tiles' banners, `tileWidth` pixels wide, on its line (a text too long reduced to fit). */
+  fitBanners(tileWidth: number, unit: number): void {
+    const width = tileWidth - 2 * Math.round(BANNER_SIDE_UNITS * unit);
+    for (const cell of this.cells) {
+      if (!cell.card) continue;
+      const lines = cell.card.element.querySelectorAll<HTMLElement>(BANNER_LINES);
+      for (let at = 0; at < lines.length; at++) {
+        const line = lines[at]!;
+        // The brand in the name's bold style, the others as the sim's.
+        const bold = line.getAttribute('name') === 'AircraftName' || line.getAttribute('name') === 'Subtitle';
+        this.fitter.fit(line, width, BANNER_FONT_UNITS * unit, bold ? 'bold' : 'light', line.querySelector('.marquee__content') || line);
+      }
+    }
+  }
+
   /** Scrolls the sim's list along its axis (its sizes are measured again first: the tiles may have just changed). */
   scrollTo(position: number): void {
     if (this.scroll.updateSizes) this.scroll.updateSizes();
@@ -268,7 +295,8 @@ export class GalleryCells {
     const veil = el('div', 'msfs-ui-gal__veil');
     veil.innerHTML = EYE_SLASH_SVG;
     veil.style.display = 'none';
-    this.slotExtras.set(slot, { eye, veil });
+    const studio = el('div', 'msfs-ui-gal__studio');
+    this.slotExtras.set(slot, { eye, veil, studio });
     createComponent(scope, kind === 'tile' ? COMPONENTS.fleetTile : COMPONENTS.horizontalTile, slot.cardHost).then(
       (card) => {
         if (scope.disposed) return;
@@ -277,6 +305,8 @@ export class GalleryCells {
         // card hovered (the sim does the same with its WishlistBlock).
         card.element.appendChild(veil);
         card.element.appendChild(slot.iconHost);
+        const text = card.element.querySelector(BANNER_TEXT);
+        if (text && kind === 'tile') text.appendChild(studio);
         this.pooled.markReady(slot);
         if (kind === 'row') markOwned(card);
         card.onClick(scope, () => {
@@ -312,13 +342,28 @@ export class GalleryCells {
     const creator = item.creator.trim();
     if (kind === 'tile') {
       card.set('AircraftImage', image);
-      // Three lines: the name, the variant (and livery), the studio in the tile's third line (Distance, shown by the
-      // CSS); the studio moves up when there is no variant.
-      card.set('AircraftName', name);
-      card.set('Subtitle', subtitle || creator);
-      card.set('Distance', subtitle ? creator : '');
-      if (subtitle && creator) cell.host.classList.add('has-third-line');
-      else cell.host.classList.remove('has-third-line');
+      const slot = cell.slot;
+      const extras = slot ? this.slotExtras.get(slot) : undefined;
+      if (extras) extras.studio.textContent = creator;
+      if (this.context.view() === 'showcase') {
+        // Four lines: the model, the brand, the variant (and livery), and on the banner's lowest line the studio.
+        const names = aircraftNames(item);
+        card.set('AircraftName', names.model);
+        card.set('Subtitle', names.brand);
+        card.set('Distance', subtitle);
+        cell.host.classList.remove('has-third-line');
+      } else {
+        // Three lines: the name, the variant (and livery), the studio in the tile's third line (Distance, shown by the
+        // CSS); the studio moves up when there is no variant.
+        card.set('AircraftName', name);
+        card.set('Subtitle', subtitle || creator);
+        card.set('Distance', subtitle ? creator : '');
+        if (subtitle && creator) cell.host.classList.add('has-third-line');
+        else cell.host.classList.remove('has-third-line');
+        // A slot may come from Showcase, its lines fitted there.
+        const lines = card.element.querySelectorAll<HTMLElement>(BANNER_LINES);
+        for (let at = 0; at < lines.length; at++) this.fitter.reset(lines[at]!);
+      }
     } else {
       card.set('Image', image);
       card.set('Title', name);

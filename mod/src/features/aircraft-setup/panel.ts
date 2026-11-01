@@ -1,6 +1,7 @@
 // The setup panel in the aircraft selection, in place of the statistics (left column). Made of the sim's own
 // components; everything goes through the sim's configurator (`Game.Aircraft.Configurator`, sim/configurator.ts), which
-// the sim already sets on the aircraft chosen in the list; no 3D preview loads. Two modes:
+// the sim already sets on the aircraft chosen in the list; no 3D preview loads. Over it in both modes, the title on three
+// lines (title-block.ts). Two modes:
 // - Gallery and List (the gallery shows the liveries: sim/selection-layout.ts): the variants as tiles (variants.ts), the
 //   aircraft's statistics (statistics.ts), the editable tail number (tail-field.ts), Fuel and Identification; the room
 //   shared by setup-layout.ts.
@@ -16,7 +17,8 @@ import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { revealPosition, type Rows } from '../../core/virtual-list.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
-import { chooseLivery, chooseLiveryWhileSending, chooseVariant, readConfigurator, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
+import { variantLabels, type AircraftNameFields } from '../../sim/aircraft-names.ts';
+import { chooseLivery, chooseLiveryWhileSending, chooseVariant, readConfigurator, readVariantModels, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED } from '../../sim/favorites.ts';
 import { TAIL_NUMBER, type Identification } from '../../sim/liveries.ts';
 import { translate } from '../../sim/localization.ts';
@@ -32,6 +34,7 @@ import type { ShowcasePlaces } from './showcase-layout.ts';
 import { ShowcaseMode, type BottomRow } from './showcase-mode.ts';
 import { StatisticRows, type AircraftStatistic } from './statistics.ts';
 import { TailNumberField } from './tail-field.ts';
+import { TitleBlock } from './title-block.ts';
 import { VariantDropdown } from './variant-dropdown.ts';
 import { VariantsList } from './variants.ts';
 
@@ -77,6 +80,7 @@ export class SetupPanel {
   private readonly actions = el('div', 'msfs-ui-setup__actions');
   /** Fuel and Identification, once created. */
   private readonly actionButtons: SimComponent[] = [];
+  private readonly title: TitleBlock;
   /** Heights last given to the variants list, in pixels: its scrolling element is told when they change. */
   private listHeights = '';
   /** Width of the panel at the last measure of the variants (0: measured at the next Gallery or List pass). */
@@ -134,6 +138,7 @@ export class SetupPanel {
       dropdown: this.dropdown,
     });
     this.tail = new TailNumberField(scope, () => this.selectedLivery());
+    this.title = new TitleBlock(scope);
   }
 
   /** What the Showcase bottom block needs, once measured: the left column is never narrower (index.ts). */
@@ -165,8 +170,9 @@ export class SetupPanel {
     const reload = () => this.scheduleReload();
     watch(scope, configurator.Details, reload);
     // Another aircraft: the variants list closes at once, before the configurator reports the new variants.
-    watch(scope, aircraft.CurrentAircraft, () => {
+    watch<AircraftNameFields | null>(scope, aircraft.CurrentAircraft, (current) => {
       this.dropdown.close();
+      if (current) this.title.render(current);
       reload();
     });
     watch<Identification | null>(scope, aircraft.CurrentIdentification, (identification) => this.tail.setIdentification(identification));
@@ -217,8 +223,10 @@ export class SetupPanel {
     this.beforeLayout();
     const details = this.page.elt.querySelector<HTMLElement>(STATISTICS);
     const statistics = details && details.querySelector<HTMLElement>('[name="Scroll"]');
-    if (!isShown(details) || !statistics) {
+    const header = details && details.querySelector<HTMLElement>('[name="Header"]');
+    if (!isShown(details) || !statistics || !header) {
       this.hide();
+      this.title.leave();
       this.showcase.leave();
       this.showcaseLaidOut = false;
       // Measured again once shown: the tiles may have changed meanwhile.
@@ -228,7 +236,7 @@ export class SetupPanel {
     const unit = uiUnit();
     const tile = liveriesInGallery() ? null : details.querySelector<HTMLElement>(CONFIGURE_TILE);
     // Before measuring: the statistics' top follows the title block's height.
-    this.showcase.holdTitleLines(tile ? details : null, unit);
+    this.title.place(header, unit);
     const origin = this.page.elt.getBoundingClientRect();
     const rect = statistics.getBoundingClientRect();
     // Showcase: nothing is written while the grid gets less than one row (the screen animates). The panel
@@ -358,14 +366,16 @@ export class SetupPanel {
     if (this.scope.disposed || number !== this.reloadNumber) return;
     this.state = state;
     this.variants.render(state.variants);
-    this.dropdown.render(state.variants);
     this.large.render(state.liveries, state.details ? state.details.variationId : '');
     this.grid.render(this.large.items);
     // A failed read of the statistics shows none, and never stops the identification's refresh (the tail number).
-    const current = (await answerOrNull(aircraft.CurrentAircraft(), ANSWER_TIMEOUT_MS, 'the statistics of the aircraft could not be read')) as {
-      details?: AircraftStatistic[];
-    } | null;
+    const [current, models] = await Promise.all([
+      answerOrNull(aircraft.CurrentAircraft(), ANSWER_TIMEOUT_MS, 'the statistics of the aircraft could not be read') as Promise<(AircraftNameFields & { details?: AircraftStatistic[] }) | null>,
+      readVariantModels(state.variants),
+    ]);
     if (this.scope.disposed || number !== this.reloadNumber) return;
+    this.dropdown.render(state.variants, variantLabels(state.variants, models));
+    if (current) this.title.render(current);
     this.statistics.render(current && Array.isArray(current.details) ? current.details.filter((statistic) => !!statistic && !!statistic.name) : []);
     await answerWithin(aircraft.UpdateCurrentAircraftIdentification.request(), ANSWER_TIMEOUT_MS, 'the update of the tail number');
   }

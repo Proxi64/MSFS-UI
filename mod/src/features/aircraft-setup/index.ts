@@ -1,7 +1,7 @@
 // Setup panel in the aircraft selection (panel.ts), and the left column widened by `widenColumn` layout units; in the
 // side by side layout (the liveries in the gallery), the column only holds the variants: it is narrower instead. In
-// Showcase it is never narrower than the width where the bottom block's labels show whole (the owner, 2026-11-01),
-// whatever the option.
+// Showcase the option has no effect above about 90 units, and the column is never narrower than the width where the
+// bottom block's labels show whole (the owner, 2026-11-01), whatever the option.
 
 import { uiUnit } from '../../core/dom.ts';
 import { log, logError } from '../../core/log.ts';
@@ -12,7 +12,7 @@ import { onScreenActive, SCREENS, type Manipulator } from '../../sim/screens.ts'
 import { liveriesInGallery } from '../../sim/selection-layout.ts';
 import CSS from './aircraft-setup.css';
 import { SetupPanel } from './panel.ts';
-import { columnExtra } from './showcase-layout.ts';
+import { columnExtra, showcaseColumnExtra } from './showcase-layout.ts';
 
 /** Width given to the left column in the side by side layout, in layout units from the sim's 470: 400 units. */
 const SIDE_BY_SIDE_EXTRA = -70;
@@ -31,7 +31,7 @@ export function aircraftSetup(settings: Settings['aircraftSetup'], scope: Scope)
       if (!column) return;
       const row = panel.bottomRow();
       if (row && row.need !== fit.need) fit = { need: row.need, extra: columnExtra(row.need, row.frame, uiUnit(), column.base) };
-      const extra = liveriesInGallery() ? SIDE_BY_SIDE_EXTRA : Math.max(settings.widenColumn, fit.extra);
+      const extra = liveriesInGallery() ? SIDE_BY_SIDE_EXTRA : showcaseColumnExtra(settings.widenColumn, fit.extra);
       if (extra === applied) return;
       applied = extra;
       column.resize(extra);

@@ -7,8 +7,8 @@ const TILE_UNITS = 360;
 const GAP_UNITS = 24;
 /** Proportions of the sim's grid images (480 × 229): the image is never cut. */
 const IMAGE_RATIO = 229 / 480;
-/** Room the text banner needs under the image: its three lines of text, 75 units (measured 2026-10-30). */
-const BANNER_UNITS = 75;
+/** Room the text banner needs under the image: its four lines of text (model, brand, variant, studio), and 6 units above and below them. */
+const BANNER_UNITS = 96;
 
 /** The grid's measures, in pixels. */
 export interface DefaultGrid {
@@ -44,17 +44,6 @@ export function defaultGrid(width: number, height: number, unit: number): Defaul
     grid = next;
   }
   return grid;
-}
-
-/**
- * The scroll position of the Showcase view settled on the column nearest `position`: a multiple of `step` (one column
- * plus its gap), clamped to `[0, max]`; `max` itself when it is nearer than the last multiple not above it.
- */
-export function settleColumn(position: number, step: number, max: number): number {
-  const clamped = Math.max(0, Math.min(max, position));
-  let candidate = Math.round(clamped / step) * step;
-  if (candidate > max) candidate = Math.floor(max / step) * step;
-  return max - clamped < Math.abs(clamped - candidate) ? max : candidate;
 }
 
 /** A part of the bar, in pixels from the grid's left edge. */

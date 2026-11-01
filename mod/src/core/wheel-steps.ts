@@ -1,5 +1,5 @@
-// The mouse wheel counted in steps (tested by test/wheel-steps.test.ts): the Showcase view's columns, whatever else moves
-// one step per notch.
+// The mouse wheel counted in steps, and where a list resting on whole steps stops (tested by test/wheel-steps.test.ts):
+// the Showcase view's columns, the grid of small liveries' rows, whatever else moves one step per notch.
 
 /** The wheel delta of one step: a mouse wheel's notch (deltaY 100, deltaMode 0, measured on 1.9.21, 2026-10-30). */
 export const WHEEL_NOTCH = 100;
@@ -27,4 +27,15 @@ export class WheelSteps {
   reset(): void {
     this.rest = 0;
   }
+}
+
+/**
+ * The scroll position settled on the step nearest `position`: a multiple of `step`, clamped to `[0, max]`; `max` itself
+ * when it is nearer than the last multiple not above it.
+ */
+export function settleOnStep(position: number, step: number, max: number): number {
+  const clamped = Math.max(0, Math.min(max, position));
+  let candidate = Math.round(clamped / step) * step;
+  if (candidate > max) candidate = Math.floor(max / step) * step;
+  return max - clamped < Math.abs(clamped - candidate) ? max : candidate;
 }

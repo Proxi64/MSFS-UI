@@ -1,15 +1,24 @@
-// Fixed places of the Showcase setup panel, without the sim (tested by test/aircraft-setup.test.ts). Top to bottom:
-// the variants in a one-row dropdown, the livery header, the current livery large, a grid of small liveries four to a
-// row scrolling down, and a block of two rows (the tail number, then Fuel and Identification) beside the Configure
-// tile. Every part keeps the same place for a given panel size, whatever the aircraft: the number of variants or
-// liveries changes what a part shows, never where it is.
+// Fixed places of the Showcase setup panel, without the sim (tested by test/aircraft-setup.test.ts). Top to bottom under
+// the title block: the variants in a one-row dropdown, the livery header, the current livery large, a grid of small
+// liveries three to a row and two whole rows high, and a block of two rows (the tail number, then Fuel and
+// Identification) beside the Configure tile. Every part keeps the same place for a given panel size, whatever the
+// aircraft: the number of variants or liveries changes what a part shows, never where it is. The gaps between the blocks
+// are equal and share the room left (the owner, 2026-11-01).
 
-import { GAP, LIVERY_RATIO, PADDING_TOP, SCROLL_BAR_ROOM } from './setup-layout.ts';
+import { GAP, LIVERY_RATIO } from './setup-layout.ts';
 
 /** Layout units: height of each row of the bottom block (as `.msfs-ui-setup__tail`). */
 const ROW_HEIGHT = 30;
 /** Small liveries per row of the grid. */
-export const GRID_COLUMNS = 4;
+export const GRID_COLUMNS = 3;
+/** Rows of small liveries in view: never a cut one. */
+export const GRID_ROWS = 2;
+/** More liveries than the grid shows: it scrolls. */
+const GRID_FITS = GRID_COLUMNS * GRID_ROWS;
+/** Layout units kept beside the thumbnails for the sim's scroll bar (7.5 units wide), when the grid scrolls. */
+const GRID_BAR_ROOM = 20;
+/** The left column over the sim's in Showcase, at most, in layout units, unless its labels need more. */
+const SHOWCASE_EXTRA_MAX = 90;
 
 /** A part's place, in pixels from the panel's top. */
 export interface Span {
@@ -17,84 +26,79 @@ export interface Span {
   height: number;
 }
 
-/** The grid of small liveries: its place and its thumbnails, in whole pixels. */
+/** The grid of small liveries: its place and its thumbnails, one size for every aircraft, in whole pixels. */
 export interface GridPlace extends Span {
-  /** The liveries do not fit: the scroll bar takes its room on the right. */
+  /** More liveries than it shows: the scroll bar on the right, the columns closer. */
   scrolls: boolean;
   thumbWidth: number;
-  /** The fourth column's width: it takes what the whole pixels leave, so that the grid ends on the panel's edge. */
-  lastWidth: number;
   thumbHeight: number;
+  /** Between the first and the second column. */
+  columnGap: number;
+  /** Between the second and the third: it takes what the whole pixels leave, so that a grid without a bar ends on the panel's edge. */
+  lastGap: number;
   /** From one row to the next, the gap included. */
   rowStep: number;
 }
 
 export interface ShowcasePlaces {
+  /** Between all the blocks, the title block's bottom to the bottom block's top. */
+  gap: number;
   /** One row, as high as the livery header. */
   variants: Span;
   header: Span;
   /** As wide as the panel. */
   livery: Span;
-  /** Four whole thumbnails across; it scrolls down. */
+  /** The large livery gave up height: the column is too wide for it and the gaps at their minimum. */
+  cropped: boolean;
+  /** Three thumbnails across, two rows high. */
   grid: GridPlace;
   /** Two rows and their gap, ending on the panel's bottom. */
   bottom: Span;
 }
 
 /**
- * The places of the panel's parts in whole pixels, for a panel `width` x `height` pixels, a livery header
- * `headerHeight` pixels high and `unit` pixels per layout unit. The parts from the variants to the grid follow each
- * other with one gap between; the bottom block ends on the bottom and the grid fills everything from its top to one gap
- * above the block. `scrolls` (gridFor): the liveries do not fit the grid, so a vertical scroll bar takes its room on
- * the right and the four thumbnails share the rest of the width (whole pixels; the sim's proportions).
+ * The places of the panel's parts in whole pixels, for a panel `width` x `height` pixels from the title block's bottom
+ * to the bottom block's, a livery header `headerHeight` pixels high and `unit` pixels per layout unit; `count` liveries
+ * (only the grid's columns depend on them). The five gaps are equal and share what the parts leave, the rounding going
+ * to the large livery's height; at their minimum (`GAP`, a column wide enough to need it), the large livery gives up
+ * height instead (`cropped`).
  */
-export function showcasePlaces(width: number, height: number, headerHeight: number, unit: number, scrolls: boolean): ShowcasePlaces {
-  const gap = Math.round(GAP * unit);
-  const row = Math.round(ROW_HEIGHT * unit);
-  const variants = { top: Math.round(PADDING_TOP * unit), height: headerHeight };
-  const header = { top: variants.top + variants.height + gap, height: headerHeight };
-  const livery = { top: header.top + header.height + gap, height: Math.round(width * LIVERY_RATIO) };
-  const bottomHeight = 2 * row + gap;
-  const bottom = { top: height - bottomHeight, height: bottomHeight };
-
-  const gridTop = livery.top + livery.height + gap;
-  const bar = scrolls ? Math.round(SCROLL_BAR_ROOM * unit) : 0;
-  const room = Math.round(width) - (GRID_COLUMNS - 1) * gap - bar;
-  const thumbWidth = Math.floor(room / GRID_COLUMNS);
+export function showcasePlaces(width: number, height: number, headerHeight: number, unit: number, count: number): ShowcasePlaces {
+  const panel = Math.round(width);
+  const high = Math.round(height);
+  const smallGap = Math.round(GAP * unit);
+  const bottomHeight = 2 * Math.round(ROW_HEIGHT * unit) + smallGap;
+  const thumbWidth = Math.max(0, Math.floor((panel - Math.round(GRID_BAR_ROOM * unit) - (GRID_COLUMNS - 1) * smallGap) / GRID_COLUMNS));
   const thumbHeight = Math.round(thumbWidth * LIVERY_RATIO);
+  const gridHeight = GRID_ROWS * thumbHeight + (GRID_ROWS - 1) * smallGap;
+
+  const fixed = 2 * headerHeight + gridHeight + bottomHeight;
+  const whole = Math.round(panel * LIVERY_RATIO);
+  const gap = Math.max(smallGap, Math.floor((high - fixed - whole) / 5));
+  const liveryHeight = high - fixed - 5 * gap;
+
+  const variants = { top: gap, height: headerHeight };
+  const header = { top: variants.top + headerHeight + gap, height: headerHeight };
+  const livery = { top: header.top + headerHeight + gap, height: liveryHeight };
+  const scrolls = count > GRID_FITS;
+  const spread = panel - GRID_COLUMNS * thumbWidth;
+  const columnGap = scrolls ? smallGap : Math.floor(spread / 2);
   const grid = {
-    top: gridTop,
-    height: bottom.top - gap - gridTop,
+    top: livery.top + liveryHeight + gap,
+    height: gridHeight,
     scrolls,
     thumbWidth,
-    lastWidth: room - (GRID_COLUMNS - 1) * thumbWidth,
     thumbHeight,
-    rowStep: thumbHeight + gap,
+    columnGap,
+    lastGap: scrolls ? smallGap : spread - columnGap,
+    rowStep: thumbHeight + smallGap,
   };
-  return { variants, header, livery, grid, bottom };
+  return { gap, variants, header, livery, cropped: liveryHeight < whole, grid, bottom: { top: high - bottomHeight, height: bottomHeight } };
 }
 
-/**
- * The grid for `count` liveries, from its two forms (the place given by showcasePlaces without and with the scroll bar);
- * a function of the count and the sizes only, never of what the last pass drew, so that it cannot swing between two
- * widths from pass to pass. The wide form when the rows fit; the scrolling form when they fit in neither; between the
- * two (the wide rows too high by a few pixels, the narrow ones fitting: a list that would not scroll, with room left for
- * a scroll bar it does not show) the wide form, its thumbnails lowered to fit: on the panel's edges, no bar, at most 6 %
- * lower than the sim's proportions (the sim's image covers its button: it is cut, not squeezed).
- */
-export function gridFor(count: number, wide: GridPlace, narrow: GridPlace): GridPlace {
-  const rows = Math.ceil(count / GRID_COLUMNS);
-  const high = (grid: GridPlace) => rows * grid.rowStep - (grid.rowStep - grid.thumbHeight);
-  if (rows === 0 || high(wide) <= wide.height) return wide;
-  if (high(narrow) > narrow.height) return narrow;
-  const gap = wide.rowStep - wide.thumbHeight;
-  const thumbHeight = Math.floor((wide.height - (rows - 1) * gap) / rows);
-  return { ...wide, thumbHeight, rowStep: thumbHeight + gap };
-}
-
-/** Whether the grid gets at least one row: under it (the screen animates) the panel is not laid out. */
-export function gridHasRoom(grid: Pick<GridPlace, 'height' | 'thumbHeight' | 'rowStep'>): boolean {
-  return grid.thumbHeight >= 1 && grid.height >= grid.rowStep;
+/** Whether the panel gets its parts: under it (the screen animates) it is not laid out. */
+export function panelHasRoom(places: ShowcasePlaces): boolean {
+  return places.grid.thumbHeight >= 1 && places.livery.height >= places.grid.thumbHeight;
 }
 
 /** What the bottom block's parts need, in pixels (measured by the caller). */
@@ -151,21 +155,25 @@ export function columnExtra(need: number, frame: number, unit: number, base: num
   return Math.ceil((need + frame + 1) / unit - base);
 }
 
-/** The place of livery `index` in the grid of small liveries: four to a row, row-major, the first on top left. */
+/** The left column's extra width in Showcase, in layout units: the option (`widen`) up to about 90, what the labels need (`labels`) above it. */
+export function showcaseColumnExtra(widen: number, labels: number): number {
+  return Math.max(Math.min(widen, SHOWCASE_EXTRA_MAX), labels);
+}
+
+/** The place of livery `index` in the grid of small liveries: three to a row, row-major, the first on top left. */
 export function gridCell(index: number): { row: number; column: number } {
   return { row: Math.floor(index / GRID_COLUMNS), column: index % GRID_COLUMNS };
 }
 
 /**
- * The scroll position, in pixels, that brings row `row` of the grid (thumbnails `thumbHeight` pixels high, `rowStep`
- * pixels from one row to the next) into a view `view` pixels high scrolled to `scroll`: null when the row is already
- * whole in view; otherwise the grid moves as little as it can: a row above the view, or cut at its top, on the view's
- * top; one below it, or cut at the bottom, with its thumbnails' bottom on the view's bottom; within 0 to `max`, the
- * largest scroll.
+ * The scroll position, in pixels, that brings row `row` of a grid of `rows` rows (`rowStep` pixels apart) into its view
+ * of two whole rows, scrolled to `scroll`: null when it already is, on a whole row; otherwise the grid moves by whole
+ * rows and as little as it can.
  */
-export function gridReveal(row: number, rowStep: number, thumbHeight: number, view: number, scroll: number, max: number): number | null {
-  const top = row * rowStep;
-  const bottom = top + thumbHeight;
-  if (top >= scroll && bottom <= scroll + view) return null;
-  return Math.max(0, Math.min(max, top < scroll ? top : bottom - view));
+export function gridReveal(row: number, rowStep: number, scroll: number, rows: number): number | null {
+  const last = Math.max(0, rows - GRID_ROWS);
+  const first = Math.max(0, Math.min(last, Math.round(scroll / rowStep)));
+  const wanted = row < first ? row : row >= first + GRID_ROWS ? row - GRID_ROWS + 1 : first;
+  const position = Math.max(0, Math.min(last, wanted)) * rowStep;
+  return position === scroll ? null : position;
 }

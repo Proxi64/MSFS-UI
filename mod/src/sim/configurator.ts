@@ -3,7 +3,7 @@
 // releases the configurator when leaving the screen and sets it only on a click on a tile or on "Configure"; a choice
 // sent to a released configurator makes the current aircraft invalid: every choice is guarded (`canApply`).
 
-import { answerWithin } from '../core/async.ts';
+import { answerOrNull, answerWithin } from '../core/async.ts';
 import { logError } from '../core/log.ts';
 import { syncConfiguratorToCurrent, type ConfiguratorLivery } from './aircraft-loading.ts';
 import { loadFavoriteLiveries, saveFavoriteLiveries, withFavoriteLivery } from './favorites.ts';
@@ -52,7 +52,28 @@ export async function readConfigurator(): Promise<ConfiguratorState> {
   };
 }
 
-/** Sets the configurator on the current aircraft (variant and livery) unless it already is. True when ready. */
+/** The models of the variants read so far, by variant id: they do not change while the sim runs. */
+const variantModels = new Map<string, string>();
+
+/**
+ * The model of each of `variants`, by id (`GetAircraftFromVariationId`, for the variants' labels: sim/aircraft-names.ts);
+ * one the sim does not answer for is left out, and asked again next time. A single variant has no label to choose.
+ */
+export async function readVariantModels(variants: readonly ConfiguratorItem[]): Promise<ReadonlyMap<string, string>> {
+  if (variants.length < 2) return variantModels;
+  const reads = variants
+    .filter((variant) => !variantModels.has(variant.id))
+    .map(async (variant) => {
+      const details = (await answerOrNull(store.Game.Aircraft.GetAircraftFromVariationId.request(variant.id), ANSWER_TIMEOUT_MS, 'the model of a variant could not be read')) as {
+        modelName?: string;
+      } | null;
+      if (details) variantModels.set(variant.id, details.modelName || '');
+    });
+  await Promise.all(reads);
+  return variantModels;
+}
+
+/** Sets the configurator on the current aircraft (variant and current livery) unless it already is. True when ready. */
 export async function syncConfigurator(): Promise<boolean> {
   const ready = await syncConfiguratorToCurrent();
   if (!ready) logError('the configurator cannot be set on the current aircraft');

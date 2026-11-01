@@ -1,16 +1,16 @@
 // The setup panel's Showcase mode (panel.ts builds the parts and switches the modes): every part at its fixed place
-// (showcase-layout.ts), the sim's title block holding its variant line, and the bottom block in two columns: the sim's
-// Configure tile on the left (configure-tile.ts), the tail number over Fuel and Identification on the right, as wide as
-// their labels need; and what that block needs, for the left column's width (index.ts).
+// (showcase-layout.ts), and the bottom block in two columns: the sim's Configure tile on the left (configure-tile.ts), the
+// tail number over Fuel and Identification on the right, as wide as their labels need; and what that block needs, for the
+// left column's width (index.ts).
 
-import { setStyle, setVariable } from '../../core/dom.ts';
+import { setStyle, setVariable, toggleClass } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import type { SimComponent } from '../../sim/components.ts';
 import { ConfigureTile } from './configure-tile.ts';
 import type { LiveryGrid } from './livery-grid.ts';
 import { GAP } from './setup-layout.ts';
-import { bottomColumns, gridFor, gridHasRoom, rowNeed, sharedColumns, showcasePlaces, type BottomNeeds, type ShowcasePlaces, type Span } from './showcase-layout.ts';
+import { bottomColumns, panelHasRoom, rowNeed, sharedColumns, showcasePlaces, type BottomNeeds, type ShowcasePlaces, type Span } from './showcase-layout.ts';
 import type { VariantDropdown } from './variant-dropdown.ts';
 
 /** The variant and livery headers, in layout units (a section header of core/theme.css): their height in whole pixels. */
@@ -85,9 +85,6 @@ export class ShowcaseMode {
   private needs: { key: string; parts: BottomNeeds; row: BottomRow | null } | null = null;
   private unmeasured = 0;
   private misfits = 0;
-  /** The sim's variant line held at one line's height, and that height for a unit (holdTitleLines). */
-  private heldSubtitle: HTMLElement | null = null;
-  private line: { unit: number; height: number } | null = null;
 
   constructor(scope: Scope, parts: ShowcaseParts) {
     this.parts = parts;
@@ -96,16 +93,14 @@ export class ShowcaseMode {
   }
 
   /**
-   * The places for a panel from the statistics' top (`rect`) to the bottom of `details` (`Fleet_Details`); null while
-   * the grid gets less than one row (the screen animates): nothing is laid out then. The grid's form depends on the
-   * number of liveries and the sizes only (gridFor); the other parts are the same in both.
+   * The places for a panel from the title block's bottom, the statistics' top (`rect`), to the bottom of `details`
+   * (`Fleet_Details`); null while it lacks the room for its parts (the screen animates): nothing is laid out then. Only
+   * the grid's columns depend on the number of liveries.
    */
   places(rect: DOMRect, details: HTMLElement, unit: number): ShowcasePlaces | null {
     const height = details.getBoundingClientRect().bottom - rect.top;
-    const header = Math.round(HEADER_HEIGHT * unit);
-    const places = showcasePlaces(rect.width, height, header, unit, false);
-    const grid = gridFor(this.parts.grid.count, places.grid, showcasePlaces(rect.width, height, header, unit, true).grid);
-    return gridHasRoom(grid) ? { ...places, grid } : null;
+    const places = showcasePlaces(rect.width, height, Math.round(HEADER_HEIGHT * unit), unit, this.parts.grid.count);
+    return panelHasRoom(places) ? places : null;
   }
 
   /**
@@ -120,7 +115,8 @@ export class ShowcaseMode {
     placeSpan(parts.variantRow, places.variants);
     placeSpan(parts.liveryHeader, places.header);
     placeSpan(parts.largeHost, places.livery);
-    parts.grid.layout(places.grid, unit);
+    toggleClass(parts.largeHost, 'is-cropped', places.cropped);
+    parts.grid.layout(places.grid);
 
     // The tile and the right column in whole pixels, each label whole (showcase-layout.ts); until the labels are
     // measured, and while the left column widens to fit them (index.ts), the block is shared in halves.
@@ -159,37 +155,9 @@ export class ShowcaseMode {
     return this.needs ? this.needs.row : null;
   }
 
-  /**
-   * Showcase (`details`; null: not): the sim's title block keeps the room of its third line, the variant, when it has
-   * none (a legacy aircraft, such as the iFly 737 MAX: 130 pixels high instead of 158 at 1440 lines), so that the panel
-   * under it keeps its place. The line is held at ONE line of the studio's font, measured once per resolution (a probe
-   * in the studio's line), so a studio name on two lines does not change it.
-   */
-  holdTitleLines(details: HTMLElement | null, unit: number): void {
-    const subtitle = details ? details.querySelector<HTMLElement>('[name="Header"] > [name="Subtitle"]') : null;
-    const creator = details ? details.querySelector<HTMLElement>('[name="Header"] > [name="Creator"]') : null;
-    const held = subtitle && creator ? subtitle : null;
-    if (this.heldSubtitle && this.heldSubtitle !== held) setStyle(this.heldSubtitle.style, 'minHeight', '');
-    this.heldSubtitle = held;
-    if (!held || !creator) return;
-    if (!this.line || this.line.unit !== unit) {
-      const probe = document.createElement('span');
-      probe.style.display = 'block';
-      probe.style.whiteSpace = 'nowrap';
-      probe.textContent = 'X';
-      creator.appendChild(probe);
-      const height = probe.getBoundingClientRect().height;
-      creator.removeChild(probe);
-      if (!(height > 0)) return;
-      this.line = { unit, height };
-    }
-    setStyle(held.style, 'minHeight', `${this.line.height}px`);
-  }
-
-  /** The panel leaves Showcase (or unloads): the sim's tile and title block as they were, the panel's places cleared. */
+  /** The panel leaves Showcase (or unloads): the sim's tile as it was, the panel's places cleared. */
   leave(): void {
     this.configure.restore();
-    this.holdTitleLines(null, 0);
     const parts = this.parts;
     for (const part of [parts.tailRow, parts.actions]) {
       for (const property of ['top', 'height', 'left', 'width'] as const) setStyle(part.style, property, '');

@@ -441,6 +441,7 @@ export class Gallery {
     }
     this.bar.layoutGrid(grid, unit);
     this.placeLiveries(null);
+    this.cells.fitBanners(grid.tileWidth, unit);
   }
 
   /** The livery column placed, or hidden (null). */

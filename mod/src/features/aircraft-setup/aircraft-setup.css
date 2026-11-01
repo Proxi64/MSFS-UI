@@ -147,6 +147,20 @@
 .msfs-ui-setup__dropdown [name="List"] .scroll__content { padding-top: var(--msfs-ui-variants-top) !important; }
 
 /*
+ * The title block on three lines (title-block.ts): the sim's lines hidden, the mod's in their place in the sim's sizes,
+ * weights and colour (its AircraftName and Creator, cookedcomps, 1.9.21), each on one line at a fixed height, whatever a
+ * text reduced to fit: the block stays the same from one aircraft to the next. No --u on the sim's elements.
+ */
+.msfs-ui-setup-title-host > [name="AircraftName"],
+.msfs-ui-setup-title-host > [name="Creator"],
+.msfs-ui-setup-title-host > [name="Subtitle"] { display: none !important; }
+.msfs-ui-setup-title { position: relative; flex-shrink: 0; color: var(--colorComplementary2_Content); }
+.msfs-ui-setup-title__model,
+.msfs-ui-setup-title__line { display: flex; align-items: center; white-space: nowrap; }
+.msfs-ui-setup-title__model { height: calc(var(--unscaledScreenHeight) * 32px / 1080); font-size: var(--fontSizeS); font-weight: 600; }
+.msfs-ui-setup-title__line { height: calc(var(--unscaledScreenHeight) * 24px / 1080); font-size: var(--fontSizeXS); font-weight: 200; }
+
+/*
  * The current livery, large (large-livery.ts): the sim's livery button filling its place; over it, inside the button
  * (its Hover stays while the pointer is on them), the sim's arrows on the sides, vertically centred, 30 units wide as
  * on the sim's own livery block, its position at the bottom left and its heart at the bottom right, 6 units from the
@@ -200,9 +214,10 @@
 }
 
 /*
- * The grid of small liveries (livery-grid.ts): the sim's vertical list holds rows of four thumbnails, --grid-w x --grid-h
- * in whole pixels, --grid-gap apart, the fourth --grid-last-w wide (showcase-layout.ts), without the list's padding. A
- * list that does not scroll has no bar beside it (as the variants above): the sim keeps its bar's width otherwise.
+ * The grid of small liveries (livery-grid.ts): the sim's vertical list holds rows of three thumbnails, --grid-w x --grid-h
+ * in whole pixels, --grid-column-gap, then --grid-last-gap apart, --grid-row-gap between the rows (showcase-layout.ts),
+ * without the list's padding. A list that does not scroll has no bar beside it (as the variants above): the sim keeps its
+ * bar's width otherwise.
  */
 .msfs-ui-setup__grid-list { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 .msfs-ui-setup__grid-list .scroll__content {
@@ -212,10 +227,11 @@
   padding: 0 !important;
 }
 .msfs-ui-setup__grid-list:not(.is-scrolling) .scroll__bar-container { display: none !important; }
-.msfs-ui-setup__grid-row { position: relative; flex-shrink: 0; display: flex; flex-direction: row; align-items: flex-start; margin-bottom: var(--grid-gap); }
+.msfs-ui-setup__grid-row { position: relative; flex-shrink: 0; display: flex; flex-direction: row; align-items: flex-start; margin-bottom: var(--grid-row-gap); }
 .msfs-ui-setup__grid-row:last-child { margin-bottom: 0; }
-.msfs-ui-setup__grid-cell { position: relative; flex-shrink: 0; width: var(--grid-w); height: var(--grid-h); margin-right: var(--grid-gap); }
-.msfs-ui-setup__grid-cell.is-last { width: var(--grid-last-w); margin-right: 0; }
+.msfs-ui-setup__grid-cell { position: relative; flex-shrink: 0; width: var(--grid-w); height: var(--grid-h); margin-right: var(--grid-column-gap); }
+.msfs-ui-setup__grid-cell.is-second { margin-right: var(--grid-last-gap); }
+.msfs-ui-setup__grid-cell.is-last { margin-right: 0; }
 .msfs-ui-setup__grid-cell.is-disabled { opacity: 0.45; }
 .msfs-ui-setup__grid-button { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 /* The heart as on the large livery, in the top right corner, 4 units in: on hover of the thumbnail, or a favourite. */
@@ -246,3 +262,5 @@
  */
 .msfs-ui-setup__large-button [name="Image"],
 .msfs-ui-setup__grid-button [name="Image"] { left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important; }
+/* The last resort of a column too wide (showcase-layout.ts): the large livery gives up height from its top. */
+.msfs-ui-setup__large.is-cropped [name="Image"] { background-position-y: 100% !important; }

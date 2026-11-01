@@ -12,6 +12,9 @@ export interface AircraftItem {
   variationIndex: number;
   variationId: string;
   displayName: string;
+  /** Shown apart on the tiles of Showcase (sim/aircraft-names.ts). */
+  brandName?: string;
+  modelName?: string;
   /** Studio (`Asobo Studio`). */
   creator: string;
   variation: string;

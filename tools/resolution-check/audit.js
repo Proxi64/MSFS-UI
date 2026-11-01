@@ -60,8 +60,8 @@
   }
   // The setup panel: every block on the title block's edges. In Showcase the bottom block is the sim's Configure tile,
   // moved there, on the left and the tail number over Fuel and Identification on the right: from the tile to that column
-  // is the block; four thumbnails per row in the grid, the labels whole, the tile as high as the two rows, every part
-  // of the block reached by the pointer (the panel's box must not cover the tile).
+  // is the block; three thumbnails per row in the grid, two whole rows in view at rest, the labels whole, the tile as
+  // high as the two rows, every part of the block reached by the pointer (the panel's box must not cover the tile).
   var setup = document.querySelector('.msfs-ui-setup');
   var title = document.querySelector('[name="Fleet_Details"] [name="Header"]');
   if (visible(setup) && title) {
@@ -99,7 +99,7 @@
         if (!reached(part)) problems.push('Showcase: not reached by the pointer: ' + name(part));
       });
       // The owner's marks of 2026-11-01: the tail title over Fuel and the field over Identification on one vertical line each,
-      // the same gap between the blocks as seen (title block, Variant, Livery, large image, grid), the large image on the panel's edges.
+      // the same gap between the blocks as seen (title block, Variant, Livery, large image, grid, bottom block), the large image on the panel's edges.
       var tailTitle = setup.querySelector('.msfs-ui-setup__tail-title');
       var tailField = setup.querySelector('.msfs-ui-setup__field');
       var buttons = setup.querySelectorAll('.msfs-ui-setup__action');
@@ -113,7 +113,7 @@
       if (visible(largeImage)) {
         var li = rect(largeImage);
         if (Math.abs(li.l - placeRoot.l) > 0.5 || Math.abs(li.r - placeRoot.r) > 0.5) problems.push('Showcase: the large livery off the panel: ' + px(li.l) + '-' + px(li.r) + ' panel ' + px(placeRoot.l) + '-' + px(placeRoot.r));
-        var seen = [title, setup.querySelector('.msfs-ui-setup__variant-row'), setup.querySelector('.msfs-ui-setup__livery-header'), largeImage, setup.querySelector('.msfs-ui-setup__grid-cell [name="Image"]')];
+        var seen = [title, setup.querySelector('.msfs-ui-setup__variant-row'), setup.querySelector('.msfs-ui-setup__livery-header'), largeImage, setup.querySelector('.msfs-ui-setup__grid'), tail];
         if (seen.every(visible)) {
           var gapsSeen = [];
           for (var g = 1; g < seen.length; g++) gapsSeen.push(Math.round(rect(seen[g]).t - rect(seen[g - 1]).b));
@@ -126,10 +126,25 @@
         var scrolling = grid.querySelector('real-scroll').classList.contains('is-scrolling');
         Array.prototype.slice.call(grid.querySelectorAll('.msfs-ui-setup__grid-row')).forEach(function (row, at, rows) {
           var cells = row.children;
-          if (cells.length > 4 || (cells.length < 4 && at < rows.length - 1)) problems.push('Showcase: ' + cells.length + ' thumbnails in a row of the grid');
-          if (!scrolling && cells.length === 4 && Math.abs(rect(cells[3]).r - gr.r) > 1) problems.push('Showcase: the grid ends off the panel: ' + px(rect(cells[3]).r) + ' panel ' + px(gr.r));
+          if (cells.length > 3 || (cells.length < 3 && at < rows.length - 1)) problems.push('Showcase: ' + cells.length + ' thumbnails in a row of the grid');
+          if (!scrolling && cells.length === 3 && Math.abs(rect(cells[2]).r - gr.r) > 1) problems.push('Showcase: the grid ends off the panel: ' + px(rect(cells[2]).r) + ' panel ' + px(gr.r));
+          // Never a cut thumbnail at rest: a row is whole in the grid's view or wholly out of it.
+          var rw = rect(row);
+          if (rw.b > gr.t + 0.5 && rw.t < gr.b - 0.5 && (rw.t < gr.t - 0.5 || rw.b > gr.b + 0.5)) problems.push('Showcase: a row of the grid cut: ' + px(rw.t) + '-' + px(rw.b) + ' view ' + px(gr.t) + '-' + px(gr.b));
         });
       }
+    }
+    // The title on three lines: each whole on its line, whatever the view.
+    var titleBox = title.querySelector('.msfs-ui-setup-title');
+    if (!titleBox) problems.push('the title block does not hold the mod\'s lines');
+    else {
+      Array.prototype.slice.call(titleBox.children).forEach(function (line) {
+        var q = document.createRange();
+        q.selectNodeContents(line);
+        var w = q.getBoundingClientRect().width;
+        if (w > rect(titleBox).w + 0.5) problems.push('a title line cut: "' + line.textContent + '" ' + px(w) + ' > ' + px(rect(titleBox).w));
+        if (rect(line).b > tr.b + 0.5) problems.push('a title line under the block: "' + line.textContent + '"');
+      });
     }
     // The variant tiles, by row: the first on the title block's left edge, the last on its right one unless the list
     // scrolls (the bar's room is then kept).
@@ -151,5 +166,24 @@
     if (!showcase && rect(setup).b > rect(document.querySelector('[name="Fleet_Details"] [name="ButtonBlock"]') || setup).t + 1) problems.push('setup panel runs over the Configure tile');
     if (showcase && rect(setup).b > rect(document.querySelector('[name="Fleet_Details"]') || setup).b + 1) problems.push('Showcase: setup panel runs out of Fleet_Details');
   }
+  // Showcase's tiles: the four lines inside their banner, none wider than it, the studio on the lowest.
+  Array.prototype.slice.call(document.querySelectorAll('.msfs-ui-gal__body.is-grid .msfs-ui-gal__tile')).filter(visible).forEach(function (tile) {
+    var banner = tile.querySelector('[name="Content"] > [name="Banner"] > [name="Text"]');
+    if (!banner) return;
+    var br = rect(banner);
+    var lines = ['[name="AircraftName"]', '[name="Subtitle"]', '[name="Distance"]', '.msfs-ui-gal__studio'].map(function (q) { return banner.querySelector(q); });
+    lines.forEach(function (line) {
+      if (!line) return;
+      var inner = line.querySelector('.marquee__content') || line;
+      if (!(inner.textContent || '').trim()) return;
+      var r = rect(line);
+      if (r.t < br.t - 0.5 || r.b > br.b + 0.5) problems.push('a tile line out of its banner: "' + inner.textContent.trim().slice(0, 30) + '" ' + px(r.t) + '-' + px(r.b) + ' banner ' + px(br.t) + '-' + px(br.b));
+      var q = document.createRange();
+      q.selectNodeContents(inner);
+      if (q.getBoundingClientRect().width > br.w + 0.5) problems.push('a tile line cut: "' + inner.textContent.trim().slice(0, 30) + '"');
+    });
+    var studio = lines[3];
+    if (studio && (studio.textContent || '').trim() && Math.abs(rect(studio).b - br.b) > 1) problems.push('the studio off the banner\'s lowest line: ' + px(rect(studio).b) + ' banner ' + px(br.b));
+  });
   return JSON.stringify({ size: W + 'x' + H + ' u=' + px(u * 1000) / 1000, parts: parts, problems: problems });
 })()

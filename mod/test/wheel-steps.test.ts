@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { WheelSteps } from '../src/core/wheel-steps.ts';
+import { WheelSteps, settleOnStep } from '../src/core/wheel-steps.ts';
 
 describe('WheelSteps', () => {
   it('moves one step per notch of a mouse wheel, toward the end or the start', () => {
@@ -34,5 +34,18 @@ describe('WheelSteps', () => {
     assert.equal(wheel.add(3, 1), 1);
     assert.equal(wheel.add(-1, 2), -1);
     assert.equal(wheel.add(0, 0), 0);
+  });
+});
+
+describe('settleOnStep', () => {
+  it('settles on the multiple of the step nearest the position', () => {
+    assert.equal(settleOnStep(0, 548, 3000), 0);
+    assert.equal(settleOnStep(300, 548, 3000), 548);
+    assert.equal(settleOnStep(260, 548, 3000), 0);
+  });
+
+  it('clamps to the range, max itself when nearer than the last multiple', () => {
+    assert.equal(settleOnStep(2990, 548, 3000), 3000);
+    assert.equal(settleOnStep(-20, 548, 3000), 0);
   });
 });
