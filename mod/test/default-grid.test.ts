@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { barColumns, columnOf, defaultGrid, settleColumn, WheelColumns } from '../src/features/aircraft-gallery/default-grid.ts';
+import { barColumns, columnOf, defaultGrid, settleColumn, shareTabs, TAB_UNITS, WheelColumns } from '../src/features/aircraft-gallery/default-grid.ts';
 
 describe('default grid', () => {
   it('sizes the owner\'s screen: three columns, the banner over its three lines', () => {
@@ -101,5 +101,27 @@ describe('barColumns', () => {
     assert.equal(barColumns({ columns: 2, tileWidth: 791, tileHeight: 404, imageHeight: 377, gap: 32, gridWidth: 1614 }, unit), null);
     // 300 pixels at one pixel per unit: under the 356 units of Hidden, Favorites and the dropdown.
     assert.equal(barColumns({ columns: 3, tileWidth: 300, tileHeight: 300, imageHeight: 143, gap: 24, gridWidth: 948 }, 1), null);
+  });
+});
+describe('view tabs', () => {
+  it('shares 300 units as 100, 80 and 120', () => {
+    assert.deepEqual(TAB_UNITS, { gallery: 100, list: 80, showcase: 120 });
+    assert.deepEqual(shareTabs(300), [100, 80, 120]);
+  });
+
+  it('shares whole pixels, the last tab taking the rest', () => {
+    const tabs = shareTabs(301);
+    assert.equal(tabs.reduce((sum, width) => sum + width, 0), 301);
+    assert.ok(tabs.every((width) => Number.isInteger(width)));
+    assert.equal(tabs[0], Math.floor((301 * 100) / 300));
+    assert.equal(tabs[1], Math.floor((301 * 80) / 300));
+  });
+
+  it('keeps each tab at its minimum in the narrowest room', () => {
+    const tabs = shareTabs(211);
+    assert.equal(tabs[0], 70);
+    assert.equal(tabs[1], 56);
+    assert.ok(tabs[2]! >= 84);
+    assert.equal(tabs[0]! + tabs[1]! + tabs[2]!, 211);
   });
 });

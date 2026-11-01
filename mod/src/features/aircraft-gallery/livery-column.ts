@@ -141,8 +141,9 @@ export function liveryTail(chosen: string | undefined, atcId: string | null, tit
 
 /**
  * Class of the gallery's list for a view: written whole at every rebuild of the list, so it carries the side by side
- * flag too (the List rows' two lines depend on it; dropped until the next layout pass, they would flicker).
+ * flag too (the List rows' two lines depend on it; dropped until the next layout pass, they would flicker). Every view
+ * is side by side but the Showcase view's grid (`grid`).
  */
-export function galleryBodyClass(view: string, sideBySide: boolean): string {
-  return `msfs-ui-gal__body is-${view}${sideBySide ? ' is-side-by-side' : ''}`;
+export function galleryBodyClass(view: string): string {
+  return `msfs-ui-gal__body is-${view}${view === 'grid' ? '' : ' is-side-by-side'}`;
 }

@@ -1,6 +1,6 @@
 // The gallery's list (gallery.ts): the sim's scrolling list, made for the axis of the view, with a host per tile
-// (Default: a column host per two tiles, column-major as the sim's grid). Only the tiles near the visible part get the
-// sim's components, from a pool of slots (sim/component-pool.ts): the aircraft tiles of Gallery and Default share one,
+// (Showcase: a column host per two tiles, column-major as the sim's grid). Only the tiles near the visible part get the
+// sim's components, from a pool of slots (sim/component-pool.ts): the aircraft tiles of Gallery and Showcase share one,
 // the List rows another.
 
 import { el, toggleClass } from '../../core/dom.ts';
@@ -17,16 +17,16 @@ import { createRealScroll, type RealScroll } from '../../sim/real-scroll.ts';
 import { columnOf } from './default-grid.ts';
 import type { AircraftItem, Tile } from './tiles.ts';
 
-/** The views; `stock` is the Default view (its stored name, from when it showed the sim's own grid). */
-export type View = 'gallery' | 'list' | 'stock';
-/** The axis a view's list scrolls along: Default horizontally, the others vertically. */
+/** The views (the Showcase view was once stored as `stock`: memory.ts). */
+export type View = 'gallery' | 'list' | 'showcase';
+/** The axis a view's list scrolls along: Showcase horizontally, the others vertically. */
 export type Axis = 'x' | 'y';
-/** The component a cell shows: an aircraft tile (Gallery, Default) or a row (List). */
+/** The component a cell shows: an aircraft tile (Gallery, Showcase) or a row (List). */
 type CellKind = 'tile' | 'row';
 
-/** The axis a view scrolls along: Default (`stock`) horizontally, as the sim's grid; Gallery and List vertically. */
+/** The axis a view scrolls along: Showcase horizontally, as the sim's grid; Gallery and List vertically. */
 export function axisOf(view: View): Axis {
-  return view === 'stock' ? 'x' : 'y';
+  return view === 'showcase' ? 'x' : 'y';
 }
 
 function kindOf(view: View): CellKind {
@@ -58,7 +58,6 @@ export interface CellsContext {
   /** Current aircraft (variant and livery, as `liveryKey`): selection of the livery tiles. */
   current(): { variationId: string; livery: string };
   hidden(): HiddenAircraft[];
-  /** Side by side layout: the List rows on two lines. */
   /** The class of the list's element for a view (livery-column.ts). */
   bodyClass(view: View): string;
   /** A list was made for `axis`: what goes with it is disposed with `scope`. */
@@ -81,13 +80,13 @@ export class GalleryCells {
   private readonly actions: CellActions;
   /**
    * The sim's scrolling list, in the body: it holds the tiles (or the empty message). Made for one axis (makeList):
-   * Default scrolls along x, Gallery and List along y; another axis makes another list.
+   * Showcase scrolls along x, Gallery and List along y; another axis makes another list.
    */
   private scroll!: RealScroll;
   private scrollAxis: Axis = 'y';
   /** The list's own listener and its place in the body, disposed when the list is replaced. */
   private listScope: Scope | null = null;
-  /** What is in the list now: the tiles' hosts (Gallery, List), their column hosts (Default) or the empty message. */
+  /** What is in the list now: the tiles' hosts (Gallery, List), their column hosts (Showcase) or the empty message. */
   private listItems: HTMLElement[] = [];
   /** The eye and veil of each slot of the pool, made with the slot (createSlot). */
   private readonly slotExtras = new WeakMap<PoolSlot<Cell>, SlotExtras>();
@@ -176,7 +175,7 @@ export class GalleryCells {
     this.empty = empty;
     const scroll = this.scroll.currentScroll || 0;
     this.clear();
-    const grid = view === 'stock';
+    const grid = view === 'showcase';
     this.body.className = this.context.bodyClass(view);
     if (empty) {
       const message = el('div', 'msfs-ui-gal__empty');
@@ -212,7 +211,7 @@ export class GalleryCells {
 
   /**
    * Keeps components only for the tiles near the visible part of the list, as the sim's own grid does: every tile alive
-   * makes each change of layout slower (core/virtual-list.ts). Along the list's axis: Default's tiles come into view
+   * makes each change of layout slower (core/virtual-list.ts). Along the list's axis: Showcase's tiles come into view
    * from the sides.
    */
   materialize(): void {

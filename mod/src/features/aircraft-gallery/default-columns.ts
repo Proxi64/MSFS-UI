@@ -1,4 +1,4 @@
-// The Default view on whole columns (gallery.ts): its list scrolls along x as the sim's grid, and rests on a whole column
+// The Showcase view on whole columns (gallery.ts): its list scrolls along x as the sim's grid, and rests on a whole column
 // of its grid (default-grid.ts) after the wheel, a drag of the bar, or a change of the column width.
 
 import { debounced } from '../../core/async.ts';
@@ -7,7 +7,7 @@ import type { RealScroll } from '../../sim/real-scroll.ts';
 import { settleColumn, WheelColumns, type DefaultGrid } from './default-grid.ts';
 import type { GalleryCells } from './gallery-cells.ts';
 
-/** Quiet time after the last scroll of the Default view before it settles on a whole column. */
+/** Quiet time after the last scroll of the Showcase view before it settles on a whole column. */
 const SETTLE_DELAY_MS = 150;
 
 /**
@@ -23,7 +23,7 @@ export class DefaultColumns {
   private readonly cells: GalleryCells;
   /** The gallery's body: the presses and the wheel over the bar or a tile arrive there. */
   private readonly body: HTMLElement;
-  /** The Default view's grid, as last laid out (null until then): its column step places the selected tile. */
+  /** The Showcase view's grid, as last laid out (null until then): its column step places the selected tile. */
   private grid: DefaultGrid | null = null;
 
   constructor(cells: GalleryCells, body: HTMLElement) {

@@ -14,7 +14,13 @@ export interface GalleryMemory {
   sort?: { option: string; reversed: boolean } | null;
 }
 
-const VIEWS: readonly View[] = ['gallery', 'list', 'stock'];
+const VIEWS: readonly View[] = ['gallery', 'list', 'showcase'];
+
+/** A stored view: `stock`, the name of the Showcase view until now, is read as `showcase`; the Gallery view for any other. */
+function viewFrom(stored: unknown): View {
+  if (stored === 'stock') return 'showcase';
+  return VIEWS.indexOf(stored as View) >= 0 ? (stored as View) : 'gallery';
+}
 
 /**
  * The memory of a stored value: the Gallery view and no filter when it has none. What it holds besides is dropped (the
@@ -23,7 +29,7 @@ const VIEWS: readonly View[] = ['gallery', 'list', 'stock'];
 export function galleryMemoryFrom(stored: unknown): GalleryMemory {
   const entry = storedObject(stored) || {};
   const memory: GalleryMemory = {
-    view: VIEWS.indexOf(entry.view as View) >= 0 ? (entry.view as View) : 'gallery',
+    view: viewFrom(entry.view),
     favoritesOnly: entry.favoritesOnly === true,
   };
   if (typeof entry.hiddenOnly === 'boolean') memory.hiddenOnly = entry.hiddenOnly;

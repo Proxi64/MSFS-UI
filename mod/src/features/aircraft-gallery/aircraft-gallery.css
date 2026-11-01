@@ -15,7 +15,7 @@
 /*
  * Its two parts (gallery.ts): search, count, Hidden, Favorites; then the sort, its direction and the views. One line,
  * the search taking what the others leave; side by side (is-split), each part above its column, as wide (written by
- * the layout pass), the sort dropdown taking what the views leave so that Default ends on the livery column's edge.
+ * the layout pass), the sort dropdown taking what the views leave so that Showcase ends on the livery column's edge.
  */
 .msfs-ui-gal__bar-part { position: relative; display: flex; align-items: center; height: 100%; }
 .msfs-ui-gal__bar-start { flex-grow: 1; flex-shrink: 1; min-width: 0; }
@@ -25,7 +25,7 @@
 .msfs-ui-gal__bar.is-split .msfs-ui-gal__count { margin-right: 0; }
 .msfs-ui-gal__bar.is-split .msfs-ui-gal__sort { flex-grow: 1; flex-shrink: 1; flex-basis: 0px; width: auto; min-width: 0; margin-left: 0; }
 /*
- * Default view (is-columns, gallery.ts layoutGridBar): the search and count over the first column, Hidden, Favorites
+ * Showcase view (is-columns, gallery.ts layoutGridBar): the search and count over the first column, Hidden, Favorites
  * and the sort dropdown over the middle ones, the direction and the tabs over the last; the grid's gap before Hidden
  * and before the direction. The two elements', the dropdown's and the tabs' widths are written in whole pixels.
  */
@@ -53,7 +53,10 @@
 .msfs-ui-gal__label-icon svg { display: block; width: 100%; height: 100%; }
 .msfs-ui-gal__sort { width: calc(var(--u) * 240); }
 .msfs-ui-gal__reverse { width: calc(var(--u) * 30); }
-.msfs-ui-gal__view { width: calc(var(--u) * 100); }
+/* The view tabs: TAB_UNITS (default-grid.ts), 300 units together; the Showcase view writes them in whole pixels (gallery-bar.ts). */
+.msfs-ui-gal__view--gallery { width: calc(var(--u) * 100); }
+.msfs-ui-gal__view--list { width: calc(var(--u) * 80); }
+.msfs-ui-gal__view--showcase { width: calc(var(--u) * 120); }
 
 /*
  * The sim's scrolling list fills the body; its content (the sim's `scroll__content`, a plain block) leaves room on the
@@ -85,7 +88,7 @@
 .msfs-ui-gal__tile [name="Content"] > [name="Background"] { flex-grow: 0 !important; height: var(--tile-image-h) !important; }
 
 /*
- * Default: the layout of the sim's grid (gallery.ts, default-grid.ts). The sim's horizontal list (real-scroll
+ * Showcase: the layout of the sim's grid (gallery.ts, default-grid.ts). The sim's horizontal list (real-scroll
  * direction="x") holds a row of columns of two tiles, column-major, without the list's padding; the bar, the list and
  * its scroll bar as wide as the whole columns (written by gallery.ts). The tiles --grid-tile-w x --grid-tile-h, their
  * image --grid-image-h (the sim's ratio), --grid-gap between the columns and between the two rows.
@@ -117,9 +120,9 @@
  */
 .msfs-ui-gal__body .msfs-ui-gal__row { width: var(--aircraft-row-w, 100%); margin-left: var(--aircraft-row-x, 0px); }
 /*
- * The marketplace tile made a row (core/theme.css, msfs-ui-row-tile): one line centred in the row, the name in its
- * bold Title, then "- studio - variant" in its light Creator (gallery-cells.ts). The text is cut before the row's
- * icon (no ellipsis in the engine; hovering scrolls it).
+ * The marketplace tile made a row (core/theme.css, msfs-ui-row-tile), cut before the row's icon (no ellipsis in the engine;
+ * hovering scrolls it). The text block is a row here; the side by side rules below stack its two lines (name, then
+ * details), as every List row is.
  */
 .msfs-ui-gal__row [name="TitleBlock"] {
   overflow: hidden !important;
@@ -163,7 +166,7 @@
   height: calc(var(--u) * 22);
 }
 /*
- * Over a thumbnail (a tile of the gallery, of the Default view or of the livery column): the small dark disc under the
+ * Over a thumbnail (a tile of the gallery, of the Showcase view or of the livery column): the small dark disc under the
  * icon (core/theme.css), tight (its host 4 units larger; a larger one looked heavy to the owner). Not on a list row,
  * whose blue is dark enough. The same in aircraft-setup.css for its liveries.
  */

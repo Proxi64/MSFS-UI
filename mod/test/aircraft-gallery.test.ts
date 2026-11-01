@@ -363,13 +363,18 @@ describe('gallery bar and rows', () => {
 
 describe('gallery body class', () => {
   it('keeps the side by side flag whenever the list is rebuilt', () => {
-    assert.equal(galleryBodyClass('list', true), 'msfs-ui-gal__body is-list is-side-by-side');
-    assert.equal(galleryBodyClass('gallery', false), 'msfs-ui-gal__body is-gallery');
-    // The Default view's grid (gallery.ts): never side by side.
-    assert.equal(galleryBodyClass('grid', false), 'msfs-ui-gal__body is-grid');
+    assert.equal(galleryBodyClass('list'), 'msfs-ui-gal__body is-list is-side-by-side');
+    assert.equal(galleryBodyClass('gallery'), 'msfs-ui-gal__body is-gallery is-side-by-side');
+    // The Showcase view's grid (gallery.ts): never side by side.
+    assert.equal(galleryBodyClass('grid'), 'msfs-ui-gal__body is-grid');
   });
 });
 describe('the gallery memory in the storage', () => {
+  it('reads the stored stock view as Showcase', () => {
+    assert.equal(galleryMemoryFrom({ view: 'stock', favoritesOnly: false }).view, 'showcase');
+    assert.equal(galleryMemoryFrom({ view: 'showcase', favoritesOnly: false }).view, 'showcase');
+  });
+
   it('keeps each field that has its type', () => {
     const stored = { view: 'list', favoritesOnly: true, hiddenOnly: false, sort: { option: 'studio', reversed: true } };
     assert.deepEqual(galleryMemoryFrom(stored), stored);

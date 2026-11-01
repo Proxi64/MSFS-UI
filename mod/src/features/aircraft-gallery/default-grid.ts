@@ -1,5 +1,7 @@
-// Geometry of the gallery's Default view: two rows of large tiles scrolling horizontally, laid out like the sim's own
+// Geometry of the gallery's Showcase view: two rows of large tiles scrolling horizontally, laid out like the sim's own
 // grid (measured at 3440 x 1440 on 2026-10-30). Pure functions, tested by test/default-grid.test.ts; no sim here.
+
+import type { View } from './gallery-cells.ts';
 
 /** Tile width of the sim's grid, in units: measured on the sim's grid at 3440 x 1440 (2026-10-30). */
 const TILE_UNITS = 360;
@@ -21,7 +23,7 @@ export interface DefaultGrid {
 }
 
 /**
- * The Default view's grid in a room `width` × `height` pixels for the two rows, at `unit` pixels per unit. The columns
+ * The Showcase view's grid in a room `width` × `height` pixels for the two rows, at `unit` pixels per unit. The columns
  * are the nearest count to the room's width (one or more); columns are added while the banner under the image is
  * shorter than its room. Every column has the same width; `gridWidth` is the width the tiles take (at most
  * `columns - 1` pixels short of `width`).
@@ -47,7 +49,7 @@ export function defaultGrid(width: number, height: number, unit: number): Defaul
 }
 
 /**
- * The scroll position of the Default view settled on the column nearest `position`: a multiple of `step` (one column
+ * The scroll position of the Showcase view settled on the column nearest `position`: a multiple of `step` (one column
  * plus its gap), clamped to `[0, max]`; `max` itself when it is nearer than the last multiple not above it.
  */
 export function settleColumn(position: number, step: number, max: number): number {
@@ -57,7 +59,7 @@ export function settleColumn(position: number, step: number, max: number): numbe
   return max - clamped < Math.abs(clamped - candidate) ? max : candidate;
 }
 
-/** The wheel delta that moves the Default view one column: a mouse wheel's notch (deltaY 100, deltaMode 0, measured on 1.9.21, 2026-10-30). */
+/** The wheel delta that moves the Showcase view one column: a mouse wheel's notch (deltaY 100, deltaMode 0, measured on 1.9.21, 2026-10-30). */
 export const WHEEL_COLUMN_DELTA = 100;
 
 /**
@@ -98,12 +100,30 @@ export interface BarSpan {
 const MIDDLE_MIN_UNITS = 114 + 6 + 130 + 6 + 100;
 /**
  * Narrowest room for the sort's direction (30) and the three view tabs (6 before each), in units: 70 for a tab, room
- * for its label ("Gallery", "List", "Default"), its padding and the selected tab's corner tick.
+ * for its label ("Gallery", "List", "Showcase"), its padding and the selected tab's corner tick.
  */
 const LAST_MIN_UNITS = 30 + 3 * (6 + 70);
 
 /**
- * The bar of the Default view over the grid's columns (the owner's wish, 2026-10-30): the search and count over the
+ * Width of each view tab, in units (together 300, as three tabs of 100 were): List is the shortest label, Showcase the
+ * longest. The CSS gives the same widths to the tabs of Gallery and List (`msfs-ui-gal__view--gallery|list|showcase`).
+ */
+export const TAB_UNITS: Record<View, number> = { gallery: 100, list: 80, showcase: 120 };
+
+/**
+ * The three tabs' widths in whole pixels in `room` pixels, in the proportions of `TAB_UNITS` (Gallery, List, Showcase),
+ * the last one taking the rest: shared by the engine, they ended a pixel past the last column (measured at 3440 x
+ * 1440, 2026-10-30).
+ */
+export function shareTabs(room: number): number[] {
+  const total = TAB_UNITS.gallery + TAB_UNITS.list + TAB_UNITS.showcase;
+  const first = Math.floor((room * TAB_UNITS.gallery) / total);
+  const second = Math.floor((room * TAB_UNITS.list) / total);
+  return [first, second, room - first - second];
+}
+
+/**
+ * The bar of the Showcase view over the grid's columns (the owner's wish, 2026-10-30): the search and count over the
  * first column, Hidden, Favorites and the sort dropdown over the middle ones, the sort's direction and the view tabs
  * over the last; each part from its columns' left edge to their right one. Null under three columns, or when the
  * middle or last part would be too narrow for its controls: the bar then stays on one line.
@@ -118,7 +138,7 @@ export function barColumns(grid: DefaultGrid, unit: number): { first: BarSpan; m
   return { first: { left: 0, right: grid.tileWidth }, middle, last };
 }
 
-/** The place of a tile in the Default view's grid: column-major, as the sim (tiles 0 and 1 in column 0). */
+/** The place of a tile in the Showcase view's grid: column-major, as the sim (tiles 0 and 1 in column 0). */
 export function columnOf(index: number): { column: number; row: 0 | 1 } {
   return { column: Math.floor(index / 2), row: index % 2 === 0 ? 0 : 1 };
 }

@@ -1,15 +1,15 @@
 // The aircraft gallery and list in the aircraft selection, in place of the sim's grid (right block): search (name,
 // publisher, variant), favourites (an aircraft with a favourite livery, first), hidden aircraft (the eye in each aircraft
-// tile's corner; the Hidden filter shows them), three views of the same tiles (Gallery, a compact List, and Default:
+// tile's corner; the Hidden filter shows them), three views of the same tiles (Gallery, a compact List, and Showcase:
 // the layout of the sim's own grid, two rows of large tiles scrolling horizontally), the sim's sort orders. Made of the
-// sim's components: the bar (gallery-bar.ts), the list of tiles (gallery-cells.ts), the Default view's whole columns
+// sim's components: the bar (gallery-bar.ts), the list of tiles (gallery-cells.ts), the Showcase view's whole columns
 // (default-columns.ts). The sim's category tabs stay active: the list read (`Game.Aircraft.AircraftList`) is already
 // filtered by category; the search and the favourites filter on top.
 // A click sends the page the `tileClick` event of the sim's tiles, a hover `tileHover`: the selection and the header
 // of the left column go through the sim's own logic.
 
 import { answerWithin } from '../../core/async.ts';
-import { el, setStyle, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
+import { el, setStyle, setVariable, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
@@ -76,12 +76,12 @@ const SCROLL_BAR_ROOM = 24;
 /** The sim's scroll bar until the list's own is measured: 10 pixels at 1440 lines (measured on 1.9.21), in layout units. */
 const SCROLL_BAR_WIDTH = 7.5;
 /**
- * Room under the Default view's two rows for the sim's horizontal scroll bar, in layout units: its 8 units and the gap
+ * Room under the Showcase view's two rows for the sim's horizontal scroll bar, in layout units: its 8 units and the gap
  * above it (the sim's own grid keeps 24 units under its tiles; measured on 1.9.21, 2026-10-30).
  */
 const GRID_SCROLL_ROOM = 24;
 /**
- * Lowest height given to the Default view's two rows, in layout units. It guards `defaultGrid`'s column loop, which
+ * Lowest height given to the Showcase view's two rows, in layout units. It guards `defaultGrid`'s column loop, which
  * would add columns down to 1-pixel tiles on a tiny height; it is not a rule of the design.
  */
 const MIN_GRID_HEIGHT = 2 * (75 + 75) + 24;
@@ -349,7 +349,7 @@ export class Gallery {
 
   /**
    * On the sim's right block (`RightBlock`), hidden (its grid and search): the gallery covers it whole. Gallery and List:
-   * the list on the left half, the livery column on the right half, 12 units apart. Default: the grid (layoutGrid).
+   * the list on the left half, the livery column on the right half, 12 units apart. Showcase: the grid (layoutGrid).
    */
   private layout(): void {
     const right = this.page.elt.querySelector<HTMLElement>(RIGHT_BLOCK);
@@ -368,14 +368,13 @@ export class Gallery {
     style.width = `${rect.width}px`;
     style.top = `${rect.top - origin.top}px`;
     style.height = `${rect.height}px`;
-    if (this.memory.view === 'stock') {
+    if (this.memory.view === 'showcase') {
       this.layoutGrid(rect, unit);
       return;
     }
     // Side by side: three aircraft and two liveries per row, all of the same width (livery-column.ts).
     const gap = Math.round(TILE_GAP * unit);
     const halves = splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, TILE_SIDE * unit);
-    toggleClass(this.body, 'is-side-by-side', true);
     setStyle(this.body.style, 'width', `${halves.left}px`);
     // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
     // before the scroll bar, and less the bar's own width when the tiles do not fit without it (core/virtual-list.ts:
@@ -408,14 +407,14 @@ export class Gallery {
     setVariable(style, '--tile-h', `${tile.height}px`);
     // The bar's first part on the aircraft tiles' edges (Hidden and Favorites over the last column), its second on the
     // livery column.
-    this.bar.placeLine('', '');
+    this.bar.placeWidth('');
     this.bar.layout({ start: edges, filters: lastColumnSpan(tile, TILE_SIDE * unit), end: { left: halves.left + gap, width: halves.right } }, unit);
     const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
     this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
   }
 
   /**
-   * The Default view on the right block `rect`: the bar on one line, then two rows of tiles (default-grid.ts) from 12
+   * The Showcase view on the right block `rect`: the bar on one line, then two rows of tiles (default-grid.ts) from 12
    * units under it down to the sim's scroll bar, whose bottom is the block's (the left panel's). The bar, the list and
    * its scroll bar are as wide as the grid's whole columns, from the block's left edge. No livery column. Written only
    * when a value changes (every 250 ms). A new column width keeps the first column in view in its place: the block
@@ -431,9 +430,8 @@ export class Gallery {
     setVariable(style, '--grid-tile-h', `${grid.tileHeight}px`);
     setVariable(style, '--grid-image-h', `${grid.imageHeight}px`);
     setVariable(style, '--grid-gap', `${grid.gap}px`);
-    if (this.body.classList.contains('is-side-by-side')) toggleClass(this.body, 'is-side-by-side', false);
     setStyle(this.body.style, 'width', `${grid.gridWidth}px`);
-    this.bar.placeLine('', `${grid.gridWidth}px`);
+    this.bar.placeWidth(`${grid.gridWidth}px`);
     // Once the list has its new width: its last scroll position depends on it.
     if (previous && previous.tileWidth + previous.gap !== this.columns.step() && this.cells.axis === 'x') {
       this.columns.scrollToColumn(Math.round((this.cells.list.currentScroll || 0) / (previous.tileWidth + previous.gap)));
@@ -481,7 +479,7 @@ export class Gallery {
 
   /**
    * The tiles of the current view: the same in the three views (tiles.ts), laid out by the view. Gallery and List: one
-   * host per tile in the list; Default: one column host per two tiles (column-major, as the sim's grid), in a list that
+   * host per tile in the list; Showcase: one column host per two tiles (column-major, as the sim's grid), in a list that
    * scrolls along x (a change of axis replaces the list first, its tiles parked).
    */
   private render(): void {
@@ -528,13 +526,13 @@ export class Gallery {
     this.cells.draw(view, tiles, empty);
   }
 
-  /** The body's class for a view: Default is the grid (`is-grid`), never side by side. */
+  /** The body's class for a view: Showcase is the grid (`is-grid`), never side by side. */
   private bodyClass(view: View): string {
-    return view === 'stock' ? galleryBodyClass('grid', false) : galleryBodyClass(view, true);
+    return galleryBodyClass(view === 'showcase' ? 'grid' : view);
   }
 
   /**
-   * Scrolls to the selected aircraft when it is not wholly in view. Default: its column first in view, on a whole
+   * Scrolls to the selected aircraft when it is not wholly in view. Showcase: its column first in view, on a whole
    * column (or the last scroll position, when the list ends before); elsewhere a little above its row.
    */
   private scrollToSelected(): void {

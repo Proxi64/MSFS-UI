@@ -1,6 +1,6 @@
 // The gallery's bar (gallery.ts), made of the sim's components: the search, the count, the Hidden and Favorites
 // filters, the sort and its direction, the view tabs. On one line; side by side, cut over the two columns; in the
-// Default view, over the grid's columns.
+// Showcase view, over the grid's columns.
 
 import { el, setStyle, toggleClass } from '../../core/dom.ts';
 import { HEART_SVG, EYE_SLASH_SVG } from '../../core/icons.ts';
@@ -18,7 +18,7 @@ import {
 } from '../../sim/components.ts';
 import { translate } from '../../sim/localization.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
-import { barColumns, type DefaultGrid } from './default-grid.ts';
+import { barColumns, shareTabs, type DefaultGrid } from './default-grid.ts';
 import type { View } from './gallery-cells.ts';
 import { shortCount } from './livery-column.ts';
 import type { GalleryFilter } from './tiles.ts';
@@ -26,11 +26,11 @@ import type { GalleryFilter } from './tiles.ts';
 const SORT_ICON = 'coui://html_UI/VFS/components/shared/resources/Icons/General/Sort.svg';
 /** Narrowest search before the count drops its total, in layout units (its placeholder's first words stay readable). */
 const MIN_SEARCH = 240;
-/** View tabs (the sim has no keys for Gallery and Default). */
+/** View tabs (the sim has no keys for Gallery and Showcase), each with its class: its width in the CSS (TAB_UNITS). */
 const VIEWS: { view: View; label: string }[] = [
   { view: 'gallery', label: 'Gallery' },
   { view: 'list', label: translate('TT:GENERIC.LIST') },
-  { view: 'stock', label: 'Default' },
+  { view: 'showcase', label: 'Showcase' },
 ];
 
 /** The sorts as the dropdown shows them: the choices offered, the one chosen (-1: none), the sort remembered. */
@@ -143,7 +143,7 @@ export class GalleryBar {
       button.onClick(this.scope, () => this.events.reverse());
     });
     for (const { view, label } of VIEWS) {
-      component(this.end, COMPONENTS.textTab, 'msfs-ui-gal__view', { Text: label }, (tab) => {
+      component(this.end, COMPONENTS.textTab, `msfs-ui-gal__view msfs-ui-gal__view--${view}`, { Text: label }, (tab) => {
         this.viewTabs.set(view, tab);
         tab.onClick(this.scope, () => this.events.view(view));
       });
@@ -192,9 +192,8 @@ export class GalleryBar {
     if (this.countTotal.textContent !== total) this.countTotal.textContent = total;
   }
 
-  /** The whole bar's left margin and width, in pixels ('': its CSS). */
-  placeLine(marginLeft: string, width: string): void {
-    setStyle(this.element.style, 'marginLeft', marginLeft);
+  /** The whole bar's width, in pixels ('': its CSS). */
+  placeWidth(width: string): void {
     setStyle(this.element.style, 'width', width);
   }
 
@@ -210,7 +209,7 @@ export class GalleryBar {
     const bar = this.element;
     if (bar.classList.contains('is-split') !== !!split) toggleClass(bar, 'is-split', !!split);
     if (bar.classList.contains('is-columns')) toggleClass(bar, 'is-columns', false);
-    // What the Default view's bar writes (layoutGrid) goes back to the CSS.
+    // What the Showcase view's bar writes (layoutGrid) goes back to the CSS.
     const sort = bar.querySelector<HTMLElement>('.msfs-ui-gal__sort');
     if (sort) setStyle(sort.style, 'width', '');
     Array.prototype.forEach.call(bar.querySelectorAll('.msfs-ui-gal__view'), (tab: HTMLElement) => {
@@ -226,7 +225,7 @@ export class GalleryBar {
   }
 
   /**
-   * The Default view's bar over the grid's columns (`barColumns`): the search and count over the first column,
+   * The Showcase view's bar over the grid's columns (`barColumns`): the search and count over the first column,
    * Hidden, Favorites and the sort dropdown over the middle ones, the sort's direction and the view tabs over the last,
    * the grid's gap between the parts (aircraft-gallery.css, is-columns). The bar's two elements keep their controls:
    * the first (search, count, Hidden, Favorites) ends on Favorites, the second begins with the dropdown, whose width
@@ -255,17 +254,16 @@ export class GalleryBar {
     setStyle(this.end.style, 'width', `${grid.gridWidth - startWidth}px`);
     const sortMargin = Math.round(sort.getBoundingClientRect().left - this.end.getBoundingClientRect().left);
     setStyle(sort.style, 'width', `${Math.max(0, spans.middle.right - startWidth - sortMargin)}px`);
-    // The tabs in whole pixels after the direction, the last one taking the rest: shared by the engine, they ended a
-    // pixel past the last column (measured at 3440 x 1440, 2026-10-30).
+    // The tabs in whole pixels after the direction, in the proportions of TAB_UNITS, the last one taking the rest.
     const reverse = bar.querySelector<HTMLElement>('.msfs-ui-gal__reverse');
     const tabs = Array.prototype.slice.call(bar.querySelectorAll('.msfs-ui-gal__view')) as HTMLElement[];
     if (reverse && tabs.length > 0) {
       const margin = Math.round(6 * unit);
       const room = Math.floor(bar.getBoundingClientRect().left + spans.last.right - reverse.getBoundingClientRect().right) - tabs.length * margin;
-      const each = Math.floor(room / tabs.length);
+      const widths = shareTabs(room);
       tabs.forEach((tab, at) => {
         setStyle(tab.style, 'marginLeft', `${margin}px`);
-        setStyle(tab.style, 'width', `${at === tabs.length - 1 ? room - each * (tabs.length - 1) : each}px`);
+        setStyle(tab.style, 'width', `${widths[at]}px`);
       });
     }
     this.fitCount(unit);
