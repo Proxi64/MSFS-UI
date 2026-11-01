@@ -17,3 +17,6 @@ mod/src/generated/
 
 # Clean-code skill state (session tooling, not part of the project)
 .clean/
+
+# Brainstorming mockups (session tooling, not part of the project)
+.superpowers/
