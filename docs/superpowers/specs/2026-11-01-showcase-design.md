@@ -41,6 +41,10 @@ The aircraft's statistics are not shown in Showcase (the owner: there is no fixe
 
 **Nothing of this depends on the aircraft.** The left column in Showcase is capped at about 90 units over the sim's (the *Widen the left column* option has no effect above; computed: 130 leaves no gap and 200 overflows). If long labels in another language need more, the column follows them and the large livery gives up height as a last resort, cropped toward the top, the gaps staying at their minimum (the owner chose this: the crop never varies from one aircraft to the next).
 
+### The sorts (the owner, 2026-11-01)
+
+In the gallery's sort dropdown (all three views): **Model**, **Manufacturer**, **Studio**, in that order, instead of Name, Studio, Max range. *Model* sorts on the model ("Cessna Citation Longitude" under C, no longer under T with Textron), labelled with the sim's own word (`TT:MANUFACTURE.BREADCRUMB.MODEL`: "Model", "Modèle"); *Manufacturer* sorts on the brand as shown ("X, a Y company" as Y: the DHC-2 under De Havilland Canada), then on the model, the aircraft without a brand last; the English word, as "Studio" (the sim has no key for it alone in its menus; its texts say "manufacturer", French "constructeur"); *Studio* as today. A model or brand missing: the display name stands in for it. Max range goes. A remembered sort on the name or on Max range opens on Model; the direction button and favourites first as today.
+
 ### The aircraft tiles of Showcase (the owner)
 
 The banner on four lines: the **model** (A319 | CFM | WF), the **brand** (Airbus), the **variant** (Standard Density), and the **studio always on the banner's lowest line** (FenixSim), the variant's line empty when there is none. Model and brand in the name's bold style, variant and studio lighter. A line too long (about 44 characters fit: a long brand, a livery declared as the variant) has its text reduced to fit, never cut. The tiles of Gallery do not change (the owner: no room there; to be looked at again after seeing Showcase).
