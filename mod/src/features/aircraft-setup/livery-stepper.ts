@@ -51,13 +51,18 @@ export class LiveryStepper {
     return this.pendingId;
   }
 
+  /** The livery sent to the configurator and not reported by the sim yet (null: none). */
+  awaited(): string | null {
+    return this.sentId;
+  }
+
   /** The pending step went to the configurator: it stays shown until a reload reports it (or `abandonSent()`). */
   sent(): void {
     if (this.pendingId !== null) this.sentId = this.pendingId;
     this.pendingId = null;
   }
 
-  /** The configurator ignored the choice or it failed: show the configurator's livery again. */
+  /** The configurator ignored the choice, it failed or the sim never reported it: show the configurator's livery again. */
   abandonSent(): void {
     this.sentId = null;
   }
@@ -89,9 +94,21 @@ export class LiveryStepper {
   }
 }
 
+/** A step sent to the configurator. */
+export interface LiverySend {
+  id: string;
+  number: number;
+  /**
+   * It follows a send the sim has not reported yet: the configurator's state last read may still list `id` as
+   * selected (a return to the livery the sim is leaving), so the choice must not be skipped as already made.
+   */
+  overSent: boolean;
+}
+
 /**
- * The steps of a LiveryStepper sent to the configurator, numbered: only the last send's refusal gives the livery shown
- * back to the sim's; an older answer arriving late changes nothing (a newer step is shown, or on its way).
+ * The steps of a LiveryStepper sent to the configurator, numbered: only the last send's refusal, or its report
+ * missing for too long (`expired`), gives the livery shown back to the sim's; an older answer arriving late changes
+ * nothing (a newer step is shown, or on its way).
  */
 export class LiverySends {
   private readonly stepper: LiveryStepper;
@@ -101,17 +118,33 @@ export class LiverySends {
     this.stepper = stepper;
   }
 
-  /** The step waiting, marked sent: its id and its number, or null when none waits. */
-  take(): { id: string; number: number } | null {
+  /** The step waiting, marked sent, or null when none waits. */
+  take(): LiverySend | null {
     const id = this.stepper.pending();
     if (id === null) return null;
+    const overSent = this.stepper.awaited() !== null;
     this.stepper.sent();
-    return { id, number: ++this.last };
+    return { id, number: ++this.last, overSent };
+  }
+
+  /** Whether `number` is the last send (an older one's answer or report no longer counts). */
+  isLast(number: number): boolean {
+    return number === this.last;
   }
 
   /** The configurator's answer to send `number` (`done`: taken); true when the livery shown changed. */
   answered(number: number, done: boolean): boolean {
     if (done || number !== this.last) return false;
+    this.stepper.abandonSent();
+    return true;
+  }
+
+  /**
+   * Send `number` was taken but no reload has reported it in the time allowed: true when it was the last send and
+   * still awaited, now abandoned (the livery shown follows the configurator again).
+   */
+  expired(number: number): boolean {
+    if (number !== this.last || this.stepper.awaited() === null) return false;
     this.stepper.abandonSent();
     return true;
   }

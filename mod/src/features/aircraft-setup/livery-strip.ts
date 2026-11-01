@@ -169,7 +169,10 @@ export class LiveryStrip {
     this.pooled.materialize(this.cells, this.list, 'x');
   }
 
-  /** The selected livery's column whole in view (at the left edge when it was not), once the strip is laid out. */
+  /**
+   * The selected livery's column whole in view, once the strip is laid out (stripReveal: on the edge it was beyond);
+   * the thumbnails coming into view get their components at once.
+   */
   private reveal(): void {
     const place = this.place;
     if (!this.revealWanted || !place || this.cells.length === 0) return;
@@ -183,6 +186,7 @@ export class LiveryStrip {
     if (position === null) return;
     if (this.list.updateSizes) this.list.updateSizes();
     this.list.scrollToPosition(position);
+    this.materialize();
   }
 
   /** A slot's components, made once; they show whatever cell holds the slot. */

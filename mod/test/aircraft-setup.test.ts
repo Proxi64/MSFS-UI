@@ -264,13 +264,16 @@ describe('showcase panel layout', () => {
     assert.deepEqual(stripCell(4, 1), { column: 4, row: 0 });
   });
 
-  it('stripReveal leaves a whole column in view, brings another to the left edge, never past the end', () => {
-    // Ten columns 160 wide, 8 apart (a step of 168), in a view 600 wide: 3.5 columns.
+  it('stripReveal leaves a whole column in view, brings another to the edge it was beyond, within the scroll range', () => {
+    // Ten columns 160 wide, 8 apart (a step of 168), in a view 600 wide: 3.5 columns; the strip 1672 wide, 1072 at most.
     assert.equal(stripReveal(0, 10, 160, 8, 600, 0), null);
     assert.equal(stripReveal(2, 10, 160, 8, 600, 0), null, 'ends at 496');
-    assert.equal(stripReveal(3, 10, 160, 8, 600, 0), 504, 'shown in part: to the left edge');
-    assert.equal(stripReveal(1, 10, 160, 8, 600, 200), 168, 'cut on the left');
-    assert.equal(stripReveal(9, 10, 160, 8, 600, 0), 10 * 160 + 9 * 8 - 600, 'the end of the strip');
+    assert.equal(stripReveal(3, 10, 160, 8, 600, 0), 64, 'cut on the right: on the right edge, less than a column');
+    assert.equal(stripReveal(6, 10, 160, 8, 600, 0), 1008 + 160 - 600, 'beyond the right edge: on it');
+    assert.equal(stripReveal(1, 10, 160, 8, 600, 200), 168, 'cut on the left: on the left edge');
+    assert.equal(stripReveal(0, 10, 160, 8, 600, 400), 0, 'beyond the left edge: on it');
+    assert.equal(stripReveal(9, 10, 160, 8, 600, 0), 10 * 160 + 9 * 8 - 600, 'the last column: the end of the strip');
+    assert.equal(stripReveal(5, 10, 160, 8, 600, 1072), 840, 'from the end, a column cut on the left');
     assert.equal(stripReveal(0, 1, 160, 8, 600, 0), null, 'one livery');
   });
 });
@@ -498,7 +501,7 @@ describe('livery sends', () => {
     stepper.step(1);
     stepper.step(1);
     const sent = sends.take();
-    assert.deepEqual(sent, { id: 'c', number: 1 });
+    assert.deepEqual(sent, { id: 'c', number: 1, overSent: false });
     assert.equal(sends.take(), null, 'nothing left to send');
     assert.equal(stepper.shown(), 'c');
   });
@@ -524,7 +527,41 @@ describe('livery sends', () => {
     stepper.step(1);
     assert.equal(stepper.shown(), 'c');
     assert.equal(sends.answered(first.number, true), false);
-    assert.deepEqual(sends.take(), { id: 'c', number: 2 });
+    assert.deepEqual(sends.take(), { id: 'c', number: 2, overSent: true });
+  });
+
+  it('sends a return to the livery the sim is leaving as following a send not reported yet', () => {
+    const { stepper, sends } = make();
+    stepper.step(1);
+    sends.take();
+    // Before any reload reports b, the user goes back to a: the state read still lists a as selected.
+    stepper.choose('a');
+    assert.deepEqual(sends.take(), { id: 'a', number: 2, overSent: true });
+    stepper.setLiveries('plane', three, 'a');
+    assert.equal(stepper.awaited(), null, 'reported');
+    stepper.step(1);
+    assert.equal(sends.take()!.overSent, false, 'nothing awaited any more');
+  });
+
+  it('abandons the last send taken and never reported, not an older one nor one reported', () => {
+    const { stepper, sends } = make();
+    stepper.step(1);
+    const first = sends.take()!;
+    stepper.step(1);
+    const second = sends.take()!;
+    assert.equal(sends.isLast(first.number), false);
+    assert.equal(sends.isLast(second.number), true);
+    assert.equal(sends.expired(first.number), false, 'an older send');
+    assert.equal(stepper.shown(), 'c');
+    assert.equal(sends.expired(second.number), true);
+    assert.equal(stepper.shown(), 'a', 'the configurator again');
+    assert.equal(sends.expired(second.number), false, 'once');
+
+    stepper.step(1);
+    const third = sends.take()!;
+    stepper.setLiveries('plane', three, 'b');
+    assert.equal(sends.expired(third.number), false, 'reported meanwhile');
+    assert.equal(stepper.shown(), 'b');
   });
 
   it('drops a step not sent yet (another variant chosen)', () => {

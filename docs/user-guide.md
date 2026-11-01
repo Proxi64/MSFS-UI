@@ -169,7 +169,7 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 The variants list scrolls with the mouse wheel and shows the sim's scroll bar when it needs more room; with many variants (some aircraft make one variant per livery) it keeps at least three rows in view and opens on the selected variant.
 
-**In Showcase** the panel is rebuilt at fixed places: every part is at the same place whatever the aircraft, its variants and its liveries (the statistics are not shown). The column is widened (option *Widen the left column*, 50 layout units by default), and never narrower than the width where the labels of the bottom row show whole, whatever the option. From top to bottom, as wide as the sim's title block:
+**In Showcase** the panel is rebuilt at fixed places: every part is at the same place whatever the aircraft, its variants and its liveries (the statistics are not shown). With the **Aircraft gallery and list** feature turned off, the panel always takes this form, beside the sim's own aircraft list. The column is widened (option *Widen the left column*, 50 layout units by default), and never narrower than the width where the labels of the bottom row show whole, whatever the option. From top to bottom, as wide as the sim's title block:
 
 | Part | Content |
 |---|---|

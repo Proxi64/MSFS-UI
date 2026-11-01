@@ -16,7 +16,7 @@ import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { revealPosition, type Rows } from '../../core/virtual-list.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
-import { chooseLivery, chooseVariant, readConfigurator, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
+import { chooseLivery, chooseLiveryWhileSending, chooseVariant, readConfigurator, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED } from '../../sim/favorites.ts';
 import { TAIL_NUMBER, type Identification } from '../../sim/liveries.ts';
 import { translate } from '../../sim/localization.ts';
@@ -78,8 +78,10 @@ export class SetupPanel {
   private readonly actionButtons: SimComponent[] = [];
   /** Heights last given to the variants list, in pixels: its scrolling element is told when they change. */
   private listHeights = '';
-  /** Width of the panel at the last measure of the variants. */
+  /** Width of the panel at the last measure of the variants (0: measured at the next Gallery or List pass). */
   private fittedWidth = 0;
+  /** The panel's places were last written by the Showcase layout (false: by Gallery and List's, or not yet). */
+  private showcaseLaidOut = false;
 
   /** The configurator as last read: the choices are made on it. */
   private state: ConfiguratorState = { variants: [], liveries: [], details: null, variationTitle: '' };
@@ -102,8 +104,9 @@ export class SetupPanel {
       hover: (id) => this.large.hover(id),
     });
     this.large = new LargeLivery(scope, this.largeHost, {
-      choose: (id) =>
-        chooseLivery(this.state, id).then(
+      // Back to the livery the sim is leaving, before it reports the one sent: the state read still lists it as selected.
+      choose: (send) =>
+        (send.overSent ? chooseLiveryWhileSending : chooseLivery)(this.state, send.id).then(
           (done) => {
             if (!done) this.scheduleReload();
             return done;
@@ -140,10 +143,14 @@ export class SetupPanel {
     // As the sim's panels: the mouse does not go through the panel (core/theme.ts).
     this.root.setAttribute('data-input-group', PANEL_INPUT_GROUP);
     const tailHost = this.build();
+    // Hidden until a layout pass places it.
+    this.root.style.display = 'none';
     scope.append(this.page.elt, this.root);
     scope.add(() => this.restoreStatistics());
     scope.add(() => setSetupPanelShown(false));
-    this.layout();
+    // The first pass once the gallery has mounted (it mounts right after this feature): its flag then tells the mode
+    // (sim/selection-layout.ts), so the panel does not take its Showcase form for one pass on entering Gallery or List.
+    scope.timeout(() => this.layout(), 0);
     scope.interval(() => this.layout(), 250);
     this.tail.mount(tailHost);
 
@@ -201,9 +208,11 @@ export class SetupPanel {
     const details = this.page.elt.querySelector<HTMLElement>(STATISTICS);
     const statistics = details && details.querySelector<HTMLElement>('[name="Scroll"]');
     if (!isShown(details) || !statistics) {
-      this.root.style.display = 'none';
-      setSetupPanelShown(false);
+      this.hide();
       this.showcase.leave();
+      this.showcaseLaidOut = false;
+      // Measured again once shown: the tiles may have changed meanwhile.
+      this.fittedWidth = 0;
       return;
     }
     const unit = uiUnit();
@@ -212,11 +221,15 @@ export class SetupPanel {
     this.showcase.holdTitleLines(tile ? details : null, unit);
     const origin = this.page.elt.getBoundingClientRect();
     const rect = statistics.getBoundingClientRect();
-    // Showcase: nothing is written while the panel is smaller than its fixed parts (the screen animates).
+    // Showcase: nothing is written while the panel is smaller than its fixed parts (the screen animates). The panel
+    // keeps its Showcase places meanwhile, or stays hidden when it has none (it would show its Gallery and List form).
     let places: ShowcasePlaces | null = null;
     if (tile) {
       places = this.showcase.places(rect, details, unit);
-      if (!places) return;
+      if (!places) {
+        if (!this.showcaseLaidOut) this.hide();
+        return;
+      }
     }
 
     if (statistics.style.visibility !== 'hidden') statistics.style.visibility = 'hidden';
@@ -229,9 +242,14 @@ export class SetupPanel {
     setStyle(style, 'width', `${rect.width}px`);
     if (tile && places) {
       this.showcase.layout(rect, places, tile, details.parentElement, unit);
+      this.showcaseLaidOut = true;
+      // The variants list is hidden in Showcase (aircraft-setup.css): measured again at the next Gallery or List pass,
+      // whose column may have the same width while the aircraft changed meanwhile.
+      this.fittedWidth = 0;
       return;
     }
     this.showcase.leave();
+    this.showcaseLaidOut = false;
     setStyle(style, 'height', `${rect.height}px`);
     if (Math.round(rect.width) !== this.fittedWidth) {
       this.fittedWidth = Math.round(rect.width);
@@ -293,6 +311,11 @@ export class SetupPanel {
       this.updateSizes();
       this.variants.list.scrollToPosition(revealPosition(Math.floor(selected / perRow), variants, high));
     }
+  }
+
+  private hide(): void {
+    this.root.style.display = 'none';
+    setSetupPanelShown(false);
   }
 
   /** The sim's list measures its content again (after a change of height or of content). */

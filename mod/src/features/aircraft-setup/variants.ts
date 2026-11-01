@@ -108,10 +108,12 @@ export class VariantsList {
   /**
    * The width a tile needs to show the widest name whole, room for the selection corner included: the engine shows
    * no ellipsis, a long name would be cut. Measured once every tile exists, and when the panel's width changes
-   * (panel.ts). True when measured.
+   * (panel.ts). True when measured; nothing is measured while the list is hidden (Showcase, or the panel hidden): its
+   * names would measure 0.
    */
   measure(): boolean {
     if (this.items.length === 0 || this.tiles.size < this.items.length) return false;
+    if (!(this.list.getBoundingClientRect().width > 0)) return false;
     const unit = uiUnit();
     // The text's own width: a probe inside each title takes its font. Every probe is added before any is measured, so
     // the engine lays the page out once, not once per variant (it now runs at each change of the column's width).

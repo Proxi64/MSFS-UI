@@ -6,11 +6,11 @@
 import { GAP, LIVERY_RATIO, PADDING_TOP } from './setup-layout.ts';
 
 /** Layout units: height of the dropdown, of the tail number row (as `.msfs-ui-setup__tail`) and of the buttons' row. */
-export const ROW_HEIGHT = 30;
+const ROW_HEIGHT = 30;
 /** Layout units the sim's horizontal scroll bar takes under the strip of small liveries. */
 export const STRIP_BAR_UNITS = 8;
 /** Small liveries per row that would fill the strip's width: only used to choose the number of rows. */
-export const STRIP_COLUMNS = 4;
+const STRIP_COLUMNS = 4;
 
 /** A part's place, in pixels from the panel's top. */
 export interface Span {
@@ -92,12 +92,14 @@ export function stripCell(index: number, rows: number): { column: number; row: n
 
 /**
  * The scroll position, in pixels, that brings column `column` of the strip into a view `view` pixels wide scrolled to
- * `scroll`: null when the column is already whole in view; otherwise the column at the view's left edge, or the
- * strip's end when nearer. The strip has `columns` columns `thumbWidth` pixels wide, `gap` pixels apart.
+ * `scroll`: null when the column is already whole in view; otherwise the strip moves as little as it can: a column
+ * cut on the left, or beyond it, on the view's left edge; one cut on the right, or beyond it, on the view's right edge;
+ * within the scroll range. The strip has `columns` columns `thumbWidth` pixels wide, `gap` pixels apart.
  */
 export function stripReveal(column: number, columns: number, thumbWidth: number, gap: number, view: number, scroll: number): number | null {
   const left = column * (thumbWidth + gap);
-  if (left >= scroll && left + thumbWidth <= scroll + view) return null;
+  const right = left + thumbWidth;
+  if (left >= scroll && right <= scroll + view) return null;
   const max = Math.max(0, columns * thumbWidth + (columns - 1) * gap - view);
-  return Math.min(max, left);
+  return Math.max(0, Math.min(max, left < scroll ? left : right - view));
 }

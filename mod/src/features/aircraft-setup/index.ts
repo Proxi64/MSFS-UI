@@ -36,7 +36,9 @@ export function aircraftSetup(settings: Settings['aircraftSetup'], scope: Scope)
         applied = extra;
         column.resize(extra);
       };
-      apply();
+      // First once the gallery has mounted (right after this feature): its flag then tells Gallery and List from
+      // Showcase, so the column does not take the Showcase width for one pass on entering Gallery or List.
+      screen.timeout(apply, 0);
       screen.interval(apply, LAYOUT_CHECK_MS);
     }
     panel.mount();

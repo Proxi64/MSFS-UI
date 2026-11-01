@@ -16,10 +16,13 @@ import { isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../
 import { liveryFolder } from '../../sim/liveries.ts';
 import { orderLiveries, type LiveryOrder } from '../../sim/livery-order.ts';
 import { translate } from '../../sim/localization.ts';
-import { LiverySends, LiveryStepper } from './livery-stepper.ts';
+import { ANSWER_TIMEOUT_MS } from '../../sim/store.ts';
+import { LiverySends, LiveryStepper, type LiverySend } from './livery-stepper.ts';
 
 /** Quiet time after the last step before the livery shown is sent to the configurator. */
-export const LIVERY_SETTLE_MS = 300;
+const LIVERY_SETTLE_MS = 300;
+/** A livery taken by the configurator and still not reported by a reload after this time is abandoned. */
+const SENT_REPORT_MS = 2 * ANSWER_TIMEOUT_MS;
 /** The sim's arrow, as on its own livery block (Reno_SetupLiveryBlock): pointing right, turned for the left one. */
 const ARROW_ICON = 'coui://html_UI/VFS/components/shared/resources/Icons/General/ArrowFull.svg';
 
@@ -30,7 +33,7 @@ interface LiveryButtonManipulator {
 
 export interface LargeLiveryEvents {
   /** Sends a livery to the configurator; false when it was ignored (the livery shown goes back to the sim's). */
-  choose(id: string): Promise<boolean>;
+  choose(send: LiverySend): Promise<boolean>;
   /** The heart was clicked. */
   favorite(id: string, on: boolean): void;
   /** The livery shown (at each draw, changed or not), or null. */
@@ -60,12 +63,17 @@ export class LargeLivery {
   private readonly wheel = new WheelSteps();
   private readonly settle = debounced(() => this.send(), LIVERY_SETTLE_MS);
   private readonly sends = new LiverySends(this.stepper);
+  /** Abandons the last livery taken if no reload reports it in time (one timer: only the last send counts). */
+  private reportTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(scope: Scope, host: HTMLElement, events: LargeLiveryEvents) {
     this.scope = scope;
     this.host = host;
     this.events = events;
-    scope.add(() => this.settle.cancel());
+    scope.add(() => {
+      this.settle.cancel();
+      clearTimeout(this.reportTimer);
+    });
     this.heart = iconToggle(scope, this.iconHost, 'favorite', (on) => {
       const id = this.stepper.shown();
       if (id) events.favorite(id, on);
@@ -162,14 +170,25 @@ export class LargeLivery {
     else this.settle.call();
   }
 
-  /** The step waiting, to the configurator; the livery stays shown until the sim reports it (livery-stepper.ts). */
+  /**
+   * The step waiting, to the configurator; the livery stays shown until the sim reports it (livery-stepper.ts), or
+   * for `SENT_REPORT_MS` after the configurator took it: then the large livery, the strip's outline and the header
+   * follow the configurator again.
+   */
   private send(): void {
     const sent = this.sends.take();
     if (!sent) return;
+    clearTimeout(this.reportTimer);
     const answer = (done: boolean) => {
-      if (!this.scope.disposed && this.sends.answered(sent.number, done)) this.draw();
+      if (this.scope.disposed) return;
+      if (this.sends.answered(sent.number, done)) this.draw();
+      if (!done || !this.sends.isLast(sent.number)) return;
+      clearTimeout(this.reportTimer);
+      this.reportTimer = setTimeout(() => {
+        if (!this.scope.disposed && this.sends.expired(sent.number)) this.draw();
+      }, SENT_REPORT_MS);
     };
-    this.events.choose(sent.id).then(answer, (error: unknown) => {
+    this.events.choose(sent).then(answer, (error: unknown) => {
       logError('the livery could not be chosen', error);
       answer(false);
     });

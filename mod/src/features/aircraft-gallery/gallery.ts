@@ -191,7 +191,7 @@ export class Gallery {
     this.body.setAttribute('data-input-group', PANEL_INPUT_GROUP);
     scope.append(this.page.elt, this.root);
     this.liveryColumn = new LiveryColumn(scope, this.root);
-    // The setup panel shows its thumbnails again when the column goes.
+    // When the column goes, the setup panel takes its Showcase form again (the liveries large and in its strip).
     scope.add(() => setLiveriesInGallery(false));
     // The sim's grid, hidden while the gallery shows, kept a stale selection: it is refreshed, then shown again.
     scope.add(() => {

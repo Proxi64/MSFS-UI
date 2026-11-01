@@ -176,7 +176,7 @@ export class GalleryBar {
       }));
       const current = sorts.current >= 0 ? items[sorts.current] : undefined;
       if (manipulator) manipulator.setData(items, current);
-      // The list's height, in layout units (sim/components.ts).
+      // The list's height, in layout units (sim/dropdown-list.ts).
       dropdown.set('List_Size', String(Math.max(1, items.length) * DROPDOWN_ITEM + DROPDOWN_PADDING));
     }
     if (this.reverseButton) {

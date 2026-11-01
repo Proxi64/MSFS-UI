@@ -86,7 +86,24 @@ export async function chooseVariant(state: ConfiguratorState, id: string): Promi
 /** Selects a livery of `state`. False when ignored (already selected, unavailable, unknown, or the guard failed). */
 export async function chooseLivery(state: ConfiguratorState, id: string): Promise<boolean> {
   const livery = state.liveries.filter((candidate) => candidate.id === id)[0];
-  if (!livery || livery.isSelected || livery.isDisabled) return false;
+  if (!livery || livery.isSelected) return false;
+  return sendLivery(livery);
+}
+
+/**
+ * Selects a livery of `state` while a livery sent before may not be reported yet: `state` may still list `id` as
+ * selected (the livery the sim is leaving), so it is sent all the same. False when ignored (unavailable, unknown, or
+ * the guard failed).
+ */
+export async function chooseLiveryWhileSending(state: ConfiguratorState, id: string): Promise<boolean> {
+  const livery = state.liveries.filter((candidate) => candidate.id === id)[0];
+  if (!livery) return false;
+  return sendLivery(livery);
+}
+
+async function sendLivery(livery: ConfiguratorLivery): Promise<boolean> {
+  const id = livery.id;
+  if (livery.isDisabled) return false;
   const ready = await canApply(variationOf(id));
   if (!ready) return false;
   await answerWithin(configurator.SaveVariationId.request(id), ANSWER_TIMEOUT_MS, 'the change of livery');
