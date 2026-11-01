@@ -193,11 +193,13 @@ export class LargeLivery {
     // Chained: the configurator's sync, check and save take several round trips, and two sends in flight together
     // could be saved out of order (the sim keeping the older livery). A send superseded before its turn is dropped.
     this.chain = this.chain
-      .then(() => (this.sends.isLast(sent.number) ? this.events.choose(sent) : false))
+      .then(() => (!this.scope.disposed && this.sends.isLast(sent.number) ? this.events.choose(sent) : false))
       .then(answer, (error: unknown) => {
         logError('the livery could not be chosen', error);
         answer(false);
-      });
+      })
+      // A throw inside `answer` must not leave the chain rejected (every later send would be skipped).
+      .catch((error: unknown) => logError('the livery answer failed', error));
   }
 
   private draw(): void {
