@@ -262,5 +262,8 @@
  */
 .msfs-ui-setup__large-button [name="Image"],
 .msfs-ui-setup__grid-button [name="Image"] { left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important; }
-/* The last resort of a column too wide (showcase-layout.ts): the large livery gives up height from its top. */
-.msfs-ui-setup__large.is-cropped [name="Image"] { background-position-y: 100% !important; }
+/*
+ * The last resort of a column too wide (showcase-layout.ts): the large livery gives up height, cropped toward the top as
+ * on the owner's mockup (2026-11-01: 12 % of the cut above, the rest below): the fin stays whole, the bottom goes.
+ */
+.msfs-ui-setup__large.is-cropped [name="Image"] { background-position-y: 12% !important; }

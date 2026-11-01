@@ -99,7 +99,7 @@ export class LiveryGrid {
     });
   }
 
-  /** How many liveries the grid shows: its form depends on it (showcase-layout.ts: gridFor). */
+  /** How many liveries the grid shows: its columns' gaps and its bar depend on it (showcase-layout.ts: showcasePlaces). */
   get count(): number {
     return this.liveries.length;
   }
