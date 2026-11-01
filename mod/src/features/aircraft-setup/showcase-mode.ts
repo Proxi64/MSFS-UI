@@ -10,7 +10,7 @@ import type { SimComponent } from '../../sim/components.ts';
 import { ConfigureTile } from './configure-tile.ts';
 import type { LiveryGrid } from './livery-grid.ts';
 import { GAP } from './setup-layout.ts';
-import { bottomColumns, gridFor, rowNeed, sharedColumns, showcasePlaces, type BottomNeeds, type ShowcasePlaces, type Span } from './showcase-layout.ts';
+import { bottomColumns, gridFor, gridHasRoom, rowNeed, sharedColumns, showcasePlaces, type BottomNeeds, type ShowcasePlaces, type Span } from './showcase-layout.ts';
 import type { VariantDropdown } from './variant-dropdown.ts';
 
 /** The variant and livery headers, in layout units (a section header of core/theme.css): their height in whole pixels. */
@@ -19,7 +19,10 @@ const HEADER_HEIGHT = 36;
 const TAIL_FIELD_UNITS = 120;
 /** Layout passes (250 ms each) the bottom block may stay too narrow, the left column widening, before it is logged. */
 const MISFIT_PASSES = 8;
-/** Layout passes the labels may stay unmeasured before it is logged: the sim lays its tile out 2 to 4 s after the screen shows. */
+/**
+ * Layout passes the labels may stay unmeasured before it is logged: the sim gives its tile a size after the rest of the
+ * screen (measured on 1.9.21: 1.2 s after the panel showed; 2.9 to 3.9 s after the screen on a slow entry).
+ */
 const UNMEASURED_PASSES = 40;
 
 /** The panel's parts the Showcase mode places. */
@@ -102,7 +105,7 @@ export class ShowcaseMode {
     const header = Math.round(HEADER_HEIGHT * unit);
     const places = showcasePlaces(rect.width, height, header, unit, false);
     const grid = gridFor(this.parts.grid.count, places.grid, showcasePlaces(rect.width, height, header, unit, true).grid);
-    return grid.thumbHeight >= 1 && grid.height >= grid.rowStep ? { ...places, grid } : null;
+    return gridHasRoom(grid) ? { ...places, grid } : null;
   }
 
   /**
@@ -195,7 +198,7 @@ export class ShowcaseMode {
 
   /**
    * What the bottom block needs, measured again when the resolution or a label changes (reading the labels costs
-   * nothing; the probe in the tile's label is only added then). `frame`: the left column's width less the panel's.
+   * nothing; the probe in the tile's label is only added then, once the tile has a size). `frame`: the left column's width less the panel's.
    */
   private measureNeeds(tile: HTMLElement, unit: number, gap: number, frame: number): void {
     const buttons = this.parts.actionButtons;

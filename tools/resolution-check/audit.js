@@ -125,7 +125,7 @@
       if (variants && !variants.classList.contains('is-scrolling') && row.length > 1 && Math.abs(last.r - tr.r) > 1.5) problems.push('variant row off the title block on the right: ' + px(last.r) + ' title ' + px(tr.r));
     });
     // Gallery and List: the panel ends above the sim's ButtonBlock (the Configure tile); in Showcase the tile is in the
-    // panel's bottom row instead, and the panel ends in Fleet_Details.
+    // panel's bottom block instead, and the panel ends in Fleet_Details.
     if (!showcase && rect(setup).b > rect(document.querySelector('[name="Fleet_Details"] [name="ButtonBlock"]') || setup).t + 1) problems.push('setup panel runs over the Configure tile');
     if (showcase && rect(setup).b > rect(document.querySelector('[name="Fleet_Details"]') || setup).b + 1) problems.push('Showcase: setup panel runs out of Fleet_Details');
   }

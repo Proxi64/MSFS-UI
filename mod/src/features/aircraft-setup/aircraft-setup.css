@@ -125,7 +125,7 @@
 .msfs-ui-setup.is-showcase .msfs-ui-setup__action { height: 100%; }
 .msfs-ui-setup.is-showcase .msfs-ui-setup__tail-title { flex: 0 0 var(--tail-w); }
 /* Its width is what the right column needs (showcase-mode.ts): the title never shrinks in a narrow header. */
-.msfs-ui-setup__tail-title .msfs-ui-title { flex-shrink: 0; }
+.msfs-ui-setup.is-showcase .msfs-ui-setup__tail-title .msfs-ui-title { flex-shrink: 0; }
 
 /*
  * The variants' row (variant-dropdown.ts): a header holding the sim's Dropdown over its whole box, under the title (the

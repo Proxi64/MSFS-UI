@@ -9,7 +9,7 @@ import { GAP, LIVERY_RATIO, PADDING_TOP, SCROLL_BAR_ROOM } from './setup-layout.
 /** Layout units: height of each row of the bottom block (as `.msfs-ui-setup__tail`). */
 const ROW_HEIGHT = 30;
 /** Small liveries per row of the grid. */
-const GRID_COLUMNS = 4;
+export const GRID_COLUMNS = 4;
 
 /** A part's place, in pixels from the panel's top. */
 export interface Span {
@@ -19,7 +19,6 @@ export interface Span {
 
 /** The grid of small liveries: its place and its thumbnails, in whole pixels. */
 export interface GridPlace extends Span {
-  columns: number;
   /** The liveries do not fit: the scroll bar takes its room on the right. */
   scrolls: boolean;
   thumbWidth: number;
@@ -66,7 +65,6 @@ export function showcasePlaces(width: number, height: number, headerHeight: numb
   const grid = {
     top: gridTop,
     height: bottom.top - gap - gridTop,
-    columns: GRID_COLUMNS,
     scrolls,
     thumbWidth,
     lastWidth: room - (GRID_COLUMNS - 1) * thumbWidth,
@@ -92,6 +90,11 @@ export function gridFor(count: number, wide: GridPlace, narrow: GridPlace): Grid
   const gap = wide.rowStep - wide.thumbHeight;
   const thumbHeight = Math.floor((wide.height - (rows - 1) * gap) / rows);
   return { ...wide, thumbHeight, rowStep: thumbHeight + gap };
+}
+
+/** Whether the grid gets at least one row: under it (the screen animates) the panel is not laid out. */
+export function gridHasRoom(grid: Pick<GridPlace, 'height' | 'thumbHeight' | 'rowStep'>): boolean {
+  return grid.thumbHeight >= 1 && grid.height >= grid.rowStep;
 }
 
 /** What the bottom block's parts need, in pixels (measured by the caller). */

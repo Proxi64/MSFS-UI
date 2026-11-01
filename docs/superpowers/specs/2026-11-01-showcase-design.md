@@ -39,13 +39,13 @@ The grid of small liveries ends one gap above the bottom block.
 
 ## Constraints
 
-- The project's rules (CLAUDE.md): the sim's own components for everything visible (the dropdown, the livery images, the arrows, the scrolling elements; the mod's own SVG only for the heart and the eye); every sim component and manipulator API declared in `compat.json`; the sim's `real-scroll` for what scrolls, a recycling pool for a long list (the strip of an aircraft with hundreds of liveries); 250 ms layout passes writing only on change (`setVariable`, `setStyle`); `inputLocker` on everything clickable; every change to the sim through a `Scope` (the reduced Configure tile included, restored when the mod unloads); ES2017.
+- The project's rules (CLAUDE.md): the sim's own components for everything visible (the dropdown, the livery images, the arrows, the scrolling elements; the mod's own SVG only for the heart and the eye); every sim component and manipulator API declared in `compat.json`; the sim's `real-scroll` for what scrolls, a recycling pool for a long list (the grid of an aircraft with hundreds of liveries); 250 ms layout passes writing only on change (`setVariable`, `setStyle`); `inputLocker` on everything clickable; every change to the sim through a `Scope` (the moved Configure tile included, restored when the mod unloads); ES2017.
 - Known traps (CLAUDE.md, Findings): the sim's `Dropdown` keeps its list's scroll position between openings (scroll it on opening, by whole items); visual states apply on the next frame (measure after a short delay); whole-pixel widths, the last item taking the rest; an element over a sim component but outside it takes the component's Hover state away.
-- Each livery arrow, wheel step or strip click chooses the livery through the configurator (`sim/configurator.ts`, `syncConfiguratorToCurrent()` first), as a thumbnail click does today; rapid steps must not leave the sim on another livery than the one shown, nor freeze the panel.
-- The three buttons of the bottom row: whole pixels, the last taking the rest; each label whole at every resolution checked (`tools/resolution-check/`, the resolutions of 2.0.2). If a label cannot show whole at some resolution, stop and ask the owner (the sim's texts are not shortened).
+- Each livery arrow, wheel step or click in the grid chooses the livery through the configurator (`sim/configurator.ts`, `syncConfiguratorToCurrent()` first), as a thumbnail click does today; rapid steps must not leave the sim on another livery than the one shown, nor freeze the panel.
+- The bottom block's two columns: whole pixels, the Configure tile taking what the right column leaves; each label and the tile's text whole at every resolution checked (`tools/resolution-check/`, the resolutions of 2.0.2). If a label cannot show whole at some resolution, stop and ask the owner (the sim's texts are not shortened).
 - The view tabs: measured in the three views, before and after, at every resolution checked: the bar's edges and the last tab's right edge unchanged to the pixel.
 - Verified by measuring in the sim (`getBoundingClientRect`): the same top and bottom of every part for an aircraft with one variant, one with four, and the iFly 737 MAX (one variant per livery); the open dropdown's bottom on the large livery's bottom, to the pixel; the panel's blocks on the title block's edges; then the owner's screenshots.
-- Tests (node:test) for the pure parts: the fixed places, the dropdown's rows, the strip's rows, the bottom row's widths; the gallery memory reading `stock`; the settings with a stale `layout` (mod and app).
+- Tests (node:test) for the pure parts: the fixed places, the dropdown's rows, the grid's cells and reveal, the bottom block's columns; the gallery memory reading `stock`; the settings with a stale `layout` (mod and app).
 - Documentation: user guide, `mod/README.md`, the app's Readme page if it names the views or the layout, `docs/next-steps.md`, CLAUDE.md.
 
 ## Non-goals
@@ -59,8 +59,8 @@ The grid of small liveries ends one gap above the bottom block.
 ## Left to the builder
 
 - Which sim components make the large livery (the image source with enough resolution: the livery column of the side by side layout already shows large livery images), the arrows and the disabled arrow; to be found in `fs-base-ui` and `cookedcomps` and declared in `compat.json`. If the sim has no arrow component that fits, stop and ask the owner.
-- How the sim's "Configure your aircraft" tile is reduced (it lives in `Fleet_Details`, whose statistics the panel already hides) while keeping its key and its click.
-- How the strip scrolls horizontally (`real-scroll direction="x"` as the Showcase grid, or the grid's own mechanism) and its wheel step.
+- How the sim's "Configure your aircraft" tile is moved into the bottom block (it lives in `Fleet_Details`, whose statistics the panel already hides) while keeping its look, its key and its click.
+- How the grid of small liveries scrolls (`real-scroll direction="y"`) and its wheel step.
 - How fast livery steps reach the configurator (each one, or the last after a short settle), measured in the sim.
 - How the code is shared with the current panel (the Gallery and List panel keeps today's code paths) and with the Showcase grid.
 - The exact metrics at 1080, 1440 and 2160 lines.

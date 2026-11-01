@@ -102,7 +102,7 @@
     {
       "id": "aircraftSetup",
       "title": "Aircraft setup panel",
-      "description": "A panel in the aircraft selection with the variants, the tail number and the Fuel and Identification buttons; in the Showcase view also the liveries (the current one large, the others in a strip) with their favourites, and the sim's Configure button on the row of Fuel and Identification. Without the Aircraft gallery and list feature, the panel always takes its Showcase form.",
+      "description": "A panel in the aircraft selection with the variants, the tail number and the Fuel and Identification buttons; in the Showcase view also the liveries (the current one large, the others in a grid) with their favourites, and the sim's Configure tile beside the tail number and the two buttons. Without the Aircraft gallery and list feature, the panel always takes its Showcase form.",
       "screen": "Aircraft selection",
       "enabledByDefault": true,
       "options": [
@@ -110,7 +110,7 @@
           "id": "widenColumn",
           "type": "number",
           "title": "Widen the left column",
-          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width. In Showcase it is never narrower than the width where the bottom row's three labels show whole; in Gallery and List the column is 400 units wide instead.",
+          "description": "Extra width of the left column, in layout units (the screen is 1080 units high; the sim's column is 470 wide). 0 keeps the sim's width. In Showcase it is never narrower than the width where the labels of the panel's bottom block show whole; in Gallery and List the column is 400 units wide instead.",
           "default": 50,
           "min": 0,
           "max": 200,

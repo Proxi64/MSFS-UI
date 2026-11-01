@@ -15,7 +15,7 @@ import { isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../
 import { liveryFolder } from '../../sim/liveries.ts';
 import { createRealScroll, removeFromList } from '../../sim/real-scroll.ts';
 import { GAP } from './setup-layout.ts';
-import { gridCell, gridReveal, type GridPlace } from './showcase-layout.ts';
+import { GRID_COLUMNS, gridCell, gridReveal, type GridPlace } from './showcase-layout.ts';
 
 /**
  * How near the visible part the thumbnails get components, in layout units: closer than the gallery's (its tiles are
@@ -154,7 +154,7 @@ export class LiveryGrid {
       const place = gridCell(at);
       if (place.column === 0) this.rows.push(el('div', 'msfs-ui-setup__grid-row', this.list));
       const host = el('div', 'msfs-ui-setup__grid-cell', this.rows[this.rows.length - 1]);
-      toggleClass(host, 'is-last', place.column === 3);
+      toggleClass(host, 'is-last', place.column === GRID_COLUMNS - 1);
       const cell: Cell = { livery, host, slot: null, card: null };
       scope.listen(host, 'mouseenter', () => this.events.hover(cell.livery.id));
       scope.listen(host, 'mouseleave', () => this.events.hover(null));

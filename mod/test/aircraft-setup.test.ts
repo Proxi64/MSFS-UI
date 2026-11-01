@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { overflows, rowCount, statisticsRoom, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
-import { bottomColumns, columnExtra, gridCell, gridFor, gridReveal, rowNeed, sharedColumns, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
+import { bottomColumns, columnExtra, gridCell, gridFor, gridHasRoom, gridReveal, rowNeed, sharedColumns, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
 import { LiverySends, LiveryStepper } from '../src/features/aircraft-setup/livery-stepper.ts';
 import { orderLiveries } from '../src/sim/livery-order.ts';
 import {
@@ -206,7 +206,6 @@ describe('showcase panel layout', () => {
         assert.equal(grid.top + grid.height + gap, bottom.top);
         assert.equal(bottom.top + bottom.height, height);
         assert.equal(bottom.height, 2 * row + gap);
-        assert.equal(grid.columns, 4);
         assert.equal(grid.thumbWidth, Math.floor((width - 3 * gap - bar) / 4));
         assert.equal(grid.thumbHeight, Math.round(grid.thumbWidth * 0.47));
         assert.equal(grid.rowStep, grid.thumbHeight + gap);
@@ -327,6 +326,13 @@ describe('showcase panel layout', () => {
       const narrow = showcasePlaces(width, height, Math.round(36 * unit), unit, true).grid;
       assert.equal(3 * (narrow.thumbWidth + gap) + narrow.lastWidth, width - Math.round(24 * unit));
     }
+  });
+
+  it('gridHasRoom wants at least one row, its gap included', () => {
+    assert.equal(gridHasRoom({ height: 86, thumbHeight: 78, rowStep: 86 }), true);
+    assert.equal(gridHasRoom({ height: 85, thumbHeight: 78, rowStep: 86 }), false);
+    assert.equal(gridHasRoom({ height: 0, thumbHeight: 0, rowStep: 8 }), false, 'the panel still animating');
+    assert.equal(gridHasRoom({ height: 300, thumbHeight: 0, rowStep: 8 }), false, 'no width yet: no thumbnail');
   });
 
   it('sharedColumns shares the block in halves, whole pixels, until the needs are measured', () => {

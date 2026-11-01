@@ -67,12 +67,13 @@ export class ConfigureTile {
 
   /**
    * The width the placed tile needs to show its label whole, in pixels: its width less its label's, plus the label's
-   * own width on one line (a probe in the label takes its font); 0 when the label is not found.
+   * own width on one line (a probe in the label takes its font); 0 when the label is not found, or while the tile has
+   * no size yet (no probe then: this is asked at every layout pass until it answers).
    */
   need(): number {
     const tile = this.tile;
     const title = tile ? tile.querySelector<HTMLElement>('[name="TextBlock"] > [name="Title"]') : null;
-    if (!tile || !title) return 0;
+    if (!tile || !title || !(tile.getBoundingClientRect().width > 0)) return 0;
     const probe = document.createElement('span');
     probe.style.whiteSpace = 'nowrap';
     probe.textContent = title.textContent;
