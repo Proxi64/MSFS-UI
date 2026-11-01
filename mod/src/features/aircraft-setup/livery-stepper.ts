@@ -7,6 +7,8 @@ export class LiveryStepper {
   private ids: readonly string[] = [];
   private currentId: string | null = null;
   private pendingId: string | null = null;
+  /** Sent to the configurator, not reported by the sim yet. */
+  private sentId: string | null = null;
 
   /** A reload: the liveries in the panel's order (favourites first) and the configurator's current one. */
   setLiveries(aircraft: string, ids: readonly string[], currentId: string | null): void {
@@ -14,7 +16,10 @@ export class LiveryStepper {
     this.aircraft = aircraft;
     this.ids = ids;
     this.currentId = currentId;
-    if (!sameAircraft || this.pendingId === currentId || (this.pendingId !== null && !ids.includes(this.pendingId))) {
+    if (!sameAircraft || this.sentId === currentId || (this.sentId !== null && !ids.includes(this.sentId))) {
+      this.sentId = null;
+    }
+    if (!sameAircraft || (this.sentId === null && this.pendingId === currentId) || (this.pendingId !== null && !ids.includes(this.pendingId))) {
       this.pendingId = null;
     }
   }
@@ -26,14 +31,14 @@ export class LiveryStepper {
     const target = Math.min(this.ids.length - 1, Math.max(0, from + delta));
     if (target === from) return this.shown();
     const id = this.ids[target];
-    this.pendingId = id === this.currentId ? null : id;
+    this.pendingId = id === (this.sentId ?? this.currentId) ? null : id;
     return id;
   }
 
-  /** The id shown: the pending step's while one waits, else the configurator's. */
+  /** The id shown: the pending step's while one waits, else the sent one's until the sim reports it, else the configurator's. */
   shown(): string | null {
     if (this.ids.length === 0) return null;
-    return this.pendingId ?? this.currentId;
+    return this.base();
   }
 
   /** The step waiting to be sent (null: none); cleared by `sent()`. */
@@ -41,16 +46,21 @@ export class LiveryStepper {
     return this.pendingId;
   }
 
-  /** The pending step went to the configurator: it is the current livery until a reload says otherwise. */
+  /** The pending step went to the configurator: it stays shown until a reload reports it (or `abandonSent()`). */
   sent(): void {
-    if (this.pendingId !== null) this.currentId = this.pendingId;
+    if (this.pendingId !== null) this.sentId = this.pendingId;
     this.pendingId = null;
   }
 
-  /** Index from 1 of the shown livery (the first when the configurator's is not listed). */
+  /** The configurator ignored the choice or it failed: show the configurator's livery again. */
+  abandonSent(): void {
+    this.sentId = null;
+  }
+
+  /** Index from 1 of the shown livery; null without liveries or when the shown one is not listed. */
   position(): { index: number; count: number } | null {
-    if (this.ids.length === 0) return null;
-    return { index: this.shownIndex() + 1, count: this.ids.length };
+    const index = this.ids.indexOf(this.base() ?? '');
+    return index < 0 ? null : { index: index + 1, count: this.ids.length };
   }
 
   canStep(direction: -1 | 1): boolean {
@@ -59,7 +69,12 @@ export class LiveryStepper {
     return target >= 0 && target < this.ids.length;
   }
 
+  private base(): string | null {
+    return this.pendingId ?? this.sentId ?? this.currentId;
+  }
+
+  /** Index of the shown livery; 0 when it is not listed. */
   private shownIndex(): number {
-    return Math.max(0, this.ids.indexOf(this.pendingId ?? this.currentId ?? ''));
+    return Math.max(0, this.ids.indexOf(this.base() ?? ''));
   }
 }

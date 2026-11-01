@@ -348,13 +348,16 @@ describe('livery stepper', () => {
     assert.equal(stepper.step(-1), 'b');
   });
 
-  it('keeps the pending step when a step does not move', () => {
+  it('changes nothing when a step does not move, and clears the pending step when it lands on the current livery', () => {
     const stepper = new LiveryStepper();
     stepper.setLiveries('plane', three, 'a');
     assert.equal(stepper.step(-1), 'a');
     assert.equal(stepper.pending(), null);
     stepper.step(1);
-    stepper.step(-1);
+    assert.equal(stepper.step(1), 'c');
+    assert.equal(stepper.step(1), 'c');
+    assert.equal(stepper.pending(), 'c');
+    stepper.step(-2);
     assert.equal(stepper.pending(), null);
     assert.equal(stepper.shown(), 'a');
   });
@@ -365,11 +368,79 @@ describe('livery stepper', () => {
     assert.equal(stepper.step(1), 'b');
   });
 
-  it('forgets the pending step once sent', () => {
+  it('forgets the pending step once sent, and shows it until the sim reports it', () => {
     const stepper = new LiveryStepper();
     stepper.setLiveries('plane', three, 'a');
     stepper.step(1);
     stepper.sent();
     assert.equal(stepper.pending(), null);
+    assert.equal(stepper.shown(), 'b');
+    stepper.setLiveries('plane', three, 'a');
+    assert.equal(stepper.shown(), 'b');
+    assert.deepEqual(stepper.position(), { index: 2, count: 3 });
+  });
+
+  it('releases the sent livery when a reload reports it', () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'a');
+    stepper.step(1);
+    stepper.sent();
+    stepper.setLiveries('plane', three, 'b');
+    assert.equal(stepper.shown(), 'b');
+    stepper.setLiveries('plane', three, 'c');
+    assert.equal(stepper.shown(), 'c');
+  });
+
+  it('drops the sent livery on another aircraft or when it leaves the list', () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'a');
+    stepper.step(1);
+    stepper.sent();
+    stepper.setLiveries('other', ['x', 'y'], 'y');
+    assert.equal(stepper.shown(), 'y');
+    stepper.setLiveries('plane', three, 'a');
+    stepper.step(2);
+    stepper.sent();
+    stepper.setLiveries('plane', ['a', 'b'], 'a');
+    assert.equal(stepper.shown(), 'a');
+  });
+
+  it('steps from the sent livery before the reload', () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'a');
+    stepper.step(1);
+    stepper.sent();
+    assert.equal(stepper.canStep(-1), true);
+    assert.equal(stepper.step(1), 'c');
+    assert.equal(stepper.pending(), 'c');
+  });
+
+  it('sets pending when stepping back to the current livery while a sent one waits', () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'a');
+    stepper.step(1);
+    stepper.sent();
+    assert.equal(stepper.step(-1), 'a');
+    assert.equal(stepper.pending(), 'a');
+    stepper.setLiveries('plane', three, 'a');
+    assert.equal(stepper.pending(), 'a');
+  });
+
+  it('returns to the current livery when the sent one is abandoned', () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'a');
+    stepper.step(1);
+    stepper.sent();
+    stepper.abandonSent();
+    assert.equal(stepper.shown(), 'a');
+  });
+
+  it('has no position when the shown livery is not listed', () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'zzz');
+    assert.equal(stepper.position(), null);
+    assert.equal(stepper.shown(), 'zzz');
+    assert.equal(stepper.canStep(-1), false);
+    assert.equal(stepper.canStep(1), true);
   });
 });
