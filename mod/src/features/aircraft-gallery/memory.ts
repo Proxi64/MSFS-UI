@@ -16,6 +16,12 @@ export interface GalleryMemory {
 
 const VIEWS: readonly View[] = ['gallery', 'list', 'showcase'];
 
+/**
+ * The sorts of earlier versions (Name, Max range; 0.3.0 stored the sim's option keys, here without their `TT:` prefix so
+ * that no translation key is declared for them): all read as Model now.
+ */
+const EARLIER_SORTS: readonly string[] = ['name', 'maxRange', 'MENU.NAME', 'MENU.ACPROPUI_MAX_RANGE'];
+
 /** A stored view: `stock`, the name of the Showcase view until now, is read as `showcase`; the Gallery view for any other. */
 function viewFrom(stored: unknown): View {
   if (stored === 'stock') return 'showcase';
@@ -34,6 +40,8 @@ export function galleryMemoryFrom(stored: unknown): GalleryMemory {
   };
   if (typeof entry.hiddenOnly === 'boolean') memory.hiddenOnly = entry.hiddenOnly;
   const sort = storedObject(entry.sort);
-  if (sort && typeof sort.option === 'string' && typeof sort.reversed === 'boolean') memory.sort = { option: sort.option, reversed: sort.reversed };
+  if (sort && typeof sort.option === 'string' && typeof sort.reversed === 'boolean') {
+    memory.sort = { option: EARLIER_SORTS.indexOf(sort.option.replace(/^TT:/, '')) >= 0 ? 'model' : sort.option, reversed: sort.reversed };
+  }
   return memory;
 }

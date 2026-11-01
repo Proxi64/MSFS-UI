@@ -136,7 +136,7 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 | Count | Aircraft shown / aircraft of the tab |
 | **Hidden** | Shows the hidden aircraft only (see *Hiding aircraft* below). Left of *Favorites*; the two are never on together |
 | **Favorites** | Shows the favourites only, with one tile per favourite livery |
-| Sort | **Name** (natural order: ATR 42, ATR 72, Cessna 172), **Studio** (then name) or **Max Range** (the sim's sort); the arrow reverses the order. A new order starts from the top |
+| Sort | **Model** (the model as displayed, in natural order: ATR 42, ATR 72; the display name when the sim gives none), **Manufacturer** (the brand as displayed, then the model; "Viking Air Limited, a De Havilland Canada company" reads De Havilland Canada; aircraft without a brand come last) or **Studio** (then the model); the arrow reverses the order. A remembered Name or Max Range sort of earlier versions reads as Model. A new order starts from the top |
 | **Gallery** / **List** / **Showcase** | Tiles in columns; one compact row per aircraft; large tiles in two rows, scrolling sideways, with the current aircraft's liveries in the setup panel. The three tabs have the same width |
 
 - **Favourites are liveries**: an aircraft is a favourite as soon as one of its liveries is (of any of its variants). Favourite aircraft always come first, whatever the sort. The order is set when the screen opens and kept while it stays open, so that an aircraft does not jump away when you mark one of its liveries; it is set again on a new sort, search, filter or category tab.

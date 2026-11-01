@@ -208,11 +208,38 @@ describe('sortTiles', () => {
   const ids = (sorted: { item: AircraftItem }[]) => sorted.map((tile) => tile.item.variationId);
 
   it('sorts by the displayed name, numbers in natural order', () => {
-    assert.deepEqual(ids(sortTiles(tiles, 'name', false)), ['atr42', 'atr72', 'b737', 'b747', 'c172', 'c404']);
+    assert.deepEqual(ids(sortTiles(tiles, 'model', false)), ['atr42', 'atr72', 'b737', 'b747', 'c172', 'c404']);
   });
 
   it('reverses the order', () => {
-    assert.deepEqual(ids(sortTiles(tiles, 'name', true)), ['c404', 'c172', 'b747', 'b737', 'atr72', 'atr42']);
+    assert.deepEqual(ids(sortTiles(tiles, 'model', true)), ['c404', 'c172', 'b747', 'b737', 'atr72', 'atr42']);
+  });
+
+  describe('by model and by manufacturer', () => {
+    const named = (variationId: string, displayName: string, brandName?: string, modelName?: string) =>
+      ({ item: Object.assign(aircraft(variationId, displayName, 'Studio'), { brandName, modelName }) });
+    const owner = [
+      named('dhc2', 'Viking Air Limited, a De Havilland Canada company DHC-2 Beaver', 'Viking Air Limited, a De Havilland Canada company', 'DHC-2 Beaver'),
+      named('longitude', 'Textron Aviation Cessna Citation Longitude', 'Textron Aviation', 'Cessna Citation Longitude'),
+      named('c172', 'Cessna 172 Skyhawk', 'Cessna', '172 Skyhawk'),
+      named('c208', 'Cessna 208 Caravan', 'Cessna', '208 Caravan'),
+      named('c42', 'Cessna 42', 'Cessna', '42'),
+      named('addon', 'Mystery Plane'),
+      named('airbus', 'Airbus A320', 'Airbus', 'A320'),
+    ];
+
+    it('sorts by model as displayed, naturally: Cessna Citation Longitude under C, the DHC-2 under D, the display name standing in for a missing model', () => {
+      assert.deepEqual(ids(sortTiles(owner, 'model', false)), ['c42', 'c172', 'c208', 'airbus', 'longitude', 'dhc2', 'addon']);
+      assert.deepEqual(ids(sortTiles(owner, 'model', true)), ['addon', 'dhc2', 'longitude', 'airbus', 'c208', 'c172', 'c42']);
+    });
+
+    it('sorts by brand as displayed, then model; no brand last', () => {
+      assert.deepEqual(ids(sortTiles(owner, 'manufacturer', false)), ['airbus', 'c42', 'c172', 'c208', 'dhc2', 'longitude', 'addon']);
+    });
+
+    it('reverses the manufacturer order, the aircraft without a brand staying last', () => {
+      assert.deepEqual(ids(sortTiles(owner, 'manufacturer', true)), ['longitude', 'dhc2', 'c208', 'c172', 'c42', 'airbus', 'addon']);
+    });
   });
 
   it('sorts by studio then name, ignoring spaces and case', () => {
@@ -221,8 +248,9 @@ describe('sortTiles', () => {
 
   it('keeps the sim order for ties', () => {
     const same = [aircraft('b', 'Same', 'X'), aircraft('a', 'Same', 'X')].map((item) => ({ item }));
-    assert.deepEqual(ids(sortTiles(same, 'name', false)), ['b', 'a']);
-    assert.deepEqual(ids(sortTiles(same, 'name', true)), ['b', 'a']);
+    assert.deepEqual(ids(sortTiles(same, 'model', false)), ['b', 'a']);
+    assert.deepEqual(ids(sortTiles(same, 'model', true)), ['b', 'a']);
+    assert.deepEqual(ids(sortTiles(same, 'manufacturer', true)), ['b', 'a']);
   });
 
   it('compares runs of digits as numbers', () => {
@@ -378,6 +406,12 @@ describe('the gallery memory in the storage', () => {
   it('keeps each field that has its type', () => {
     const stored = { view: 'list', favoritesOnly: true, hiddenOnly: false, sort: { option: 'studio', reversed: true } };
     assert.deepEqual(galleryMemoryFrom(stored), stored);
+  });
+
+  it('reads the earlier sorts Name and Max range as Model, keeping the direction', () => {
+    for (const option of ['name', 'TT:MENU.NAME', 'maxRange', 'TT:MENU.ACPROPUI_MAX_RANGE']) {
+      assert.deepEqual(galleryMemoryFrom({ view: 'list', favoritesOnly: false, sort: { option, reversed: true } }).sort, { option: 'model', reversed: true }, option);
+    }
   });
 
   it('gives the Gallery view without filter or sort for a wrong value, and drops what it does not know', () => {

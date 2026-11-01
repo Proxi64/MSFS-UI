@@ -4,6 +4,7 @@
 // liveries is.
 
 import { favoriteLiveriesOf, type FavoriteLivery } from '../../sim/favorites.ts';
+import { aircraftNames } from '../../sim/aircraft-names.ts';
 import { isHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 
 /** An item of `Game.Aircraft.AircraftList` (fields used). */
@@ -160,11 +161,12 @@ export function emptyMessage(filter: GalleryFilter, counts: { favorites: number;
 }
 
 /** Sorts made by the mod on the tiles (the sim offers none of them). */
-export type LocalSort = 'name' | 'studio';
+export type LocalSort = 'model' | 'manufacturer' | 'studio';
 
-/** Sort keys of an aircraft: its displayed name and its studio, normalised. */
-function sortKeys(item: AircraftItem): { studio: string; name: string } {
-  return { studio: normalize(item.creator || ''), name: normalize(item.displayName) };
+/** Sort keys of an aircraft, normalised: its model and its brand as displayed (sim/aircraft-names.ts), its studio. */
+function sortKeys(item: AircraftItem): { studio: string; model: string; brand: string } {
+  const names = aircraftNames(item);
+  return { studio: normalize(item.creator || ''), model: normalize(names.model), brand: normalize(names.brand) };
 }
 
 /**
@@ -186,15 +188,23 @@ export function compareNatural(a: string, b: string): number {
 }
 
 /**
- * The tiles sorted by displayed name (Name), or by studio then name, in natural order; `reversed` gives the opposite
- * order. Ties keep the sim's order.
+ * The tiles sorted by model, by brand then model (Manufacturer), or by studio then model, in natural order; `reversed`
+ * gives the opposite order, except that the aircraft without a brand stay after the others in Manufacturer. Ties keep
+ * the sim's order.
  */
 export function sortTiles(tiles: readonly Tile[], sort: LocalSort, reversed: boolean): Tile[] {
   const keyed = tiles.map((tile, at) => ({ tile, at, keys: sortKeys(tile.item) }));
   keyed.sort((a, b) => {
     let order: number;
-    if (sort === 'name') order = compareNatural(a.keys.name, b.keys.name);
-    else order = compareNatural(a.keys.studio, b.keys.studio) || compareNatural(a.keys.name, b.keys.name);
+    if (sort === 'model') {
+      order = compareNatural(a.keys.model, b.keys.model);
+    } else if (sort === 'manufacturer') {
+      // Without a brand: after the others, in either direction.
+      if (!a.keys.brand !== !b.keys.brand) return a.keys.brand ? -1 : 1;
+      order = compareNatural(a.keys.brand, b.keys.brand) || compareNatural(a.keys.model, b.keys.model);
+    } else {
+      order = compareNatural(a.keys.studio, b.keys.studio) || compareNatural(a.keys.model, b.keys.model);
+    }
     if (reversed) order = -order;
     return order || a.at - b.at;
   });

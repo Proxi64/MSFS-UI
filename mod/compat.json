@@ -103,9 +103,7 @@
         "AIRTRAFFICOFF",
         "MULTIPLAYERLIVE",
         "MULTIPLAYERALL",
-        "MULTIPLAYEROFF",
-        "GetAircraftSortingOptions",
-        "SetAircraftSortingOption"
+        "MULTIPLAYEROFF"
       ]
     },
     {
@@ -134,8 +132,7 @@
   "translations": [
     "TT:GENERIC.LIST",
     "TT:GENERIC.SORT_BY",
-    "TT:MENU.NAME",
-    "TT:MENU.ACPROPUI_MAX_RANGE",
+    "TT:MANUFACTURE.BREADCRUMB.MODEL",
     "TT:GENERIC.LIVERY",
     "TT:MANUFACTURE.BREADCRUMB.VARIATION",
     "TT:MENU.AIRCRAFT.TAIL_NUMBER",
@@ -264,11 +261,6 @@
       "group": "Data model (read)",
       "label": "Game.CurrentFlight.FlightConditions (traffic, multiplayer)",
       "run": "(ctx) => ctx.store.Game.CurrentFlight.UpdateFlightConditions.request('').then(() => ctx.store.Game.CurrentFlight.FlightConditions()).then((v) => { const ids = (g) => (v && v[g] ? v[g].map((b) => b.id) : []); const has = (g, wanted) => wanted.every((id) => ids(g).indexOf(id) >= 0); const ok = has('airtraffic', ['AIRTRAFFICLIVE', 'AIRTRAFFICAI', 'AIRTRAFFICOFF']) && has('multiplayer', ['MULTIPLAYERLIVE', 'MULTIPLAYERALL', 'MULTIPLAYEROFF']); return { ok: ok, detail: ok ? ids('airtraffic').concat(ids('multiplayer')).join(', ') : 'unexpected buttons' }; })"
-    },
-    {
-      "group": "Data model (read)",
-      "label": "Game.Aircraft.GetAircraftSortingOptions",
-      "run": "(ctx) => ctx.aircraft.GetAircraftSortingOptions.request('').then((v) => ({ ok: Array.isArray(v) && v.length > 0, detail: Array.isArray(v) ? v.length + ' options' : 'empty' }))"
     },
     {
       "group": "Data model (read)",

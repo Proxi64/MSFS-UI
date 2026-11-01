@@ -89,7 +89,7 @@ src/
                        (its bar and its pooled tiles, made of sim components; the Showcase tiles' four lines), default-columns.ts
                        (Showcase on whole columns), default-grid.ts (pure: the Showcase view's two rows and column width, the
                        view tabs' shared width), memory.ts (pure: the gallery's memory), tiles.ts (pure: search, favourites
-                       tiles, hidden aircraft, filters, favourites first, Name and Studio sorts), liveries.ts (the livery column of Gallery and
+                       tiles, hidden aircraft, filters, favourites first, Model, Manufacturer and Studio sorts), liveries.ts (the livery column of Gallery and
                        List), livery-column.ts (pure: split, aircraft and livery tile sizes, tail line), aircraft-gallery.css
                        (layout only)
     aircraft-setup/    index.ts (column width: 400 units in Gallery and List, the option or the bottom block's need in Showcase),
@@ -224,7 +224,7 @@ Since 2.0 the mod keeps its data in the **vault**: the `msfs-ui.wasm` module of 
 | `MSFS_UI_FAVORITE_AIRCRAFT` | Favourite aircraft of the versions before 1.3.0 (a heart on the aircraft): **removed** at the first start of 1.3.0 (`dropFavoriteAircraft`, logged), the favourites being liveries since | None |
 | `MSFS_UI_FAVORITE_LIVERIES` | Favourite liveries: `variationId`, livery folder (the form of `MSFS_UI_LIVERY_TAILS`; for a livery without one, the folder of its thumbnail), title, thumbnail, aircraft name, publisher, variant, date of last use | Hearts of the livery column, the setup panel and Free Flight; the date at each change of aircraft |
 | `MSFS_UI_HIDDEN_AIRCRAFT` | Hidden aircraft: `[{ "displayName": …, "creator": … }]` (name and publisher, as the favourite liveries identify an aircraft) | The eye of the gallery's aircraft tiles and rows |
-| `MSFS_UI_AIRCRAFT_GALLERY` | `{ "view": "gallery" \| "list" \| "showcase", "favoritesOnly": …, "hiddenOnly": …, "sort": { "option": "name" \| "studio" \| <the sim's option key>, "reversed": … } \| null }` (`showcase` is the large-tile view, named Default before Showcase and stored as `stock`, which still reads as `showcase`; the 0.3.0 key `TT:MENU.NAME` reads as `name`; `hiddenOnly`, the Hidden filter, absent before 2.0.0; both filters true, never written, reads as Favorites; a `lastView` stored by 2.0.1 is dropped) | The gallery's controls |
+| `MSFS_UI_AIRCRAFT_GALLERY` | `{ "view": "gallery" \| "list" \| "showcase", "favoritesOnly": …, "hiddenOnly": …, "sort": { "option": "model" \| "manufacturer" \| "studio", "reversed": … } \| null }` (`showcase` is the large-tile view, named Default before Showcase and stored as `stock`, which still reads as `showcase`; `name`, `maxRange` and the 0.3.0 key `TT:MENU.NAME` (earlier versions) read as `model`; `hiddenOnly`, the Hidden filter, absent before 2.0.0; both filters true, never written, reads as Favorites; a `lastView` stored by 2.0.1 is dropped) | The gallery's controls |
 | `MSFS_UI_AIRCRAFT_USES` | Last livery and date of use per variant, recorded up to 2.0.4 and read by nobody: **removed** at the first start of the next version (`dropAircraftUses`, logged) | Nothing since |
 | `MSFS_UI_LIVERY_TAILS` | Per livery folder (lower case, for example `simobjects/airplanes/microsoft_sf50/liveries/microsoft/apex_corso_red`): the tail number chosen | Changes of the tail number field |
 | `MSFS_UI_BASE_TAIL` | Default tail number: the sim's field the first time the mod reads it while the key is empty | Recorded once, or set by hand |

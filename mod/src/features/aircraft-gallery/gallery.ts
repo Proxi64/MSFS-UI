@@ -1,8 +1,8 @@
 // The aircraft gallery and list in the aircraft selection, in place of the sim's grid (right block): search (name,
 // publisher, variant), favourites (an aircraft with a favourite livery, first), hidden aircraft (the eye in each aircraft
 // tile's corner; the Hidden filter shows them), three views of the same tiles (Gallery, a compact List, and Showcase:
-// the layout of the sim's own grid, two rows of large tiles scrolling horizontally), the sim's sort orders. Made of the
-// sim's components: the bar (gallery-bar.ts), the list of tiles (gallery-cells.ts), the Showcase view's whole columns
+// the layout of the sim's own grid, two rows of large tiles scrolling horizontally), the sorts by model, manufacturer and
+// studio. Made of the sim's components: the bar (gallery-bar.ts), the list of tiles (gallery-cells.ts), the Showcase view's whole columns
 // (default-columns.ts). The sim's category tabs stay active: the list read (`Game.Aircraft.AircraftList`) is already
 // filtered by category; the search and the favourites filter on top.
 // A click sends the page the `tileClick` event of the sim's tiles, a hover `tileHover`: the selection and the header
@@ -46,22 +46,18 @@ import {
   type LocalSort,
 } from './tiles.ts';
 
-/**
- * The sorts offered, in this order. Name and Studio are made by the mod on the tiles (the sim offers neither); Max Range is the sim's (`SetAircraftSortingOption`, "!" prefix for the reverse order), offered
- * when the sim has it: it reorders `AircraftList`, which the gallery and the sim's grid both read.
- */
+/** The sorts offered, in this order: all made by the mod on the tiles (the sim offers none of them). */
 interface SortChoice {
-  id: string;
+  id: LocalSort;
   label: () => string;
-  local?: LocalSort;
-  sim?: string;
 }
 const SORTS: SortChoice[] = [
-  // The displayed name (manufacturer and model), in natural order.
-  { id: 'name', label: () => translate('TT:MENU.NAME'), local: 'name' },
+  // The model as displayed (sim/aircraft-names.ts), in natural order.
+  { id: 'model', label: () => translate('TT:MANUFACTURE.BREADCRUMB.MODEL') },
+  // The brand as displayed, then the model; the aircraft without a brand last.
+  { id: 'manufacturer', label: () => 'Manufacturer' },
   // The user's word for the publisher (the sim's key says "Creator").
-  { id: 'studio', label: () => 'Studio', local: 'studio' },
-  { id: 'maxRange', label: () => translate('TT:MENU.ACPROPUI_MAX_RANGE'), sim: 'TT:MENU.ACPROPUI_MAX_RANGE' },
+  { id: 'studio', label: () => 'Studio' },
 ];
 
 const MEMORY_KEY = 'AIRCRAFT_GALLERY';
@@ -104,16 +100,6 @@ export class Gallery {
   private readonly body = el('div', 'msfs-ui-gal__body');
   private readonly cells: GalleryCells;
   private readonly columns: DefaultColumns;
-
-  /** The sorts available: SORTS, without the sim's ones it does not offer. */
-  private sorts: SortChoice[] = SORTS.filter((sort) => !sort.sim);
-  /**
-   * The sim's own order: the first of its sort options, not reversed, as its own (disabled) sort dropdown starts.
-   * The gallery puts it back when it closes if it sent another one.
-   */
-  private defaultSimSort = 'TT:MENU.NAME';
-  /** The option last sent to `SetAircraftSortingOption`, if any. */
-  private sentSimSort: string | null = null;
 
   private items: AircraftItem[] = [];
   /** Favourite liveries (their hearts: setup panel, livery column, Favorites tiles): an aircraft that has some is a favourite. */
@@ -200,10 +186,6 @@ export class Gallery {
       this.refreshStockGrid();
       this.showStockGrid(true);
     });
-    // Every change to the sim is undone: the sim's list gets its own order back.
-    scope.add(() => {
-      if (this.sentSimSort !== null && this.sentSimSort !== this.defaultSimSort) this.sendSimSort(this.defaultSimSort);
-    });
     this.layout();
     scope.interval(() => {
       this.layout();
@@ -229,21 +211,9 @@ export class Gallery {
       this.hidden = loadHidden();
       if (this.items.length > 0) this.render();
     });
-    // Sort: the sim's options decide which of its sorts are offered, then the remembered sort is applied (the sim's
-    // list reloads, the gallery follows). A remembered sort that is no longer offered is forgotten.
-    aircraft.GetAircraftSortingOptions.request('').then(
-      (options: unknown) => {
-        if (scope.disposed) return;
-        const offered = Array.isArray(options) ? (options as string[]) : [];
-        if (typeof offered[0] === 'string' && offered[0]) this.defaultSimSort = offered[0];
-        this.sorts = SORTS.filter((sort) => !sort.sim || offered.indexOf(sort.sim) >= 0);
-        if (this.memory.sort && !this.sortChoice()) this.memory.sort = null;
-        this.applySort();
-        this.bar.renderSort();
-        this.render();
-      },
-      (error: unknown) => logError('the sort options could not be read', error),
-    );
+    // A remembered sort that is not one of the gallery's is forgotten.
+    if (this.memory.sort && !this.sortChoice()) this.memory.sort = null;
+    this.bar.renderSort();
   }
 
   // ----- Construction -----
@@ -276,38 +246,19 @@ export class Gallery {
   }
 
   // ----- Sort -----
-  // The sort is the sim's (`SetAircraftSortingOption`, "!" prefix for the reverse order): it reorders `AircraftList`,
-  // which the gallery and the sim's grid both read.
+  // The sorts are made on the tiles when they are drawn (render); the sim's own list is never reordered.
 
-  /** The remembered sort, when it is offered (0.3.0 stored the sim's option keys: they are still read). */
+  /** The remembered sort, when it is one of the gallery's. */
   private sortChoice(): SortChoice | undefined {
     const sort = this.memory.sort;
-    if (sort && sort.option === 'TT:MENU.NAME') sort.option = 'name';
-    return sort ? this.sorts.filter((choice) => choice.id === sort.option || choice.sim === sort.option)[0] : undefined;
+    return sort ? SORTS.filter((choice) => choice.id === sort.option)[0] : undefined;
   }
 
   /** The sorts as the bar's dropdown shows them. */
   private sortView(): SortView {
-    const choices = this.sorts.map((choice) => ({ id: choice.id, label: choice.label() }));
+    const choices = SORTS.map((choice) => ({ id: choice.id, label: choice.label() }));
     const choice = this.sortChoice();
-    return { choices, current: choice ? this.sorts.indexOf(choice) : -1, sort: this.memory.sort || null };
-  }
-
-  /**
-   * The sim's sorts are applied to its list; the mod's are applied when the tiles are drawn (render), and the sim's
-   * list goes back to its own order so that it is not left on another sort (the sim's grid shows it again once the mod
-   * unloads).
-   */
-  private applySort(): void {
-    const sort = this.memory.sort;
-    const choice = this.sortChoice();
-    if (!sort || !choice) return;
-    this.sendSimSort(choice.sim ? `${sort.reversed ? '!' : ''}${choice.sim}` : this.defaultSimSort);
-  }
-
-  private sendSimSort(option: string): void {
-    this.sentSimSort = option;
-    aircraft.SetAircraftSortingOption.request(option).catch((error: unknown) => logError('the aircraft could not be sorted', error));
+    return { choices, current: choice ? SORTS.indexOf(choice) : -1, sort: this.memory.sort || null };
   }
 
   private chooseSort(option: string): void {
@@ -325,7 +276,6 @@ export class Gallery {
   private sortChanged(): void {
     this.saveMemory();
     this.resetOrder();
-    this.applySort();
     this.bar.renderSort();
     this.render();
     this.scrollToTop();
@@ -507,7 +457,7 @@ export class Gallery {
     this.bar.render();
     this.layout();
 
-    // Favourites always come first, whatever the sort (the sim's included), as they were when the order was set; a
+    // Favourites always come first, whatever the sort, as they were when the order was set; a
     // hidden aircraft among them stays, veiled, until the order is set again, and one whose livery is given a heart since
     // shows at once, veiled, in its place (keptAircraftIds).
     if (this.favoriteIds === null && this.items.length > 0) this.favoriteIds = favoriteAircraftIds(this.items, this.favoriteLiveries);
@@ -525,7 +475,7 @@ export class Gallery {
       translate,
     });
     const choice = this.sortChoice();
-    const sorted = choice && choice.local ? sortTiles(shown, choice.local, !!this.memory.sort && this.memory.sort.reversed) : shown;
+    const sorted = choice ? sortTiles(shown, choice.id, !!this.memory.sort && this.memory.sort.reversed) : shown;
     const tiles = favoritesFirst(sorted, this.favoriteIds || []);
     // The tiles shown (veiled ones included) out of the aircraft of the category tab.
     this.bar.setCount(String(tiles.length), ` / ${this.items.length}`);
