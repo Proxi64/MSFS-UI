@@ -15,7 +15,7 @@ import { isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../
 import { liveryFolder } from '../../sim/liveries.ts';
 import { orderLiveries, type LiveryOrder } from '../../sim/livery-order.ts';
 import { translate } from '../../sim/localization.ts';
-import { LiveryStepper } from './livery-stepper.ts';
+import { LiverySends, LiveryStepper } from './livery-stepper.ts';
 
 /** Quiet time after the last step before the livery shown is sent to the configurator. */
 export const LIVERY_SETTLE_MS = 300;
@@ -54,8 +54,7 @@ export class LargeLivery {
   private image = '';
   private readonly wheel = new WheelSteps();
   private readonly settle = debounced(() => this.send(), LIVERY_SETTLE_MS);
-  /** Number of the last livery sent: only its answer may give the livery shown back to the sim's. */
-  private sends = 0;
+  private readonly sends = new LiverySends(this.stepper);
 
   constructor(scope: Scope, host: HTMLElement, events: LargeLiveryEvents) {
     this.scope = scope;
@@ -113,12 +112,20 @@ export class LargeLivery {
     this.order = ordered.order;
     this.liveries = ordered.items;
     const selected = liveries.filter((livery) => livery.isSelected)[0];
+    // The arrows and the wheel step through the available liveries only: an unavailable one is never sent.
     this.stepper.setLiveries(
       aircraft,
-      ordered.items.map((livery) => livery.id),
+      ordered.items.filter((livery) => !livery.isDisabled || livery.isSelected).map((livery) => livery.id),
       selected ? selected.id : null,
     );
     if (this.stepper.pending() === null) this.settle.cancel();
+    this.draw();
+  }
+
+  /** Another variant was chosen: a step not sent yet is dropped. */
+  dropStep(): void {
+    this.settle.cancel();
+    this.stepper.drop();
     this.draw();
   }
 
@@ -132,24 +139,15 @@ export class LargeLivery {
 
   /** The step waiting, to the configurator; the livery stays shown until the sim reports it (livery-stepper.ts). */
   private send(): void {
-    const id = this.stepper.pending();
-    if (id === null) return;
-    this.stepper.sent();
-    const number = ++this.sends;
-    const abandon = () => {
-      if (number !== this.sends || this.scope.disposed) return;
-      this.stepper.abandonSent();
-      this.draw();
+    const sent = this.sends.take();
+    if (!sent) return;
+    const answer = (done: boolean) => {
+      if (!this.scope.disposed && this.sends.answered(sent.number, done)) this.draw();
     };
-    this.events.choose(id).then(
-      (done) => {
-        if (!done) abandon();
-      },
-      (error: unknown) => {
-        logError('the livery could not be chosen', error);
-        abandon();
-      },
-    );
+    this.events.choose(sent.id).then(answer, (error: unknown) => {
+      logError('the livery could not be chosen', error);
+      answer(false);
+    });
   }
 
   private draw(): void {

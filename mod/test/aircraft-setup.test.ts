@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { overflows, rowCount, statisticsRoom, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
-import { actionWidths as showcaseActionWidths, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
-import { LiveryStepper } from '../src/features/aircraft-setup/livery-stepper.ts';
+import { actionWidths as showcaseActionWidths, columnExtra, rowNeed, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
+import { LiverySends, LiveryStepper } from '../src/features/aircraft-setup/livery-stepper.ts';
 import { orderLiveries } from '../src/sim/livery-order.ts';
 import {
   favoriteLiveriesOf,
@@ -235,6 +235,21 @@ describe('showcase panel layout', () => {
     assert.ok(extra[2] >= extra[1]);
     assert.equal(showcaseActionWidths(400, 8, [150, 130, 200]), null);
   });
+
+  it('rowNeed adds the needs rounded up and the two gaps', () => {
+    assert.equal(rowNeed([204.3, 163, 303.2], 8), 205 + 163 + 304 + 16);
+  });
+
+  it('columnExtra widens the left column to the bottom row, in whole units (measured 2026-11-01 at 1440 lines)', () => {
+    // Needs 204, 163 and 303 pixels, gaps of 8, the column 2 pixels wider than the panel, the sim's 470 units.
+    const need = rowNeed([204, 163, 303], 8);
+    const extra = columnExtra(need, 2, 4 / 3, 470);
+    assert.equal(extra, 47);
+    assert.ok(Math.floor((470 + extra) * (4 / 3)) - 2 >= need, 'the row fits at that extra');
+    assert.ok(Math.floor((470 + extra - 1) * (4 / 3)) - 2 < need + 1, 'one unit less is too narrow');
+    assert.equal(columnExtra(515, 2, 1, 470), 48, 'at 1080 lines');
+    assert.ok(columnExtra(400, 2, 1, 470) < 0, 'a short row needs no extra: the option decides');
+  });
 });
 
 describe('livery stepper', () => {
@@ -421,5 +436,56 @@ describe('livery stepper', () => {
     assert.equal(stepper.shown(), 'zzz');
     assert.equal(stepper.canStep(-1), false);
     assert.equal(stepper.canStep(1), true);
+  });
+});
+
+describe('livery sends', () => {
+  const three = ['a', 'b', 'c'];
+  const make = () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'a');
+    return { stepper, sends: new LiverySends(stepper) };
+  };
+
+  it('sends quick steps once, the last one shown', () => {
+    const { stepper, sends } = make();
+    stepper.step(1);
+    stepper.step(1);
+    const sent = sends.take();
+    assert.deepEqual(sent, { id: 'c', number: 1 });
+    assert.equal(sends.take(), null, 'nothing left to send');
+    assert.equal(stepper.shown(), 'c');
+  });
+
+  it('lets only the last send give the livery back to the sim', () => {
+    const { stepper, sends } = make();
+    stepper.step(1);
+    const first = sends.take()!;
+    stepper.step(1);
+    const second = sends.take()!;
+    assert.equal(sends.answered(first.number, false), false, 'an older refusal changes nothing');
+    assert.equal(stepper.shown(), 'c');
+    assert.equal(sends.answered(second.number, true), false);
+    assert.equal(stepper.shown(), 'c');
+    assert.equal(sends.answered(second.number, false), true);
+    assert.equal(stepper.shown(), 'a');
+  });
+
+  it('sends a step taken after a send', () => {
+    const { stepper, sends } = make();
+    stepper.step(1);
+    const first = sends.take()!;
+    stepper.step(1);
+    assert.equal(stepper.shown(), 'c');
+    assert.equal(sends.answered(first.number, true), false);
+    assert.deepEqual(sends.take(), { id: 'c', number: 2 });
+  });
+
+  it('drops a step not sent yet (another variant chosen)', () => {
+    const { stepper, sends } = make();
+    stepper.step(1);
+    stepper.drop();
+    assert.equal(sends.take(), null);
+    assert.equal(stepper.shown(), 'a');
   });
 });

@@ -6,7 +6,8 @@
 //   shared by setup-layout.ts.
 // - Showcase: every part at a fixed place whatever the aircraft (showcase-layout.ts): the variants in a dropdown
 //   (variant-dropdown.ts), the current livery large (large-livery.ts), the tail number, then Fuel, Identification and
-//   the sim's "Configure your aircraft" tile on one row (configure-tile.ts); no statistics.
+//   the sim's "Configure your aircraft" tile on one row (configure-tile.ts); no statistics. Laid out by
+//   showcase-mode.ts.
 
 import { answerOrNull, answerWithin } from '../../core/async.ts';
 import { el, setStyle, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
@@ -23,10 +24,11 @@ import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
 import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layout.ts';
 import { ANSWER_TIMEOUT_MS, store, watch } from '../../sim/store.ts';
-import { CONFIGURE_TILE, ConfigureTile } from './configure-tile.ts';
+import { CONFIGURE_TILE } from './configure-tile.ts';
 import { LargeLivery } from './large-livery.ts';
 import { GAP, overflows, PADDING_TOP, rowCount, statisticsRoom, VARIANT_HEIGHT, variantsHeight } from './setup-layout.ts';
-import { actionWidths, showcasePlaces, type ShowcasePlaces, type Span } from './showcase-layout.ts';
+import type { ShowcasePlaces } from './showcase-layout.ts';
+import { ShowcaseMode, type BottomRow } from './showcase-mode.ts';
 import { StatisticRows, type AircraftStatistic } from './statistics.ts';
 import { TailNumberField } from './tail-field.ts';
 import { VariantDropdown } from './variant-dropdown.ts';
@@ -35,8 +37,6 @@ import { VariantsList } from './variants.ts';
 const RELOAD_DELAY_MS = 80;
 /** A row of the statistics, in layout units (the sim's rows: 48 pixels at 1440 lines). */
 const STATISTIC_HEIGHT = 36;
-/** The livery header, in layout units (a section header of core/theme.css): its height in whole pixels in Showcase. */
-const HEADER_HEIGHT = 36;
 /** Room left on the right of a list that scrolls, for the sim's scroll bar, in layout units. */
 const SCROLL_BAR_ROOM = 24;
 const FLOW = {
@@ -53,23 +53,6 @@ function launchFlow(event: string): void {
   engine.trigger('LAUNCH_FLOW_EVENT_TO_GLOBAL_FLOW_FROM_VIEW', event, '');
 }
 
-/**
- * The width a small text button of the sim needs to show its label whole, in pixels: its width less its label's, plus
- * the label's own width (the marquee's content, on one line); 0 when the label is not found.
- */
-function textButtonNeed(button: SimComponent): number {
-  const label = button.element.querySelector<HTMLElement>('[name="Content"] > [name="Text"]');
-  const content = label ? label.querySelector<HTMLElement>('.marquee__content') : null;
-  if (!label || !content) return 0;
-  return button.element.getBoundingClientRect().width - label.getBoundingClientRect().width + content.getBoundingClientRect().width;
-}
-
-/** A part's place in the Showcase panel, in whole pixels from its top (only written when it changes). */
-function placeSpan(element: HTMLElement, span: Span): void {
-  setStyle(element.style, 'top', `${span.top}px`);
-  setStyle(element.style, 'height', `${span.height}px`);
-}
-
 export class SetupPanel {
   private readonly page: Manipulator;
   private readonly scope: Scope;
@@ -83,7 +66,7 @@ export class SetupPanel {
   private readonly largeHost = el('div', 'msfs-ui-setup__large');
   private readonly dropdown: VariantDropdown;
   private readonly large: LargeLivery;
-  private readonly configure: ConfigureTile;
+  private readonly showcase: ShowcaseMode;
   // Both.
   private readonly tail: TailNumberField;
   private readonly tailRow = el('div', 'msfs-ui-setup__tail');
@@ -94,11 +77,6 @@ export class SetupPanel {
   private listHeights = '';
   /** Width of the panel at the last measure of the variants. */
   private fittedWidth = 0;
-  /** What the three buttons of the Showcase bottom row need, measured at `unit` pixels per layout unit. */
-  private needs: { unit: number; widths: [number, number, number] } | null = null;
-  private needsMissed = false;
-  /** The sim's variant line held at its height in Showcase (holdTitleLines). */
-  private heldSubtitle: HTMLElement | null = null;
 
   /** The configurator as last read: the choices are made on it. */
   private state: ConfiguratorState = { variants: [], liveries: [], details: null, variationTitle: '' };
@@ -116,14 +94,34 @@ export class SetupPanel {
     this.dropdown = new VariantDropdown(scope, this.dropdownHost, chooseVariantNow);
     this.large = new LargeLivery(scope, this.largeHost, {
       choose: (id) =>
-        chooseLivery(this.state, id).then((done) => {
-          if (!done) this.scheduleReload();
-          return done;
-        }),
+        chooseLivery(this.state, id).then(
+          (done) => {
+            if (!done) this.scheduleReload();
+            return done;
+          },
+          (error: unknown) => {
+            this.scheduleReload();
+            throw error;
+          },
+        ),
       favorite: (id, on) => setFavoriteLivery(this.state, id, on),
     });
-    this.configure = new ConfigureTile(scope);
+    this.showcase = new ShowcaseMode(scope, {
+      root: this.root,
+      dropdownHost: this.dropdownHost,
+      liveryHeader: this.liveryHeader,
+      largeHost: this.largeHost,
+      tailRow: this.tailRow,
+      actions: this.actions,
+      actionButtons: this.actionButtons,
+      dropdown: this.dropdown,
+    });
     this.tail = new TailNumberField(scope, () => this.selectedLivery());
+  }
+
+  /** What the Showcase bottom row needs, once measured: the left column is never narrower (index.ts). */
+  bottomRow(): BottomRow | null {
+    return this.showcase.bottomRow();
   }
 
   mount(): void {
@@ -133,7 +131,6 @@ export class SetupPanel {
     const tailHost = this.build();
     scope.append(this.page.elt, this.root);
     scope.add(() => this.restoreStatistics());
-    scope.add(() => this.holdTitleLines(null));
     scope.add(() => setSetupPanelShown(false));
     this.layout();
     scope.interval(() => this.layout(), 250);
@@ -194,111 +191,41 @@ export class SetupPanel {
     if (!isShown(details) || !statistics) {
       this.root.style.display = 'none';
       setSetupPanelShown(false);
-      this.configure.restore();
-      this.holdTitleLines(null);
+      this.showcase.leave();
       return;
     }
+    const unit = uiUnit();
     const tile = liveriesInGallery() ? null : details.querySelector<HTMLElement>(CONFIGURE_TILE);
     // Before measuring: the statistics' top follows the title block's height.
-    this.holdTitleLines(tile ? details : null);
+    this.showcase.holdTitleLines(tile ? details : null, unit);
     const origin = this.page.elt.getBoundingClientRect();
     const rect = statistics.getBoundingClientRect();
-    const unit = uiUnit();
-    let showcase: { places: ShowcasePlaces; tile: HTMLElement } | null = null;
+    // Showcase: nothing is written while the panel is smaller than its fixed parts (the screen animates).
+    let places: ShowcasePlaces | null = null;
     if (tile) {
-      // Showcase: down to the bottom of `Fleet_Details`, the Configure tile's place. While the panel is smaller than
-      // its fixed parts (the screen animates), nothing is written.
-      const height = details.getBoundingClientRect().bottom - rect.top;
-      const places = showcasePlaces(rect.width, height, Math.round(HEADER_HEIGHT * unit), unit);
-      if (!(places.strip.thumbHeight >= 1)) return;
-      showcase = { places, tile };
+      places = this.showcase.places(rect, details, unit);
+      if (!places) return;
     }
 
     if (statistics.style.visibility !== 'hidden') statistics.style.visibility = 'hidden';
     const style = this.root.style;
     style.display = '';
     setSetupPanelShown(true);
-    toggleClass(this.root, 'is-showcase', !!showcase);
+    toggleClass(this.root, 'is-showcase', !!places);
     setStyle(style, 'left', `${rect.left - origin.left}px`);
     setStyle(style, 'top', `${rect.top - origin.top}px`);
     setStyle(style, 'width', `${rect.width}px`);
-    if (showcase) {
-      this.layoutShowcase(rect, showcase.places, showcase.tile, unit);
+    if (tile && places) {
+      this.showcase.layout(rect, places, tile, details.parentElement, unit);
       return;
     }
-    this.configure.restore();
-    for (const part of [this.tailRow, this.actions]) {
-      setStyle(part.style, 'top', '');
-      setStyle(part.style, 'height', '');
-    }
-    setStyle(this.actions.style, 'width', '');
+    this.showcase.leave();
     setStyle(style, 'height', `${rect.height}px`);
     if (Math.round(rect.width) !== this.fittedWidth) {
       this.fittedWidth = Math.round(rect.width);
       this.variants.measure();
     }
     this.layoutVariants(rect.width, rect.height, unit);
-  }
-
-  /**
-   * The Showcase parts at their places (`rect`: the panel's left, top and width in the window). The panel's own box ends
-   * above the bottom row, and the row is only as wide as its first two buttons: its third slot is the sim's Configure
-   * tile, which lies in the sim's column and would get no click under an element of the panel, whatever its z-index
-   * (the column is a stacking context of its own; measured on 1.9.21).
-   */
-  private layoutShowcase(rect: DOMRect, places: ShowcasePlaces, tile: HTMLElement, unit: number): void {
-    setStyle(this.root.style, 'height', `${places.actions.top}px`);
-    placeSpan(this.dropdownHost, places.variants);
-    placeSpan(this.liveryHeader, places.header);
-    placeSpan(this.largeHost, places.livery);
-    placeSpan(this.tailRow, places.tail);
-    placeSpan(this.actions, places.actions);
-
-    // Fuel and Payload, Identification and Configure in whole pixels, each label whole (showcase-layout.ts).
-    if (this.configure.isPlaced(tile)) this.measureNeeds(unit);
-    const width = Math.round(rect.width);
-    const gap = Math.round(GAP * unit);
-    const needs = this.needs && this.needs.unit === unit ? this.needs.widths : null;
-    let widths = needs ? actionWidths(width, gap, needs) : null;
-    if (needs && !widths && !this.needsMissed) {
-      this.needsMissed = true;
-      logError(`the bottom row's labels do not fit in ${width} pixels (they need ${needs.map(Math.ceil).join(', ')})`);
-    }
-    if (!widths) widths = actionWidths(width, gap, [0, 0, 0]) || [0, 0, 0];
-    setVariable(this.root.style, '--action-gap', `${gap}px`);
-    setVariable(this.root.style, '--action-w', `${widths[0]}px`);
-    setStyle(this.actions.style, 'width', `${widths[0] + gap + widths[1]}px`);
-    this.configure.place(tile, {
-      left: rect.left + widths[0] + gap + widths[1] + gap,
-      top: rect.top + places.actions.top,
-      width: widths[2],
-      height: places.actions.height,
-    });
-
-    // The variants' list ends on the large livery's bottom edge.
-    const variantsBottom = places.variants.top + places.variants.height;
-    this.dropdown.sizeList((places.livery.top + places.livery.height - variantsBottom) / unit, unit);
-  }
-
-  /**
-   * Showcase (`details`; null: not): the sim's title block keeps the room of its third line, the variant, when it has
-   * none (a legacy aircraft, such as the iFly 737 MAX: 130 pixels high instead of 158 at 1440 lines), so that the panel
-   * under it keeps its place: that line at least as high as the studio's, the line above it in the same font.
-   */
-  private holdTitleLines(details: HTMLElement | null): void {
-    const subtitle = details ? details.querySelector<HTMLElement>('[name="Header"] > [name="Subtitle"]') : null;
-    const creator = details ? details.querySelector<HTMLElement>('[name="Header"] > [name="Creator"]') : null;
-    const held = subtitle && creator ? subtitle : null;
-    if (this.heldSubtitle && this.heldSubtitle !== held) setStyle(this.heldSubtitle.style, 'minHeight', '');
-    this.heldSubtitle = held;
-    if (held && creator) setStyle(held.style, 'minHeight', `${creator.getBoundingClientRect().height}px`);
-  }
-
-  /** What the three buttons of the bottom row need, once per resolution (the labels' font follows it). */
-  private measureNeeds(unit: number): void {
-    if ((this.needs && this.needs.unit === unit) || this.actionButtons.length < 2) return;
-    const widths: [number, number, number] = [textButtonNeed(this.actionButtons[0]!), textButtonNeed(this.actionButtons[1]!), this.configure.need()];
-    if (widths.every((need) => need > 0)) this.needs = { unit, widths };
   }
 
   /**
@@ -397,8 +324,12 @@ export class SetupPanel {
     await answerWithin(aircraft.UpdateCurrentAircraftIdentification.request(), ANSWER_TIMEOUT_MS, 'the update of the tail number');
   }
 
-  /** A variant the configurator ignored (not on the current aircraft): the panel reads it again. */
+  /**
+   * A variant chosen drops a livery step not sent yet (it belongs to the variant left); one the configurator ignored
+   * (not on the current aircraft) makes the panel read it again.
+   */
   private chooseVariant(id: string): void {
+    this.large.dropStep();
     chooseVariant(this.state, id)
       .then((done) => (done ? undefined : this.scheduleReload()))
       .catch((error: unknown) => logError('the variant could not be chosen', error));

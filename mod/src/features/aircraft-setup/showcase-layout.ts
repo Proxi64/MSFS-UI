@@ -70,3 +70,17 @@ export function actionWidths(width: number, gap: number, needs: readonly [number
   const share = Math.floor(remainder / 3);
   return [wanted[0] + share, wanted[1] + share, wanted[2] + remainder - 2 * share];
 }
+
+/** The width the bottom row needs, in whole pixels: the three buttons' needs (rounded up) and the two gaps. */
+export function rowNeed(needs: readonly [number, number, number], gap: number): number {
+  return Math.ceil(needs[0]) + Math.ceil(needs[1]) + Math.ceil(needs[2]) + 2 * gap;
+}
+
+/**
+ * The extra width, in whole layout units, the left column needs over the sim's `base` units for a panel `need` pixels
+ * wide, the column `frame` pixels wider than the panel (the sim's border around it), `unit` pixels per layout unit.
+ * One pixel to spare: the engine rounds the column's width down.
+ */
+export function columnExtra(need: number, frame: number, unit: number, base: number): number {
+  return Math.ceil((need + frame + 1) / unit - base);
+}

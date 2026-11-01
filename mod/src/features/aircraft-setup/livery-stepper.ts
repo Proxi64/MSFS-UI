@@ -1,6 +1,6 @@
 // Which livery the Showcase panel shows and which one waits to be sent to the sim's configurator, without the sim
 // (tested by test/aircraft-setup.test.ts). A step shows its livery at once; the panel sends it after a short quiet
-// time, and meanwhile reloads its state, which may still report the old livery.
+// time, and meanwhile reloads its state, which may still report the old livery. LiverySends numbers what is sent.
 
 export class LiveryStepper {
   private aircraft = '';
@@ -57,6 +57,11 @@ export class LiveryStepper {
     this.sentId = null;
   }
 
+  /** The step waiting is dropped, never sent (another variant was chosen meanwhile). */
+  drop(): void {
+    this.pendingId = null;
+  }
+
   /** Index from 1 of the shown livery; null without liveries or when the shown one is not listed. */
   position(): { index: number; count: number } | null {
     const index = this.ids.indexOf(this.base() ?? '');
@@ -76,5 +81,33 @@ export class LiveryStepper {
   /** Index of the shown livery; 0 when it is not listed. */
   private shownIndex(): number {
     return Math.max(0, this.ids.indexOf(this.base() ?? ''));
+  }
+}
+
+/**
+ * The steps of a LiveryStepper sent to the configurator, numbered: only the last send's refusal gives the livery shown
+ * back to the sim's; an older answer arriving late changes nothing (a newer step is shown, or on its way).
+ */
+export class LiverySends {
+  private readonly stepper: LiveryStepper;
+  private last = 0;
+
+  constructor(stepper: LiveryStepper) {
+    this.stepper = stepper;
+  }
+
+  /** The step waiting, marked sent: its id and its number, or null when none waits. */
+  take(): { id: string; number: number } | null {
+    const id = this.stepper.pending();
+    if (id === null) return null;
+    this.stepper.sent();
+    return { id, number: ++this.last };
+  }
+
+  /** The configurator's answer to send `number` (`done`: taken); true when the livery shown changed. */
+  answered(number: number, done: boolean): boolean {
+    if (done || number !== this.last) return false;
+    this.stepper.abandonSent();
+    return true;
   }
 }
