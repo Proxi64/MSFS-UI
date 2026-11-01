@@ -102,7 +102,7 @@
     {
       "id": "aircraftSetup",
       "title": "Aircraft setup panel",
-      "description": "A panel in the aircraft selection with the variants, the tail number and the Fuel and Identification buttons; in the Showcase view also the liveries (the current one large, the others in a grid) with their favourites, and the sim's Configure tile beside the tail number and the two buttons. Without the Aircraft gallery and list feature, the panel always takes its Showcase form.",
+      "description": "A panel in the aircraft selection under the aircraft's title on three lines (model, brand, studio) with the variants, the tail number and the Fuel and Identification buttons; in the Showcase view also the liveries (the current one large, the others in a grid of three per row) with their favourites, and the sim's Configure tile beside the tail number and the two buttons. Without the Aircraft gallery and list feature, the panel always takes its Showcase form.",
       "screen": "Aircraft selection",
       "enabledByDefault": true,
       "options": [
