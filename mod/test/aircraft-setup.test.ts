@@ -202,6 +202,7 @@ describe('favourite liveries read from the storage', () => {
 describe('showcase panel layout', () => {
   const sizes: ReadonlyArray<[number, number, number]> = [
     [691, 932, 1.333],
+    [691, 765, 1.333],
     [386, 520, 0.741],
     [920, 1240, 2],
   ];
@@ -223,6 +224,9 @@ describe('showcase panel layout', () => {
       assert.ok(strip.rows >= 1);
       assert.equal(strip.height, strip.rows * strip.thumbHeight + (strip.rows - 1) * gap);
       assert.ok(strip.top + strip.height + 8 * unit <= tail.top - gap, `strip clears the tail row at ${width}`);
+      const leftover = tail.top - gap - Math.ceil(8 * unit) - (strip.top + strip.height);
+      assert.ok(leftover >= 0 && leftover < strip.rows, `strip fills its height at ${width} x ${height}: ${leftover} left`);
+      assert.equal(strip.thumbWidth, Math.round(strip.thumbHeight / 0.47));
       const tops = [variants.top, header.top, livery.top, strip.top, tail.top, actions.top];
       for (let i = 1; i < tops.length; i++) assert.ok(tops[i] > tops[i - 1]);
       for (const span of [variants, header, livery, strip, tail, actions]) {
@@ -230,6 +234,10 @@ describe('showcase panel layout', () => {
       }
       assert.ok(Number.isInteger(strip.rows) && Number.isInteger(strip.thumbWidth) && Number.isInteger(strip.thumbHeight));
     }
+  });
+
+  it('shows three rows of small liveries on the owner panel', () => {
+    assert.equal(showcasePlaces(691, 765, 32, 1.333).strip.rows, 3);
   });
 
   it('gives the same places whatever the aircraft: they depend on the size only', () => {

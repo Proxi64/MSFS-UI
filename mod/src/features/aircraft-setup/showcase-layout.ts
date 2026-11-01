@@ -9,7 +9,7 @@ import { GAP, LIVERY_RATIO, PADDING_TOP } from './setup-layout.ts';
 export const ROW_HEIGHT = 30;
 /** Layout units the sim's horizontal scroll bar takes under the strip of small liveries. */
 export const STRIP_BAR_UNITS = 8;
-/** Small liveries per row in the strip. */
+/** Small liveries per row that would fill the strip's width: only used to choose the number of rows. */
 export const STRIP_COLUMNS = 4;
 
 /** A part's place, in pixels from the panel's top. */
@@ -32,9 +32,11 @@ export interface ShowcasePlaces {
 /**
  * The places of the panel's parts in whole pixels, for a panel `width` x `height` pixels, a livery header
  * `headerHeight` pixels high and `unit` pixels per layout unit. The parts from the variants to the strip follow each
- * other with one gap between; the buttons end on the bottom, the tail row sits one gap above them, and the strip takes
- * the rows of small liveries that fit between its top and the tail row (its bar room and one gap kept). The room left
- * under the strip, less than one row, lies between its bar and the tail row.
+ * other with one gap between; the buttons end on the bottom, the tail row sits one gap above them, and the strip fills
+ * everything from its top to the tail row less one gap and its bar room (the owner, 2026-11-01: no gap under the strip).
+ * Its rows are the whole number nearest to what thumbnails four to a row would give (3 on the owner's screen); they
+ * share the height, keeping the sim's proportions, so a row no longer holds a whole number of them: the strip scrolls
+ * sideways and its last column shows in part, which tells there are more.
  */
 export function showcasePlaces(width: number, height: number, headerHeight: number, unit: number): ShowcasePlaces {
   const gap = Math.round(GAP * unit);
@@ -45,11 +47,13 @@ export function showcasePlaces(width: number, height: number, headerHeight: numb
   const actions = { top: height - row, height: row };
   const tail = { top: actions.top - gap - row, height: row };
 
-  const thumbWidth = Math.floor((width - (STRIP_COLUMNS - 1) * gap) / STRIP_COLUMNS);
-  const thumbHeight = Math.round(thumbWidth * LIVERY_RATIO);
   const stripTop = livery.top + livery.height + gap;
   const room = tail.top - gap - Math.ceil(STRIP_BAR_UNITS * unit) - stripTop;
-  const rows = Math.max(1, Math.floor((room + gap) / (thumbHeight + gap)));
+  const fourWidth = Math.floor((width - (STRIP_COLUMNS - 1) * gap) / STRIP_COLUMNS);
+  const fourHeight = Math.round(fourWidth * LIVERY_RATIO);
+  const rows = Math.max(1, Math.round((room + gap) / (fourHeight + gap)));
+  const thumbHeight = Math.floor((room - (rows - 1) * gap) / rows);
+  const thumbWidth = Math.round(thumbHeight / LIVERY_RATIO);
   const strip = { top: stripTop, height: rows * thumbHeight + (rows - 1) * gap, rows, thumbWidth, thumbHeight };
   return { variants, header, livery, strip, tail, actions };
 }
