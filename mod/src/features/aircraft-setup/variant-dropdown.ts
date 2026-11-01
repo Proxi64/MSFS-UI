@@ -6,10 +6,13 @@
 // aircraft is chosen, it closes (close, panel.ts): it would list the previous aircraft's variants until the configurator
 // reports the new ones (0.3 to 1.2 s, measured on 1.9.21; a real click elsewhere closes it too, the sim listening to the
 // window's clicks).
+// A label too long for its place, shown or in the list, has its text reduced to fit (TextFitter, as the title block's
+// lines): never cut, never scrolled by the sim's marquee.
 
 import { el, setVariable, toggleClass } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
+import { TextFitter } from '../../core/text-fit.ts';
 import { COMPONENTS, createComponent, type DropdownItem, type DropdownManipulator, type SimComponent } from '../../sim/components.ts';
 import type { ConfiguratorItem } from '../../sim/configurator.ts';
 import { DROPDOWN_METRICS, dropdownListSize, scrollDropdownTo } from '../../sim/dropdown-list.ts';
@@ -19,6 +22,8 @@ import { translate } from '../../sim/localization.ts';
 const VARIANT_TITLE = 'TT:MANUFACTURE.BREADCRUMB.VARIATION';
 /** Always this much after the word, in layout units, however long the variant's label. */
 const TITLE_GAP = 12;
+/** The size of the dropdown's texts, shown and in the list, in layout units: the sim's `--fontSizeXS` (19.4 pixels at 1164 lines, 1.9.21). */
+const TEXT_FONT_UNITS = 18;
 
 export class VariantDropdown {
   private readonly row: HTMLElement;
@@ -30,6 +35,9 @@ export class VariantDropdown {
   private labels: readonly string[] = [];
   /** The variants and the selected one last given to the dropdown: given again only when they change. */
   private drawn = '';
+  private readonly fitter = new TextFitter();
+  /** The unit of the last layout pass (the list's texts are fitted between passes too). */
+  private unit = 0;
 
   /** `row`: the header element the panel places; the title and the dropdown go in it. */
   constructor(scope: Scope, row: HTMLElement, choose: (id: string) => void) {
@@ -43,6 +51,25 @@ export class VariantDropdown {
         this.dropdown = dropdown;
         // Once the click has opened the list (the sim's handler runs first).
         dropdown.onClick(scope, () => scope.timeout(() => this.scrollList(), 0));
+        // The list's items are recycled as it scrolls (the sim's virtual list): their texts fitted again once it has
+        // given them their new texts. `ui-scroll` is the list's scrolling element's own: caught on its way down.
+        const list = dropdown.element.querySelector<HTMLElement>('[name="List"]');
+        let fitting = false;
+        if (list) {
+          scope.listen(
+            list,
+            'ui-scroll',
+            () => {
+              if (fitting) return;
+              fitting = true;
+              scope.timeout(() => {
+                fitting = false;
+                this.fitItems();
+              }, 0);
+            },
+            true,
+          );
+        }
         this.draw();
       },
       (error: unknown) => logError('the variants dropdown could not be created', error),
@@ -66,7 +93,7 @@ export class VariantDropdown {
    * whole pixels), and the list goes downwards, `below` layout units long (from the row's bottom to the large livery's): the
    * sim's own scroll for the items that do not fit, the room whole items leave in its top padding
    * (--msfs-ui-variants-top). It ends there whatever the number of variants (the owner's choice, over a list ending
-   * anywhere): a short list keeps its items at the top and its room under them.
+   * anywhere): a short list keeps its items at the top and its room under them. The texts fitted to their places.
    */
   layout(below: number, unit: number): void {
     const dropdown = this.dropdown;
@@ -78,6 +105,31 @@ export class VariantDropdown {
     // Half a pixel more, as dropdownListSize gives a list that scrolls: the engine rounds the height down.
     dropdown.set('List_Size', (sized.up ? sized.size : below + 0.5 / unit).toFixed(2));
     setVariable(this.row.style, '--msfs-ui-variants-top', `${Math.floor(sized.padding * unit)}px`);
+    this.unit = unit;
+    this.fitShown();
+    this.fitItems();
+  }
+
+  /** The selected variant's text, reduced to its place: from the title's gap to the arrow (the dropdown's `Content`). */
+  private fitShown(): void {
+    const dropdown = this.dropdown;
+    if (!dropdown || !(this.unit > 0)) return;
+    const content = Array.prototype.filter.call(dropdown.element.children, (child: Element) => child.getAttribute('name') === 'Content')[0] as HTMLElement | undefined;
+    const text = content ? content.querySelector<HTMLElement>('[name="Title"]') : null;
+    if (!content || !text) return;
+    this.fitter.fit(text, content.getBoundingClientRect().width, TEXT_FONT_UNITS * this.unit, 'shown');
+  }
+
+  /** The open list's texts, each reduced to its item's line; nothing while the list is closed (its items have no width). */
+  private fitItems(): void {
+    const dropdown = this.dropdown;
+    const list = dropdown ? dropdown.element.querySelector<HTMLElement>('[name="List"]') : null;
+    if (!list || !(this.unit > 0) || !(list.getBoundingClientRect().height > 0)) return;
+    const lines = list.querySelectorAll<HTMLElement>('virtual-list-wrapper [name="Header"] > [name="Title"]');
+    for (let at = 0; at < lines.length; at++) {
+      const line = lines[at]!;
+      this.fitter.fit(line, line.getBoundingClientRect().width, TEXT_FONT_UNITS * this.unit, 'item', line.querySelector('.marquee__content') || line);
+    }
   }
 
   private draw(): void {
@@ -113,5 +165,6 @@ export class VariantDropdown {
   /** Opened, the list shows the selected variant at its top, or its first items (scrollDropdownTo). */
   private scrollList(): void {
     if (this.dropdown) scrollDropdownTo(this.dropdown.element, this.selectedIndex());
+    this.fitItems();
   }
 }

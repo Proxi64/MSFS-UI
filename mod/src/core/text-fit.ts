@@ -9,6 +9,15 @@ export function fitScale(text: number, line: number): number {
   return Math.floor((line / text) * 100) / 100;
 }
 
+/**
+ * The next font size to try, in pixels, for a text drawn at `current` (0: its own size, not changed yet) that the scale
+ * would bring to `scaled`. The engine draws whole pixel sizes (measured on 1.9.21: 15.5, 15.62 and 16 pixels draw the
+ * same 543 pixels, 15 pixels 507): a size that rounds to the one drawn already would change nothing, so one pixel less.
+ */
+export function nextFontSize(current: number, scaled: number): number {
+  return current > 0 && Math.round(scaled) === Math.round(current) ? Math.round(current) - 1 : scaled;
+}
+
 /** The width of a text on one line, in pixels, whatever its element's box: a range over the element's content. */
 function textWidth(element: Element): number {
   const range = document.createRange();
@@ -76,7 +85,7 @@ export class TextFitter {
     let fontSize = 0;
     let textAt = natural;
     for (let round = 0; round < FIT_ROUNDS && textAt > width; round++) {
-      fontSize = (fontSize || size) * fitScale(textAt, width);
+      fontSize = nextFontSize(fontSize, (fontSize || size) * fitScale(textAt, width));
       setStyle(line.style, 'fontSize', `${fontSize.toFixed(2)}px`);
       textAt = textWidth(measured);
       if (!(textAt > 0)) return null;
