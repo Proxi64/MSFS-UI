@@ -53,7 +53,7 @@ export function overflows(rows: Rows, height: number): boolean {
 
 /** Livery thumbnails: three per row, in the proportions of the sim's thumbnails (about 2:1). */
 export const LIVERY_COLUMNS = 3;
-const LIVERY_RATIO = 0.47;
+export const LIVERY_RATIO = 0.47;
 
 /** A livery thumbnail in a list `width` wide, LIVERY_COLUMNS per row `gap` pixels apart: whole pixels wide. */
 export function thumbnailSize(width: number, gap: number): { width: number; height: number } {

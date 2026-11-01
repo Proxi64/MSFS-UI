@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { overflows, rowCount, statisticsRoom, thumbnailSize, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
+import { actionWidths as showcaseActionWidths, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
 import { orderLiveries } from '../src/sim/livery-order.ts';
 import {
   favoriteLiveriesOf,
@@ -195,5 +196,55 @@ describe('favourite liveries read from the storage', () => {
   it('drops a favourite without its variant, folder, title or image, and a value that is not a list', () => {
     assert.deepEqual(favoriteLiveriesFrom([null, 'red', { ...red, dir: undefined }, { ...red, title: 3 }, red]), [red]);
     assert.deepEqual(favoriteLiveriesFrom({ 0: red }), []);
+  });
+});
+
+describe('showcase panel layout', () => {
+  const sizes: ReadonlyArray<[number, number, number]> = [
+    [691, 932, 1.333],
+    [386, 520, 0.741],
+    [920, 1240, 2],
+  ];
+
+  it('showcasePlaces keeps every part in place', () => {
+    for (const [width, height, unit] of sizes) {
+      const gap = Math.round(6 * unit);
+      const headerHeight = Math.round(24 * unit);
+      const places = showcasePlaces(width, height, headerHeight, unit);
+      const { variants, header, livery, strip, tail, actions } = places;
+      assert.equal(variants.top, Math.round(6 * unit));
+      assert.equal(header.top, variants.top + variants.height + gap);
+      assert.equal(header.height, headerHeight);
+      assert.equal(livery.top, header.top + header.height + gap);
+      assert.equal(strip.top, livery.top + livery.height + gap);
+      assert.equal(actions.top + actions.height, height);
+      assert.equal(tail.top + tail.height + gap, actions.top);
+      assert.equal(livery.height, Math.round(width * 0.47));
+      assert.ok(strip.rows >= 1);
+      assert.equal(strip.height, strip.rows * strip.thumbHeight + (strip.rows - 1) * gap);
+      assert.ok(strip.top + strip.height + 8 * unit <= tail.top - gap, `strip clears the tail row at ${width}`);
+      const tops = [variants.top, header.top, livery.top, strip.top, tail.top, actions.top];
+      for (let i = 1; i < tops.length; i++) assert.ok(tops[i] > tops[i - 1]);
+      for (const span of [variants, header, livery, strip, tail, actions]) {
+        assert.ok(Number.isInteger(span.top) && Number.isInteger(span.height));
+      }
+      assert.ok(Number.isInteger(strip.rows) && Number.isInteger(strip.thumbWidth) && Number.isInteger(strip.thumbHeight));
+    }
+  });
+
+  it('gives the same places whatever the aircraft: they depend on the size only', () => {
+    assert.deepEqual(showcasePlaces(691, 932, 32, 1.333), showcasePlaces(691, 932, 32, 1.333));
+  });
+
+  it('actionWidths gives each button its need and shares the rest', () => {
+    const widths = showcaseActionWidths(691, 8, [150, 130, 200]);
+    assert.ok(widths);
+    assert.ok(widths.every(Number.isInteger));
+    assert.equal(widths[0] + widths[1] + widths[2] + 2 * 8, 691);
+    assert.ok(widths[0] >= 150 && widths[1] >= 130 && widths[2] >= 200);
+    const extra = [widths[0] - 150, widths[1] - 130, widths[2] - 200];
+    assert.equal(extra[0], extra[1]);
+    assert.ok(extra[2] >= extra[1]);
+    assert.equal(showcaseActionWidths(400, 8, [150, 130, 200]), null);
   });
 });
