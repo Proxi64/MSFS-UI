@@ -76,9 +76,18 @@ export class ComponentPool<T> {
     }
     slot.item = item;
     slot.host = host;
-    host.appendChild(slot.cardHost);
-    this.placeIcon(slot, host);
+    this.move(slot, host);
     return slot;
+  }
+
+  /**
+   * The slot's hosts into `parent`; its card is told (SimComponent.moved), so that the cell it shows next sends its
+   * Selected state again: a change made just before the move may have been dropped.
+   */
+  private move(slot: PoolSlot<T>, parent: HTMLElement): void {
+    parent.appendChild(slot.cardHost);
+    this.placeIcon(slot, parent);
+    if (slot.card) slot.card.moved();
   }
 
   /**
@@ -98,8 +107,7 @@ export class ComponentPool<T> {
       this.pending.splice(at, 1);
       this.release(slot);
     } else if (slot.host) {
-      slot.host.appendChild(slot.cardHost);
-      this.placeIcon(slot, slot.host);
+      this.move(slot, slot.host);
     }
   }
 
@@ -111,8 +119,7 @@ export class ComponentPool<T> {
       if (this.pending.indexOf(slot) < 0) this.pending.push(slot);
       return;
     }
-    this.parking.appendChild(slot.cardHost);
-    this.placeIcon(slot, this.parking);
+    this.move(slot, this.parking);
     this.free.push(slot);
   }
 

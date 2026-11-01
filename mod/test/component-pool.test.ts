@@ -56,6 +56,8 @@ describe('PooledCells', () => {
   let kind: string;
   let created: string[];
   let assigned: number[];
+  /** What the cards and the list were told, in order: `moved <card>` and `assigned <cell> <card>`. */
+  let told: string[];
   let pooled: PooledCells<Cell>;
 
   beforeEach(() => {
@@ -69,6 +71,7 @@ describe('PooledCells', () => {
     kind = 'tile';
     created = [];
     assigned = [];
+    told = [];
     pooled = new PooledCells<Cell>(scope, asElement(parent), {
       kind: () => kind,
       maker: (poolKind) => ({
@@ -76,11 +79,15 @@ describe('PooledCells', () => {
         iconClass: `icon-${poolKind}`,
         create: (slot: PoolSlot<Cell>) => {
           created.push(poolKind);
-          slot.card = { element: asElement(new FakeElement()) } as unknown as SimComponent;
+          const id = created.length;
+          slot.card = { element: asElement(new FakeElement()), id, moved: () => told.push(`moved ${id}`) } as unknown as SimComponent;
           pooled.markReady(slot);
         },
       }),
-      assigned: (cell) => assigned.push(cell.index),
+      assigned: (cell) => {
+        assigned.push(cell.index);
+        told.push(`assigned ${cell.index} ${(cell.card as unknown as { id: number }).id}`);
+      },
     });
   });
 
@@ -109,6 +116,16 @@ describe('PooledCells', () => {
     assert.ok(cells[13]!.slot, '600 pixels away: kept');
     assert.ok(cells[16]!.slot && cells[29]!.slot, 'cells 16 to 29 come into view (16 is 300 pixels away)');
     assert.equal(created.length, 15, 'the 13 parked slots are reused: one new slot for the 14 cells');
+  });
+
+  it('tells a reused card it moved before the cell it now shows draws it (its Selected state is sent again)', () => {
+    pooled.materialize(cellsOf(3, 'y'), asElement(view), 'y');
+    // A new list (another aircraft): every slot parked, then given to the new cells, the last parked first.
+    pooled.releaseAll();
+    assert.deepEqual(told.slice(-3), ['moved 1', 'moved 2', 'moved 3'], 'parked');
+    told = [];
+    pooled.materialize(cellsOf(3, 'y'), asElement(view), 'y');
+    assert.deepEqual(told, ['moved 3', 'assigned 0 3', 'moved 2', 'assigned 1 2', 'moved 1', 'assigned 2 1']);
   });
 
   it('makes a new pool for another kind of component, the old one going with its slots', () => {

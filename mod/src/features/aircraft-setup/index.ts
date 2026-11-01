@@ -16,31 +16,27 @@ import { columnExtra } from './showcase-layout.ts';
 
 /** Width given to the left column in the side by side layout, in layout units from the sim's 470: 400 units. */
 const SIDE_BY_SIDE_EXTRA = -70;
-/** The layout is checked as often as the panel is laid out. */
-const LAYOUT_CHECK_MS = 250;
 
 export function aircraftSetup(settings: Settings['aircraftSetup'], scope: Scope): void {
   injectStyle(CSS, scope);
   const hooked = onScreenActive(SCREENS.planeSelection, scope, (page, screen) => {
-    const panel = new SetupPanel(page, screen);
     const column = columnResizer(page, screen);
-    if (column) {
-      let applied = 0;
-      // The extra the bottom row needs, worked out again only when its need changes (no swing at every pass).
-      let fit = { need: 0, extra: 0 };
-      const apply = () => {
-        const row = panel.bottomRow();
-        if (row && row.need !== fit.need) fit = { need: row.need, extra: columnExtra(row.need, row.frame, uiUnit(), column.base) };
-        const extra = liveriesInGallery() ? SIDE_BY_SIDE_EXTRA : Math.max(settings.widenColumn, fit.extra);
-        if (extra === applied) return;
-        applied = extra;
-        column.resize(extra);
-      };
-      // First once the gallery has mounted (right after this feature): its flag then tells Gallery and List from
-      // Showcase, so the column does not take the Showcase width for one pass on entering Gallery or List.
-      screen.timeout(apply, 0);
-      screen.interval(apply, LAYOUT_CHECK_MS);
-    }
+    let applied = 0;
+    // The extra the bottom row needs, worked out again only when its need changes (no swing at every pass).
+    let fit = { need: 0, extra: 0 };
+    // At the start of each of the panel's layout passes, so that the panel measures the column it shows in: on timers
+    // of its own, the column took its width after the panel's first pass on entering the screen (measured on 1.9.21,
+    // 2026-11-01: entering List, the panel shown 504 pixels wide in the sim's column for a frame, then 429).
+    const fitColumn = () => {
+      if (!column) return;
+      const row = panel.bottomRow();
+      if (row && row.need !== fit.need) fit = { need: row.need, extra: columnExtra(row.need, row.frame, uiUnit(), column.base) };
+      const extra = liveriesInGallery() ? SIDE_BY_SIDE_EXTRA : Math.max(settings.widenColumn, fit.extra);
+      if (extra === applied) return;
+      applied = extra;
+      column.resize(extra);
+    };
+    const panel = new SetupPanel(page, screen, fitColumn);
     panel.mount();
   });
   if (!hooked) throw new Error('the aircraft selection screen is missing');

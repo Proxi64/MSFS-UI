@@ -22,7 +22,7 @@ import { TAIL_NUMBER, type Identification } from '../../sim/liveries.ts';
 import { translate } from '../../sim/localization.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth, type RealScroll } from '../../sim/real-scroll.ts';
-import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layout.ts';
+import { LIVERIES_IN_GALLERY_CHANGED, liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layout.ts';
 import { ANSWER_TIMEOUT_MS, store, watch } from '../../sim/store.ts';
 import { CONFIGURE_TILE } from './configure-tile.ts';
 import { LargeLivery } from './large-livery.ts';
@@ -57,6 +57,8 @@ function launchFlow(event: string): void {
 export class SetupPanel {
   private readonly page: Manipulator;
   private readonly scope: Scope;
+  /** Run at the start of each layout pass (the left column's width: index.ts). */
+  private readonly beforeLayout: () => void;
   private readonly root = el('div', 'msfs-ui-root msfs-ui-setup');
   // Gallery and List.
   private readonly variants: VariantsList;
@@ -90,9 +92,10 @@ export class SetupPanel {
   /** Number of the last reload: an older one that finishes later is ignored. */
   private reloadNumber = 0;
 
-  constructor(page: Manipulator, scope: Scope) {
+  constructor(page: Manipulator, scope: Scope, beforeLayout: () => void) {
     this.page = page;
     this.scope = scope;
+    this.beforeLayout = beforeLayout;
     const chooseVariantNow = (id: string) => this.chooseVariant(id);
     this.variants = new VariantsList(scope, { choose: chooseVariantNow, relayout: () => this.layout() });
     this.statistics = new StatisticRows(scope);
@@ -152,6 +155,8 @@ export class SetupPanel {
     // (sim/selection-layout.ts), so the panel does not take its Showcase form for one pass on entering Gallery or List.
     scope.timeout(() => this.layout(), 0);
     scope.interval(() => this.layout(), 250);
+    // Another view of the gallery: the other form at once, as the gallery redraws at once (not at the next pass).
+    scope.listen(document, LIVERIES_IN_GALLERY_CHANGED, () => this.layout());
     this.tail.mount(tailHost);
 
     // The sim releases its configurator when leaving the screen and sets it only on a click on a tile or on
@@ -159,7 +164,11 @@ export class SetupPanel {
     syncConfigurator().catch((error: unknown) => logError('the configurator could not be set', error));
     const reload = () => this.scheduleReload();
     watch(scope, configurator.Details, reload);
-    watch(scope, aircraft.CurrentAircraft, reload);
+    // Another aircraft: the variants list closes at once, before the configurator reports the new variants.
+    watch(scope, aircraft.CurrentAircraft, () => {
+      this.dropdown.close();
+      reload();
+    });
     watch<Identification | null>(scope, aircraft.CurrentIdentification, (identification) => this.tail.setIdentification(identification));
     // A gallery heart removed also removes the aircraft's favourite liveries.
     scope.listen(document, FAVORITE_LIVERIES_CHANGED, reload);
@@ -205,6 +214,7 @@ export class SetupPanel {
 
   /** In place of the statistics (`Fleet_Details` › `Scroll`), which are hidden. */
   private layout(): void {
+    this.beforeLayout();
     const details = this.page.elt.querySelector<HTMLElement>(STATISTICS);
     const statistics = details && details.querySelector<HTMLElement>('[name="Scroll"]');
     if (!isShown(details) || !statistics) {

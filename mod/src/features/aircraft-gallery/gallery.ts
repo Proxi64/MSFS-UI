@@ -191,7 +191,9 @@ export class Gallery {
     this.body.setAttribute('data-input-group', PANEL_INPUT_GROUP);
     scope.append(this.page.elt, this.root);
     this.liveryColumn = new LiveryColumn(scope, this.root);
-    // When the column goes, the setup panel takes its Showcase form again (the liveries large and in its strip).
+    // The setup panel's form follows the view from now on, shown or not; when the gallery goes, it takes its Showcase
+    // form again (the liveries large and in its strip).
+    this.tellView();
     scope.add(() => setLiveriesInGallery(false));
     // The sim's grid, hidden while the gallery shows, kept a stale selection: it is refreshed, then shown again.
     scope.add(() => {
@@ -267,6 +269,7 @@ export class Gallery {
   /** Another view: the same tiles in its layout, the selected one in view. */
   private setView(view: View): void {
     this.memory.view = view;
+    this.tellView();
     this.saveMemory();
     this.render();
     this.scrollToSelected();
@@ -440,10 +443,19 @@ export class Gallery {
     this.placeLiveries(null);
   }
 
-  /** The livery column placed or hidden, and the setup panel told (it drops its thumbnails while the column shows). */
+  /** The livery column placed, or hidden (null). */
   private placeLiveries(rect: ColumnRect | null): void {
     this.liveryColumn.place(rect);
-    setLiveriesInGallery(rect !== null);
+  }
+
+  /**
+   * The setup panel told whether the view shows the liveries (Gallery and List: it drops its thumbnails), from the
+   * view alone and not from the column's last place: on entering the screen, the panel's and the left column's 250 ms
+   * passes run before the gallery's first pass on the shown screen (measured on 1.9.21, 2026-11-01: 140 ms before),
+   * and took the Showcase form for that time when the column, hidden with the screen, cleared the flag.
+   */
+  private tellView(): void {
+    setLiveriesInGallery(this.memory.view !== 'showcase');
   }
 
   private showStockGrid(show: boolean): void {

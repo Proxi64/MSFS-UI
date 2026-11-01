@@ -1,6 +1,8 @@
 // The Showcase panel's variants (panel.ts): the sim's dropdown, one row high, showing the selected variant. Opened, its
 // list lies over the livery header and the large livery and ends on the large livery's bottom edge, whole items at
-// rest (sim/dropdown-list.ts). With one variant it is Disabled and does not open.
+// rest (sim/dropdown-list.ts). With one variant it is Disabled and does not open. Open while another aircraft is chosen,
+// it closes (close, panel.ts): it would list the previous aircraft's variants until the configurator reports the new
+// ones (0.3 to 1.2 s, measured on 1.9.21; a real click elsewhere closes it too, the sim listening to the window's clicks).
 
 import { setVariable } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
@@ -32,6 +34,12 @@ export class VariantDropdown {
     );
   }
 
+  /** The list closed, when open. */
+  close(): void {
+    const manipulator = this.dropdown ? this.dropdown.manipulator<DropdownManipulator>() : null;
+    if (manipulator) manipulator.hideDropdownList();
+  }
+
   render(variants: ConfiguratorItem[]): void {
     this.variants = variants;
     this.draw();
@@ -58,6 +66,8 @@ export class VariantDropdown {
     if (!dropdown || !manipulator) return;
     const key = this.variants.map((variant) => `${variant.isSelected ? '*' : ''}${variant.id}`).join('|');
     if (key !== this.drawn) {
+      // Other variants, or another selected: an open list closes (a choice in it has already closed it).
+      if (this.drawn) this.close();
       this.drawn = key;
       const items = this.variants.map(
         (variant): DropdownItem => ({

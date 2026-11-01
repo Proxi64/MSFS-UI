@@ -48,6 +48,8 @@ export interface DropdownManipulator {
   setData(items: DropdownItem[], current?: DropdownItem): void;
   /** Title shown without a current item (the template has a placeholder text). */
   setEmptyTitle(title: string): void;
+  /** Closes the list when it is open (State_Wrapped again); nothing when closed. */
+  hideDropdownList(): void;
 }
 
 /**
@@ -104,6 +106,8 @@ export class SimComponent {
   readonly element: HTMLElement;
   private readonly scope: Scope;
   private readonly attributes = new Map<string, string>();
+  /** The element moved since its Selected state was last sent (moved): select() queues it again whatever the trait says. */
+  private selectionStale = false;
 
   constructor(element: HTMLElement, scope: Scope) {
     this.element = element;
@@ -140,7 +144,27 @@ export class SimComponent {
       }
       selectable = this.sim.traits.selectable;
     }
-    if (selectable && selectable.isSelected() !== selected) selectable.Set(selected);
+    if (!selectable) return;
+    if (this.selectionStale) {
+      // The element's flags already hold the dropped value: the other one first, so that the change is queued again.
+      this.sim.updateVisual({ selected: !selected });
+      selectable.Set(selected);
+    } else if (selectable.isSelected() !== selected) {
+      selectable.Set(selected);
+    }
+    this.selectionStale = false;
+  }
+
+  /**
+   * The element moved to another parent (a recycled slot: component-pool.ts). The sim queues a visual change
+   * (`updateVisual`) for a later pass and records its flags at once; a move takes the element out of that queue, and
+   * the same flags sent again are not queued (they did not change): a change made in the same task as the move is lost
+   * for good, the trait saying one state while the component shows the other (measured on 1.9.21, 2026-11-01: a strip
+   * thumbnail left outlined, its trait not selected, after a change of aircraft). The next select() queues its state
+   * again.
+   */
+  moved(): void {
+    this.selectionStale = true;
   }
 
   /** Disabled: dimmed by the component's own Disabled state. */
