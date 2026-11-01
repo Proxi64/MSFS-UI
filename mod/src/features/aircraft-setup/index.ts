@@ -1,6 +1,6 @@
 // Setup panel in the aircraft selection (panel.ts), and the left column widened by `widenColumn` layout units; in the
 // side by side layout (the liveries in the gallery), the column only holds the variants: it is narrower instead. In
-// Showcase it is never narrower than the width where the bottom row's three labels show whole (the owner, 2026-11-01),
+// Showcase it is never narrower than the width where the bottom block's labels show whole (the owner, 2026-11-01),
 // whatever the option.
 
 import { uiUnit } from '../../core/dom.ts';
@@ -22,7 +22,7 @@ export function aircraftSetup(settings: Settings['aircraftSetup'], scope: Scope)
   const hooked = onScreenActive(SCREENS.planeSelection, scope, (page, screen) => {
     const column = columnResizer(page, screen);
     let applied = 0;
-    // The extra the bottom row needs, worked out again only when its need changes (no swing at every pass).
+    // The extra the bottom block needs, worked out again only when its need changes (no swing at every pass).
     let fit = { need: 0, extra: 0 };
     // At the start of each of the panel's layout passes, so that the panel measures the column it shows in: on timers
     // of its own, the column took its width after the panel's first pass on entering the screen (measured on 1.9.21,

@@ -33,7 +33,7 @@ export class LiveryStepper {
     return this.choose(this.ids[target]!);
   }
 
-  /** A livery chosen directly (the strip), shown as a step would be; returns the id now shown (unchanged for one not listed). */
+  /** A livery chosen directly (the grid), shown as a step would be; returns the id now shown (unchanged for one not listed). */
   choose(id: string): string | null {
     if (!this.ids.includes(id)) return this.shown();
     this.pendingId = id === (this.sentId ?? this.currentId) ? null : id;

@@ -167,7 +167,7 @@ const MARGINS: PoolMargins = { create: 300, keep: 600 };
 
 /**
  * The components of a list's cells, kept only near its visible part (core/virtual-list.ts), in slots of a pool of the
- * current kind (made when first needed). Shared by the gallery, its livery column and the setup panel's strip.
+ * current kind (made when first needed). Shared by the gallery, its livery column and the setup panel's grid.
  */
 export class PooledCells<C extends PooledCell<C>> {
   private readonly owner: Scope;

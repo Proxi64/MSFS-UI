@@ -1,51 +1,44 @@
 // The setup panel's Showcase mode (panel.ts builds the parts and switches the modes): every part at its fixed place
-// (showcase-layout.ts), the sim's title block holding its variant line, the bottom row's three buttons in whole pixels
-// with the sim's Configure tile moved into its third slot (configure-tile.ts), and what that row needs, for the left
-// column's width (index.ts).
+// (showcase-layout.ts), the sim's title block holding its variant line, and the bottom block in two columns: the sim's
+// Configure tile on the left (configure-tile.ts), the tail number over Fuel and Identification on the right, as wide as
+// their labels need; and what that block needs, for the left column's width (index.ts).
 
 import { setStyle, setVariable } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import type { SimComponent } from '../../sim/components.ts';
 import { ConfigureTile } from './configure-tile.ts';
-import type { LiveryStrip, StripPlace } from './livery-strip.ts';
+import type { LiveryGrid } from './livery-grid.ts';
 import { GAP } from './setup-layout.ts';
-import { rowNeed, showcasePlaces, type ShowcasePlaces, type Span } from './showcase-layout.ts';
+import { bottomColumns, gridFor, rowNeed, sharedColumns, showcasePlaces, type BottomNeeds, type ShowcasePlaces, type Span } from './showcase-layout.ts';
 import type { VariantDropdown } from './variant-dropdown.ts';
 
-/** The livery header, in layout units (a section header of core/theme.css): its height in whole pixels. */
+/** The variant and livery headers, in layout units (a section header of core/theme.css): their height in whole pixels. */
 const HEADER_HEIGHT = 36;
-/** Layout passes (250 ms each) the bottom row may stay too narrow, the left column widening, before it is logged. */
+/** The tail number's field, in layout units: the sim's longest values with the field's own paddings. */
+const TAIL_FIELD_UNITS = 120;
+/** Layout passes (250 ms each) the bottom block may stay too narrow, the left column widening, before it is logged. */
 const MISFIT_PASSES = 8;
-
-/**
- * Transitional (the next task wires the new places): widths of the three buttons of the old bottom row in a row
- * `width` wide, each button its need (rounded up), the remainder shared equally in whole pixels, the last button taking
- * the rest; null when the needs do not fit.
- */
-function actionWidths(width: number, gap: number, needs: readonly [number, number, number]): [number, number, number] | null {
-  const wanted = needs.map((need) => Math.ceil(need));
-  const remainder = width - 2 * gap - (wanted[0]! + wanted[1]! + wanted[2]!);
-  if (remainder < 0) return null;
-  const share = Math.floor(remainder / 3);
-  return [wanted[0]! + share, wanted[1]! + share, wanted[2]! + remainder - 2 * share];
-}
+/** Layout passes the labels may stay unmeasured before it is logged: the sim lays its tile out 2 to 4 s after the screen shows. */
+const UNMEASURED_PASSES = 40;
 
 /** The panel's parts the Showcase mode places. */
 export interface ShowcaseParts {
   root: HTMLElement;
-  dropdownHost: HTMLElement;
+  variantRow: HTMLElement;
   liveryHeader: HTMLElement;
   largeHost: HTMLElement;
-  strip: LiveryStrip;
+  grid: LiveryGrid;
   tailRow: HTMLElement;
+  /** The tail number's title. */
+  tailTitle: HTMLElement;
   actions: HTMLElement;
   /** Fuel and Identification, once created. */
   actionButtons: readonly SimComponent[];
   dropdown: VariantDropdown;
 }
 
-/** What the bottom row needs: its width and the left column's border around the panel, in pixels. */
+/** What the bottom block needs: its width and the left column's border around the panel, in pixels. */
 export interface BottomRow {
   need: number;
   frame: number;
@@ -65,6 +58,14 @@ function textButtonNeed(button: SimComponent): number {
   return button.element.getBoundingClientRect().width - parts.label.getBoundingClientRect().width + parts.text.getBoundingClientRect().width;
 }
 
+/** The width a section header needs to show its title whole, in pixels: the title (it does not shrink: aircraft-setup.css) and the header's paddings. */
+function headerNeed(header: HTMLElement): number {
+  const title = header.querySelector<HTMLElement>('.msfs-ui-title');
+  if (!title) return 0;
+  const style = window.getComputedStyle(header);
+  return title.getBoundingClientRect().width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+}
+
 /** A part's place, in whole pixels from the panel's top (only written when it changes). */
 function placeSpan(element: HTMLElement, span: Span): void {
   setStyle(element.style, 'top', `${span.top}px`);
@@ -74,9 +75,12 @@ function placeSpan(element: HTMLElement, span: Span): void {
 export class ShowcaseMode {
   private readonly parts: ShowcaseParts;
   private readonly configure: ConfigureTile;
-  /** What the three buttons need, measured for `key` (the unit and the three labels: a new language measures again). */
-  private needs: { key: string; widths: [number, number, number]; row: BottomRow } | null = null;
-  private needsMissed = false;
+  /**
+   * What the bottom block needs, measured for `key` (the unit and its labels: a new language measures again); `row`
+   * null and `key` empty while the tile has no size yet (the right column's needs are known: its labels show whole).
+   */
+  private needs: { key: string; parts: BottomNeeds; row: BottomRow | null } | null = null;
+  private unmeasured = 0;
   private misfits = 0;
   /** The sim's variant line held at one line's height, and that height for a unit (holdTitleLines). */
   private heldSubtitle: HTMLElement | null = null;
@@ -90,63 +94,64 @@ export class ShowcaseMode {
 
   /**
    * The places for a panel from the statistics' top (`rect`) to the bottom of `details` (`Fleet_Details`); null while
-   * the panel is smaller than its fixed parts (the screen animates): nothing is laid out then.
+   * the grid gets less than one row (the screen animates): nothing is laid out then. The grid's form depends on the
+   * number of liveries and the sizes only (gridFor); the other parts are the same in both.
    */
   places(rect: DOMRect, details: HTMLElement, unit: number): ShowcasePlaces | null {
     const height = details.getBoundingClientRect().bottom - rect.top;
-    const places = showcasePlaces(rect.width, height, Math.round(HEADER_HEIGHT * unit), unit, false);
-    return places.grid.thumbHeight >= 1 ? places : null;
+    const header = Math.round(HEADER_HEIGHT * unit);
+    const places = showcasePlaces(rect.width, height, header, unit, false);
+    const grid = gridFor(this.parts.grid.count, places.grid, showcasePlaces(rect.width, height, header, unit, true).grid);
+    return grid.thumbHeight >= 1 && grid.height >= grid.rowStep ? { ...places, grid } : null;
   }
 
   /**
    * The parts at their places (`rect`: the panel's left, top and width in the window; `column`: the sim's left column).
-   * The panel's own box ends above the bottom row, and the row is only as wide as its first two buttons: its third slot
-   * is the sim's Configure tile, which lies in the sim's column and would get no click under an element of the panel,
-   * whatever its z-index (the column is a stacking context of its own; measured on 1.9.21).
+   * The panel's own box ends above the bottom block, and the block's right column lies under it, outside the box: on the
+   * left is the sim's Configure tile, which lies in the sim's column and would get no click under an element of the
+   * panel, whatever its z-index (the column is a stacking context of its own; measured on 1.9.21).
    */
   layout(rect: DOMRect, places: ShowcasePlaces, tile: HTMLElement, column: HTMLElement | null, unit: number): void {
     const parts = this.parts;
-    // Transitional rows: the bottom block's two rows stand for the old tail and buttons rows.
-    const row = Math.round((places.bottom.height - Math.round(GAP * unit)) / 2);
-    const tailRow: Span = { top: places.bottom.top, height: row };
-    const actions: Span = { top: places.bottom.top + places.bottom.height - row, height: row };
-    const strip: StripPlace = { top: places.grid.top, height: places.grid.thumbHeight, rows: 1, thumbWidth: places.grid.thumbWidth, thumbHeight: places.grid.thumbHeight };
-    setStyle(parts.root.style, 'height', `${actions.top}px`);
-    placeSpan(parts.dropdownHost, places.variants);
+    setStyle(parts.root.style, 'height', `${places.bottom.top}px`);
+    placeSpan(parts.variantRow, places.variants);
     placeSpan(parts.liveryHeader, places.header);
     placeSpan(parts.largeHost, places.livery);
-    parts.strip.layout(strip, unit);
-    placeSpan(parts.tailRow, tailRow);
-    placeSpan(parts.actions, actions);
+    parts.grid.layout(places.grid, unit);
 
-    // Fuel and Payload, Identification and Configure in whole pixels, each label whole (showcase-layout.ts); until the
-    // labels are measured, and while the left column widens to fit them (index.ts), the row is shared in thirds.
+    // The tile and the right column in whole pixels, each label whole (showcase-layout.ts); until the labels are
+    // measured, and while the left column widens to fit them (index.ts), the block is shared in halves.
     const width = Math.round(rect.width);
     const gap = Math.round(GAP * unit);
     if (this.configure.isPlaced(tile)) this.measureNeeds(tile, unit, gap, column ? column.getBoundingClientRect().width - rect.width : 0);
-    const needs = this.needs ? this.needs.widths : null;
-    let widths = needs ? actionWidths(width, gap, needs) : null;
-    this.misfits = needs && !widths ? this.misfits + 1 : 0;
+    const needs = this.needs ? this.needs.parts : null;
+    const fitted = needs ? bottomColumns(width, gap, needs) : null;
+    this.misfits = needs && !fitted ? this.misfits + 1 : 0;
     if (this.misfits === MISFIT_PASSES && needs) {
-      logError(`the bottom row's labels do not fit in ${width} pixels (they need ${needs.map(Math.ceil).join(', ')})`);
+      logError(`the bottom block's labels do not fit in ${width} pixels (it needs ${rowNeed(needs, gap)})`);
     }
-    if (!widths) widths = actionWidths(width, gap, [0, 0, 0]) || [0, 0, 0];
+    const columns = fitted || sharedColumns(width, gap);
+    const row = (places.bottom.height - gap) / 2;
+    const right = columns.configure + gap;
+    for (const [part, top] of [
+      [parts.tailRow, places.bottom.top],
+      [parts.actions, places.bottom.top + row + gap],
+    ] as const) {
+      placeSpan(part, { top, height: row });
+      setStyle(part.style, 'left', `${right}px`);
+      setStyle(part.style, 'width', `${columns.right}px`);
+    }
     setVariable(parts.root.style, '--action-gap', `${gap}px`);
-    setVariable(parts.root.style, '--action-w', `${widths[0]}px`);
-    setStyle(parts.actions.style, 'width', `${widths[0] + gap + widths[1]}px`);
-    this.configure.place(tile, {
-      left: rect.left + widths[0] + gap + widths[1] + gap,
-      top: rect.top + actions.top,
-      width: widths[2],
-      height: actions.height,
-    });
+    setVariable(parts.root.style, '--action-w', `${columns.fuel}px`);
+    setVariable(parts.root.style, '--tail-w', `${columns.tailTitle}px`);
+    this.configure.place(tile, { left: rect.left, top: rect.top + places.bottom.top, width: columns.configure, height: places.bottom.height });
 
-    // The variants' list ends on the large livery's bottom edge.
+    // The variants' row: its list ends on the large livery's bottom edge.
     const variantsBottom = places.variants.top + places.variants.height;
-    parts.dropdown.sizeList((places.livery.top + places.livery.height - variantsBottom) / unit, unit);
+    parts.dropdown.layout((places.livery.top + places.livery.height - variantsBottom) / unit, unit);
   }
 
-  /** What the bottom row needs, once measured (index.ts widens the left column to it). */
+  /** What the bottom block needs, once measured (index.ts widens the left column to it). */
   bottomRow(): BottomRow | null {
     return this.needs ? this.needs.row : null;
   }
@@ -184,14 +189,12 @@ export class ShowcaseMode {
     this.holdTitleLines(null, 0);
     const parts = this.parts;
     for (const part of [parts.tailRow, parts.actions]) {
-      setStyle(part.style, 'top', '');
-      setStyle(part.style, 'height', '');
+      for (const property of ['top', 'height', 'left', 'width'] as const) setStyle(part.style, property, '');
     }
-    setStyle(parts.actions.style, 'width', '');
   }
 
   /**
-   * What the three buttons need, measured again when the resolution or a label changes (reading the labels costs
+   * What the bottom block needs, measured again when the resolution or a label changes (reading the labels costs
    * nothing; the probe in the tile's label is only added then). `frame`: the left column's width less the panel's.
    */
   private measureNeeds(tile: HTMLElement, unit: number, gap: number, frame: number): void {
@@ -201,14 +204,22 @@ export class ShowcaseMode {
       return parts ? parts.text.textContent : '';
     });
     const title = tile.querySelector<HTMLElement>('[name="TextBlock"] > [name="Title"]');
-    const key = `${unit}|${labels.join('|')}|${title ? title.textContent : ''}`;
+    const key = `${unit}|${labels.join('|')}|${title ? title.textContent : ''}|${this.parts.tailTitle.textContent}`;
     if ((this.needs && this.needs.key === key) || buttons.length < 2) return;
-    const widths: [number, number, number] = [textButtonNeed(buttons[0]!), textButtonNeed(buttons[1]!), this.configure.need()];
-    if (widths.every((need) => need > 0)) {
-      this.needs = { key, widths, row: { need: rowNeed({ tail: 0, field: 0, fuel: widths[0], identification: widths[1], configure: widths[2] }, gap), frame } };
-    } else if (!this.needsMissed) {
-      this.needsMissed = true;
-      logError(`the bottom row's labels could not be measured (${widths.map(Math.ceil).join(', ')})`);
+    const needs: BottomNeeds = {
+      tail: headerNeed(this.parts.tailTitle),
+      field: Math.ceil(TAIL_FIELD_UNITS * unit),
+      fuel: textButtonNeed(buttons[0]!),
+      identification: textButtonNeed(buttons[1]!),
+      configure: this.configure.need(),
+    };
+    const tileMeasured = needs.configure > 0;
+    if (needs.tail > 0 && needs.fuel > 0 && needs.identification > 0) {
+      this.needs = { key: tileMeasured ? key : '', parts: needs, row: tileMeasured ? { need: rowNeed(needs, gap), frame } : null };
+      if (tileMeasured) this.unmeasured = 0;
+    }
+    if ((!tileMeasured || !this.needs) && ++this.unmeasured === UNMEASURED_PASSES) {
+      logError(`the bottom block's labels could not be measured (${JSON.stringify(needs)})`);
     }
   }
 }

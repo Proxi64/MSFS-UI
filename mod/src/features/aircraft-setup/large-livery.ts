@@ -2,7 +2,7 @@
 // button on each side for the previous and the next livery (in the panel's order: favourites first,
 // sim/livery-order.ts), its position and its heart over it; the wheel over it steps too. A step shows its livery at
 // once and reaches the configurator after a short quiet time (livery-stepper.ts), so quick steps send one choice. A
-// click in the strip of small liveries (livery-strip.ts) goes the same way, sent at once.
+// click in the grid of small liveries (livery-grid.ts) goes the same way, sent at once.
 
 import { debounced } from '../../core/async.ts';
 import { el, toggleClass } from '../../core/dom.ts';
@@ -58,7 +58,7 @@ export class LargeLivery {
   private order: LiveryOrder | null = null;
   private favorites: FavoriteLivery[] = [];
   private image = '';
-  /** The livery under the pointer in the strip (null: none): the header names it. */
+  /** The livery under the pointer in the grid (null: none): the header names it. */
   private hovered: string | null = null;
   private readonly wheel = new WheelSteps();
   private readonly settle = debounced(() => this.send(), LIVERY_SETTLE_MS);
@@ -137,12 +137,12 @@ export class LargeLivery {
     this.draw();
   }
 
-  /** The liveries in the panel's order, as last rendered (the strip shows them in that order). */
+  /** The liveries in the panel's order, as last rendered (the grid shows them in that order). */
   get items(): readonly ConfiguratorLivery[] {
     return this.liveries;
   }
 
-  /** A livery chosen elsewhere (the strip): shown at once and sent without the quiet time. */
+  /** A livery chosen elsewhere (the grid): shown at once and sent without the quiet time. */
   choose(id: string): void {
     const shown = this.stepper.shown();
     if (this.stepper.choose(id) === shown) return;
@@ -151,7 +151,7 @@ export class LargeLivery {
     if (this.stepper.pending() !== null) this.send();
   }
 
-  /** The livery under the pointer in the strip (null: none), named by the header instead of the one shown. */
+  /** The livery under the pointer in the grid (null: none), named by the header instead of the one shown. */
   hover(id: string | null): void {
     this.hovered = id;
     this.draw();
@@ -174,7 +174,7 @@ export class LargeLivery {
 
   /**
    * The step waiting, to the configurator; the livery stays shown until the sim reports it (livery-stepper.ts), or
-   * for `SENT_REPORT_MS` after the configurator took it: then the large livery, the strip's outline and the header
+   * for `SENT_REPORT_MS` after the configurator took it: then the large livery, the grid's outline and the header
    * follow the configurator again.
    */
   private send(): void {

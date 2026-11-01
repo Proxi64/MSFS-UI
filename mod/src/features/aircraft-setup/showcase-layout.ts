@@ -6,10 +6,8 @@
 
 import { GAP, LIVERY_RATIO, PADDING_TOP, SCROLL_BAR_ROOM } from './setup-layout.ts';
 
-/** Layout units: height of the dropdown, of the tail number row (as `.msfs-ui-setup__tail`) and of the buttons' row. */
+/** Layout units: height of each row of the bottom block (as `.msfs-ui-setup__tail`). */
 const ROW_HEIGHT = 30;
-/** Layout units the sim's horizontal scroll bar takes under the strip of small liveries (replaced in the next task). */
-export const STRIP_BAR_UNITS = 8;
 /** Small liveries per row of the grid. */
 const GRID_COLUMNS = 4;
 
@@ -19,14 +17,27 @@ export interface Span {
   height: number;
 }
 
+/** The grid of small liveries: its place and its thumbnails, in whole pixels. */
+export interface GridPlace extends Span {
+  columns: number;
+  /** The liveries do not fit: the scroll bar takes its room on the right. */
+  scrolls: boolean;
+  thumbWidth: number;
+  /** The fourth column's width: it takes what the whole pixels leave, so that the grid ends on the panel's edge. */
+  lastWidth: number;
+  thumbHeight: number;
+  /** From one row to the next, the gap included. */
+  rowStep: number;
+}
+
 export interface ShowcasePlaces {
   /** One row, as high as the livery header. */
   variants: Span;
   header: Span;
   /** As wide as the panel. */
   livery: Span;
-  /** Four whole thumbnails across, `rowStep` pixels from one row to the next; it scrolls down. */
-  grid: Span & { columns: 4; thumbWidth: number; thumbHeight: number; rowStep: number };
+  /** Four whole thumbnails across; it scrolls down. */
+  grid: GridPlace;
   /** Two rows and their gap, ending on the panel's bottom. */
   bottom: Span;
 }
@@ -35,8 +46,8 @@ export interface ShowcasePlaces {
  * The places of the panel's parts in whole pixels, for a panel `width` x `height` pixels, a livery header
  * `headerHeight` pixels high and `unit` pixels per layout unit. The parts from the variants to the grid follow each
  * other with one gap between; the bottom block ends on the bottom and the grid fills everything from its top to one gap
- * above the block. `scrolls`: the liveries do not fit the grid, so a vertical scroll bar takes its room on the right
- * and the four thumbnails share the rest of the width (whole pixels; the sim's proportions).
+ * above the block. `scrolls` (gridFor): the liveries do not fit the grid, so a vertical scroll bar takes its room on
+ * the right and the four thumbnails share the rest of the width (whole pixels; the sim's proportions).
  */
 export function showcasePlaces(width: number, height: number, headerHeight: number, unit: number, scrolls: boolean): ShowcasePlaces {
   const gap = Math.round(GAP * unit);
@@ -49,10 +60,38 @@ export function showcasePlaces(width: number, height: number, headerHeight: numb
 
   const gridTop = livery.top + livery.height + gap;
   const bar = scrolls ? Math.round(SCROLL_BAR_ROOM * unit) : 0;
-  const thumbWidth = Math.floor((width - (GRID_COLUMNS - 1) * gap - bar) / GRID_COLUMNS);
+  const room = Math.round(width) - (GRID_COLUMNS - 1) * gap - bar;
+  const thumbWidth = Math.floor(room / GRID_COLUMNS);
   const thumbHeight = Math.round(thumbWidth * LIVERY_RATIO);
-  const grid = { top: gridTop, height: bottom.top - gap - gridTop, columns: GRID_COLUMNS as 4, thumbWidth, thumbHeight, rowStep: thumbHeight + gap };
+  const grid = {
+    top: gridTop,
+    height: bottom.top - gap - gridTop,
+    columns: GRID_COLUMNS,
+    scrolls,
+    thumbWidth,
+    lastWidth: room - (GRID_COLUMNS - 1) * thumbWidth,
+    thumbHeight,
+    rowStep: thumbHeight + gap,
+  };
   return { variants, header, livery, grid, bottom };
+}
+
+/**
+ * The grid for `count` liveries, from its two forms (the place given by showcasePlaces without and with the scroll bar);
+ * a function of the count and the sizes only, never of what the last pass drew, so that it cannot swing between two
+ * widths from pass to pass. The wide form when the rows fit; the scrolling form when they fit in neither; between the
+ * two (the wide rows too high by a few pixels, the narrow ones fitting: a list that would not scroll, with room left for
+ * a scroll bar it does not show) the wide form, its thumbnails lowered to fit: on the panel's edges, no bar, at most 6 %
+ * lower than the sim's proportions (the sim's image covers its button: it is cut, not squeezed).
+ */
+export function gridFor(count: number, wide: GridPlace, narrow: GridPlace): GridPlace {
+  const rows = Math.ceil(count / GRID_COLUMNS);
+  const high = (grid: GridPlace) => rows * grid.rowStep - (grid.rowStep - grid.thumbHeight);
+  if (rows === 0 || high(wide) <= wide.height) return wide;
+  if (high(narrow) > narrow.height) return narrow;
+  const gap = wide.rowStep - wide.thumbHeight;
+  const thumbHeight = Math.floor((wide.height - (rows - 1) * gap) / rows);
+  return { ...wide, thumbHeight, rowStep: thumbHeight + gap };
 }
 
 /** What the bottom block's parts need, in pixels (measured by the caller). */
@@ -64,6 +103,14 @@ export interface BottomNeeds {
   configure: number;
 }
 
+/** The bottom block's columns: the tile, the right column, and in that column the tail title's and the Fuel button's widths. */
+export interface BottomColumns {
+  configure: number;
+  right: number;
+  tailTitle: number;
+  fuel: number;
+}
+
 /**
  * The columns of the bottom block in a row `width` wide, `gap` pixels apart, whole pixels: the right column (the tail
  * number's title and field above Fuel and Identification) is as wide as the wider of its two rows, `title + gap + field`
@@ -71,12 +118,19 @@ export interface BottomNeeds {
  * button keep their need, the field and Identification take the rest of their rows. Null when the tile gets less than
  * its own need.
  */
-export function bottomColumns(width: number, gap: number, needs: BottomNeeds): { configure: number; right: number; tailTitle: number; fuel: number } | null {
+export function bottomColumns(width: number, gap: number, needs: BottomNeeds): BottomColumns | null {
   const tailTitle = Math.ceil(needs.tail);
   const fuel = Math.ceil(needs.fuel);
   const right = Math.max(tailTitle + gap + Math.ceil(needs.field), fuel + gap + Math.ceil(needs.identification));
   const configure = width - gap - right;
   return configure < Math.ceil(needs.configure) ? null : { configure, right, tailTitle, fuel };
+}
+
+/** The columns until the needs are measured, or while the left column widens to them: halves, in whole pixels. */
+export function sharedColumns(width: number, gap: number): BottomColumns {
+  const right = Math.floor((width - gap) / 2);
+  const half = Math.floor((right - gap) / 2);
+  return { configure: width - gap - right, right, tailTitle: half, fuel: half };
 }
 
 /** The width the bottom block needs, in whole pixels: its right column, the gap and the Configure tile (bottomColumns). */
@@ -99,34 +153,15 @@ export function gridCell(index: number): { row: number; column: number } {
 }
 
 /**
- * The scroll position, in pixels, that brings row `row` of the grid (`rowStep` pixels per row, gap included) into a
- * view `view` pixels high scrolled to `scroll`: null when the row is already whole in view; otherwise whole rows: a
- * row above the view, or cut at its top, on the view's top; one below it, or cut at the bottom, with its bottom on the
- * view's bottom; within 0 to `max`, the largest scroll.
+ * The scroll position, in pixels, that brings row `row` of the grid (thumbnails `thumbHeight` pixels high, `rowStep`
+ * pixels from one row to the next) into a view `view` pixels high scrolled to `scroll`: null when the row is already
+ * whole in view; otherwise the grid moves as little as it can: a row above the view, or cut at its top, on the view's
+ * top; one below it, or cut at the bottom, with its thumbnails' bottom on the view's bottom; within 0 to `max`, the
+ * largest scroll.
  */
-export function gridReveal(row: number, rowStep: number, view: number, scroll: number, max: number): number | null {
+export function gridReveal(row: number, rowStep: number, thumbHeight: number, view: number, scroll: number, max: number): number | null {
   const top = row * rowStep;
-  const bottom = top + rowStep;
+  const bottom = top + thumbHeight;
   if (top >= scroll && bottom <= scroll + view) return null;
   return Math.max(0, Math.min(max, top < scroll ? top : bottom - view));
-}
-
-// Until the next task replaces the strip of small liveries by the grid.
-/** The place of livery `index` in the strip of small liveries: column-major, `rows` to a column, the first on top. */
-export function stripCell(index: number, rows: number): { column: number; row: number } {
-  return { column: Math.floor(index / rows), row: index % rows };
-}
-
-/**
- * The scroll position, in pixels, that brings column `column` of the strip into a view `view` pixels wide scrolled to
- * `scroll`: null when the column is already whole in view; otherwise the strip moves as little as it can: a column
- * cut on the left, or beyond it, on the view's left edge; one cut on the right, or beyond it, on the view's right edge;
- * within the scroll range. The strip has `columns` columns `thumbWidth` pixels wide, `gap` pixels apart.
- */
-export function stripReveal(column: number, columns: number, thumbWidth: number, gap: number, view: number, scroll: number): number | null {
-  const left = column * (thumbWidth + gap);
-  const right = left + thumbWidth;
-  if (left >= scroll && right <= scroll + view) return null;
-  const max = Math.max(0, columns * thumbWidth + (columns - 1) * gap - view);
-  return Math.max(0, Math.min(max, left < scroll ? left : right - view));
 }

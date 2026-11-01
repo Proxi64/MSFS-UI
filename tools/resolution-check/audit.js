@@ -58,9 +58,10 @@
       if (r.r > lr.l + 1 && r.l < lr.r - 1 && (r.l < lr.l - 0.5 || r.r > lr.r + 0.5)) problems.push('tile cut by its list: ' + px(r.l) + '-' + px(r.r) + ' list ' + px(lr.l) + '-' + px(lr.r));
     });
   }
-  // The setup panel: every block on the title block's edges. In Showcase the bottom row is Fuel and Payload and
-  // Identification (`__actions`) then the sim's Configure tile, moved there: the row, from the first to the tile, is the
-  // block.
+  // The setup panel: every block on the title block's edges. In Showcase the bottom block is the sim's Configure tile,
+  // moved there, on the left and the tail number over Fuel and Identification on the right: from the tile to that column
+  // is the block; four thumbnails per row in the grid, the labels whole, the tile as high as the two rows, every part
+  // of the block reached by the pointer (the panel's box must not cover the tile).
   var setup = document.querySelector('.msfs-ui-setup');
   var title = document.querySelector('[name="Fleet_Details"] [name="Header"]');
   if (visible(setup) && title) {
@@ -69,15 +70,44 @@
     var offTitle = function (label, l, r) {
       if (Math.abs(l - tr.l) > 1 || Math.abs(r - tr.r) > 1) problems.push('setup block off the title block: ' + label + ' ' + px(l) + '-' + px(r) + ' title ' + px(tr.l) + '-' + px(tr.r));
     };
-    Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__variants, .msfs-ui-setup__livery-header, .msfs-ui-setup__liveries, .msfs-ui-setup__stats, .msfs-ui-setup__tail' + (showcase ? '' : ', .msfs-ui-setup__actions'))).filter(visible).forEach(function (blk) {
+    Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__variants, .msfs-ui-setup__variant-row, .msfs-ui-setup__livery-header, .msfs-ui-setup__large, .msfs-ui-setup__grid, .msfs-ui-setup__liveries, .msfs-ui-setup__stats' + (showcase ? '' : ', .msfs-ui-setup__tail, .msfs-ui-setup__actions'))).filter(visible).forEach(function (blk) {
       var r = rect(blk);
       offTitle(name(blk), r.l, r.r);
     });
     var configure = document.querySelector('[name="Fleet_Details"] [name="TileButton_Watermark_Small_Cockpit"]');
     var actions = setup.querySelector('.msfs-ui-setup__actions');
     if (showcase && visible(actions)) {
-      if (!visible(configure)) problems.push('Showcase: the Configure tile is not shown in the bottom row');
-      else offTitle('bottom row (actions and Configure tile)', rect(actions).l, rect(configure).r);
+      var tail = setup.querySelector('.msfs-ui-setup__tail');
+      var reached = function (element) {
+        var r = rect(element);
+        var hit = document.elementFromPoint(r.l + r.w / 2, r.t + r.h / 2);
+        return !!hit && (hit === element || element.contains(hit));
+      };
+      if (!visible(configure)) problems.push('Showcase: the Configure tile is not shown in the bottom block');
+      else {
+        var cr = rect(configure);
+        var ar = rect(actions);
+        var lr = rect(tail);
+        offTitle('bottom block (Configure tile and right column)', cr.l, ar.r);
+        if (Math.abs(lr.l - ar.l) > 0.5 || Math.abs(lr.r - ar.r) > 0.5) problems.push('Showcase: the tail row off the buttons: ' + px(lr.l) + '-' + px(lr.r) + ' buttons ' + px(ar.l) + '-' + px(ar.r));
+        if (Math.abs(cr.t - lr.t) > 1 || Math.abs(cr.b - ar.b) > 1) problems.push('Showcase: the tile not as high as the two rows: ' + px(cr.t) + '-' + px(cr.b) + ' rows ' + px(lr.t) + '-' + px(ar.b));
+        if (!reached(configure)) problems.push('Showcase: the Configure tile is under the panel');
+        var tileTitle = configure.querySelector('[name="TextBlock"] > [name="Title"]');
+        if (tileTitle && tileTitle.scrollWidth > tileTitle.clientWidth + 1) problems.push('Showcase: the Configure tile cuts its text');
+      }
+      Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__action > *, .msfs-ui-setup__field')).forEach(function (part) {
+        if (!reached(part)) problems.push('Showcase: not reached by the pointer: ' + name(part));
+      });
+      var grid = setup.querySelector('.msfs-ui-setup__grid');
+      if (visible(grid) && grid.querySelector('.msfs-ui-setup__grid-row')) {
+        var gr = rect(grid);
+        var scrolling = grid.querySelector('real-scroll').classList.contains('is-scrolling');
+        Array.prototype.slice.call(grid.querySelectorAll('.msfs-ui-setup__grid-row')).forEach(function (row, at, rows) {
+          var cells = row.children;
+          if (cells.length > 4 || (cells.length < 4 && at < rows.length - 1)) problems.push('Showcase: ' + cells.length + ' thumbnails in a row of the grid');
+          if (!scrolling && cells.length === 4 && Math.abs(rect(cells[3]).r - gr.r) > 1) problems.push('Showcase: the grid ends off the panel: ' + px(rect(cells[3]).r) + ' panel ' + px(gr.r));
+        });
+      }
     }
     // The variant tiles, by row: the first on the title block's left edge, the last on its right one unless the list
     // scrolls (the bar's room is then kept).

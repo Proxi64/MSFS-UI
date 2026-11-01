@@ -1,12 +1,12 @@
-// The sim's "Configure your aircraft" tile on the Showcase panel's bottom row (panel.ts): moved into the row's third
-// slot and reduced to its height (aircraft-setup.css, `msfs-ui-setup-configure`: the watermark hidden, the key and the
-// label laid out as on the sim's small buttons). Its click and its key (F) stay the sim's. Its place is written on the
-// tile itself; its own styles come back when the panel leaves Showcase or unloads.
+// The sim's "Configure your aircraft" tile in the Showcase panel's bottom block (panel.ts): moved into the block's left
+// column, two rows high, and drawn as the sim draws it (its text size, its gradient, its key, its cockpit drawing cut by
+// the tile's height). Its click and its key (F) stay the sim's. Its place is written on the tile itself; its own styles
+// come back when the panel leaves Showcase or unloads.
 
 import { setStyle } from '../../core/dom.ts';
 import type { Scope } from '../../core/scope.ts';
 
-/** The tile in `Fleet_Details`, and the class that reduces it (aircraft-setup.css). */
+/** The tile in `Fleet_Details`, and the class that keeps the Gallery and List rule off it (aircraft-setup.css). */
 export const CONFIGURE_TILE = '[name="TileButton_Watermark_Small_Cockpit"]';
 const PLACED = 'msfs-ui-setup-configure';
 const PLACE = ['left', 'top', 'right', 'bottom', 'width', 'height'] as const;
@@ -27,7 +27,7 @@ export class ConfigureTile {
     scope.add(() => this.restore());
   }
 
-  /** Whether `tile` is the one placed: its reduced look applies. */
+  /** Whether `tile` is the one placed. */
   isPlaced(tile: HTMLElement): boolean {
     return this.tile === tile;
   }

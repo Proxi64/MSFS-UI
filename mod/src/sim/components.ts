@@ -159,7 +159,7 @@ export class SimComponent {
    * The element moved to another parent (a recycled slot: component-pool.ts). The sim queues a visual change
    * (`updateVisual`) for a later pass and records its flags at once; a move takes the element out of that queue, and
    * the same flags sent again are not queued (they did not change): a change made in the same task as the move is lost
-   * for good, the trait saying one state while the component shows the other (measured on 1.9.21, 2026-11-01: a strip
+   * for good, the trait saying one state while the component shows the other (measured on 1.9.21, 2026-11-01: a small
    * thumbnail left outlined, its trait not selected, after a change of aircraft). The next select() queues its state
    * again.
    */

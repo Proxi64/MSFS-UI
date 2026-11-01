@@ -93,7 +93,7 @@
  * to 1070 for a block from 547 to 1078 at 1440 lines); its top margin stays, the gap under the panel's buttons. On the
  * aircraft selection only: the career's fleet, the companies' fleet and the Manufacture screens use the same
  * Fleet_Details (code review of 2026-10-30), and this style stays for the feature's life. Moved to the Showcase bottom
- * row (msfs-ui-setup-configure), the tile takes the place panel.ts writes.
+ * block (msfs-ui-setup-configure), the tile takes the place showcase-mode.ts writes.
  */
 [name="PlaneSelection_Content"] [name="Fleet_Details"] [name="TileButton_Watermark_Small_Cockpit"]:not(.msfs-ui-setup-configure) { left: 0 !important; right: 0 !important; }
 /*
@@ -105,32 +105,44 @@
 .msfs-ui-setup__action + .msfs-ui-setup__action { margin-left: var(--action-gap, calc(var(--u) * 6)); }
 
 /*
- * Showcase: the parts at their places (showcase-layout.ts), top and height in whole pixels from panel.ts, as wide as
- * the panel; the bottom row as wide as its first two buttons, the sim's Configure tile in its third slot. No variants
- * list, no statistics. The sim's list has a display of its own.
+ * Showcase: the parts at their places (showcase-layout.ts), top and height in whole pixels from showcase-mode.ts, as
+ * wide as the panel; the bottom block's right column (the tail number, Fuel and Identification) at the left and width it
+ * writes, the sim's Configure tile on its left. No variants list, no statistics. The sim's list has a display of its own.
  */
 .msfs-ui-setup.is-showcase { display: block; padding: 0; }
 .msfs-ui-setup.is-showcase .msfs-ui-setup__variants,
 .msfs-ui-setup.is-showcase .msfs-ui-setup__stats { display: none !important; }
-.msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__dropdown,
+.msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__variant-row,
 .msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__large,
 .msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__livery-header,
-.msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__strip { display: none; }
-.msfs-ui-setup.is-showcase .msfs-ui-setup__dropdown,
+.msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__grid { display: none; }
+.msfs-ui-setup.is-showcase .msfs-ui-setup__variant-row,
 .msfs-ui-setup.is-showcase .msfs-ui-setup__livery-header,
 .msfs-ui-setup.is-showcase .msfs-ui-setup__large,
-.msfs-ui-setup.is-showcase .msfs-ui-setup__strip,
-.msfs-ui-setup.is-showcase .msfs-ui-setup__tail { position: absolute; left: 0; right: 0; margin: 0; }
-.msfs-ui-setup.is-showcase .msfs-ui-setup__actions { position: absolute; left: 0; }
+.msfs-ui-setup.is-showcase .msfs-ui-setup__grid { position: absolute; left: 0; right: 0; margin: 0; }
+.msfs-ui-setup.is-showcase .msfs-ui-setup__tail,
+.msfs-ui-setup.is-showcase .msfs-ui-setup__actions { position: absolute; margin: 0; }
 .msfs-ui-setup.is-showcase .msfs-ui-setup__action { height: 100%; }
+.msfs-ui-setup.is-showcase .msfs-ui-setup__tail-title { flex: 0 0 var(--tail-w); }
+/* Its width is what the right column needs (showcase-mode.ts): the title never shrinks in a narrow header. */
+.msfs-ui-setup__tail-title .msfs-ui-title { flex-shrink: 0; }
 
 /*
- * The variants' dropdown (the sim's Dropdown, variant-dropdown.ts), its text 12 units in as the headers' (the sim's
- * template: 6). Its list opens right under it and passes over the parts below; its top padding takes the room its
- * whole items leave (--msfs-ui-variants-top).
+ * The variants' row (variant-dropdown.ts): a header holding the sim's Dropdown over its whole box, under the title (the
+ * pointer goes through it: the Hover state stays the dropdown's). The dropdown's background shows only in its Hover
+ * state, white as the sim draws it, the title then dark as the dropdown's own text; at rest the header's own shows. Its
+ * text on the right after the title (--msfs-ui-variants-left), before its arrow. Its list opens right under the row and
+ * passes over the parts below; its top padding takes the room its whole items leave (--msfs-ui-variants-top).
  */
-.msfs-ui-setup__dropdown { z-index: 1; }
-.msfs-ui-setup__dropdown [name="Content"] { left: calc(var(--u) * 12) !important; }
+.msfs-ui-setup__variant-row { z-index: 1; }
+.msfs-ui-setup__variant-title { position: relative; z-index: 1; pointer-events: none; }
+.msfs-ui-setup__variant-row:hover:not(.is-single) .msfs-ui-setup__variant-title { color: var(--colorSecondary); }
+.msfs-ui-setup__dropdown { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.msfs-ui-setup__variant-row:not(:hover) .msfs-ui-setup__dropdown > * > [name="Background"],
+.msfs-ui-setup__variant-row.is-single .msfs-ui-setup__dropdown > * > [name="Background"] { opacity: 0 !important; }
+.msfs-ui-setup__dropdown > * > [name="Content"] { left: var(--msfs-ui-variants-left) !important; }
+.msfs-ui-setup__dropdown > * > [name="Content"] > * { justify-content: flex-end !important; }
+.msfs-ui-setup__dropdown [name="List"] [name="Content"] { left: calc(var(--u) * 12) !important; }
 .msfs-ui-setup__dropdown [name="List"] { top: 100% !important; }
 .msfs-ui-setup__dropdown [name="List"] .scroll__content { padding-top: var(--msfs-ui-variants-top) !important; }
 
@@ -188,28 +200,26 @@
 }
 
 /*
- * The strip of small liveries (livery-strip.ts): the sim's horizontal list holds a row of columns of thumbnails,
- * column-major, --strip-w x --strip-h in whole pixels, --strip-gap apart (showcase-layout.ts), without the list's
- * padding. Its scroll bar from the strip's left edge to its right one, in the room under the rows
- * (the sim's own CSS: 75 % of the list's width, centred, 24 units below it), as the gallery's Showcase grid.
+ * The grid of small liveries (livery-grid.ts): the sim's vertical list holds rows of four thumbnails, --grid-w x --grid-h
+ * in whole pixels, --grid-gap apart, the fourth --grid-last-w wide (showcase-layout.ts), without the list's padding. A
+ * list that does not scroll has no bar beside it (as the variants above): the sim keeps its bar's width otherwise.
  */
-.msfs-ui-setup__strip-list { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
-.msfs-ui-setup__strip-list .scroll__container { margin-bottom: 0 !important; }
-.msfs-ui-setup__strip-list .scroll__content {
+.msfs-ui-setup__grid-list { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.msfs-ui-setup__grid-list .scroll__content {
   display: flex !important;
-  flex-direction: row !important;
+  flex-direction: column !important;
   align-items: flex-start !important;
   padding: 0 !important;
 }
-.msfs-ui-setup__strip > .msfs-ui-setup__strip-list > .scroll__bar-container { width: 100% !important; margin: 0 !important; transform: none !important; }
-.msfs-ui-setup__strip-column { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start; margin-right: var(--strip-gap); }
-.msfs-ui-setup__strip-column:last-child { margin-right: 0; }
-.msfs-ui-setup__strip-cell { position: relative; flex-shrink: 0; width: var(--strip-w); height: var(--strip-h); margin-bottom: var(--strip-gap); }
-.msfs-ui-setup__strip-cell:last-child { margin-bottom: 0; }
-.msfs-ui-setup__strip-cell.is-disabled { opacity: 0.45; }
-.msfs-ui-setup__strip-button { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.msfs-ui-setup__grid-list:not(.is-scrolling) .scroll__bar-container { display: none !important; }
+.msfs-ui-setup__grid-row { position: relative; flex-shrink: 0; display: flex; flex-direction: row; align-items: flex-start; margin-bottom: var(--grid-gap); }
+.msfs-ui-setup__grid-row:last-child { margin-bottom: 0; }
+.msfs-ui-setup__grid-cell { position: relative; flex-shrink: 0; width: var(--grid-w); height: var(--grid-h); margin-right: var(--grid-gap); }
+.msfs-ui-setup__grid-cell.is-last { width: var(--grid-last-w); margin-right: 0; }
+.msfs-ui-setup__grid-cell.is-disabled { opacity: 0.45; }
+.msfs-ui-setup__grid-button { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 /* The heart as on the large livery, in the top right corner, 4 units in: on hover of the thumbnail, or a favourite. */
-.msfs-ui-setup__strip-icon {
+.msfs-ui-setup__grid-icon {
   position: absolute;
   top: calc(var(--u) * 4);
   right: calc(var(--u) * 4);
@@ -219,33 +229,11 @@
   background-color: var(--msfs-ui-icon-disc);
   opacity: 0;
 }
-.msfs-ui-setup__strip-cell:hover .msfs-ui-setup__strip-icon,
-.msfs-ui-setup__strip-cell.is-favorite .msfs-ui-setup__strip-icon { opacity: 1; }
-.msfs-ui-setup__strip-icon .msfs-ui-icon {
+.msfs-ui-setup__grid-cell:hover .msfs-ui-setup__grid-icon,
+.msfs-ui-setup__grid-cell.is-favorite .msfs-ui-setup__grid-icon { opacity: 1; }
+.msfs-ui-setup__grid-icon .msfs-ui-icon {
   left: calc(var(--u) * 2);
   top: calc(var(--u) * 2);
   right: calc(var(--u) * 2);
   bottom: calc(var(--u) * 2);
-}
-
-/*
- * The sim's "Configure your aircraft" tile on the Showcase bottom row (configure-tile.ts), as high as the other
- * buttons: its watermark, corner image and large icon hidden; its key and its label laid out as on the sim's small
- * buttons (TextButton_Small: the key block 30 units high, 6 units in, the label 6 units after it, 3 units before the
- * right edge). The mod's --u is not defined on the sim's elements.
- */
-[name="PlaneSelection_Content"] .msfs-ui-setup-configure [name="Watermark"],
-[name="PlaneSelection_Content"] .msfs-ui-setup-configure [name="Corner"],
-[name="PlaneSelection_Content"] .msfs-ui-setup-configure [name="Content"] > [name="Icon"] { display: none !important; }
-[name="PlaneSelection_Content"] .msfs-ui-setup-configure [name="Content"] {
-  left: 0 !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  padding: 0 calc(var(--unscaledScreenHeight) * 3px / 1080) 0 calc(var(--unscaledScreenHeight) * 6px / 1080) !important;
-  align-items: center !important;
-}
-[name="PlaneSelection_Content"] .msfs-ui-setup-configure [name="TextBlock"] {
-  justify-content: center !important;
-  padding: 0 0 0 calc(var(--unscaledScreenHeight) * 6px / 1080) !important;
 }

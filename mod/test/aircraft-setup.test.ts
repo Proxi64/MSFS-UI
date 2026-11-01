@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { overflows, rowCount, statisticsRoom, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
-import { bottomColumns, columnExtra, gridCell, gridReveal, rowNeed, showcasePlaces, stripCell, stripReveal } from '../src/features/aircraft-setup/showcase-layout.ts';
+import { bottomColumns, columnExtra, gridCell, gridFor, gridReveal, rowNeed, sharedColumns, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
 import { LiverySends, LiveryStepper } from '../src/features/aircraft-setup/livery-stepper.ts';
 import { orderLiveries } from '../src/sim/livery-order.ts';
 import {
@@ -275,41 +275,64 @@ describe('showcase panel layout', () => {
   });
 
   it('gridReveal keeps a whole row in view, aligns another on the edge it was beyond, within the scroll range', () => {
-    // Rows 87 apart, a view of 270 (3 rows plus 9), 10 rows: at most 870 - 270 = 600.
-    assert.equal(gridReveal(0, 87, 270, 0, 600), null);
-    assert.equal(gridReveal(2, 87, 270, 0, 600), null, 'ends at 261');
-    assert.equal(gridReveal(3, 87, 270, 0, 600), 3 * 87 + 87 - 270, 'cut at the bottom: its bottom on the view bottom');
-    assert.equal(gridReveal(9, 87, 270, 0, 600), 600, 'beyond the bottom, clamped to the end');
-    assert.equal(gridReveal(5, 87, 270, 0, 600), 5 * 87 + 87 - 270, 'beyond the bottom: its bottom on the view bottom');
-    assert.equal(gridReveal(1, 87, 270, 200, 600), 87, 'cut at the top: on the top');
-    assert.equal(gridReveal(0, 87, 270, 400, 600), 0, 'above the view: on the top');
-    assert.equal(gridReveal(1, 87, 270, 0, 0), null, 'nothing to scroll');
+    // Thumbnails 79 high, rows 87 apart, a view of 270 (3 rows plus 9, the third ending at 253), 10 rows: at most 862 - 270 = 592.
+    const reveal = (row: number, scroll: number, max = 592) => gridReveal(row, 87, 79, 270, scroll, max);
+    assert.equal(reveal(0, 0), null);
+    assert.equal(reveal(2, 0), null, 'ends at 253');
+    assert.equal(reveal(3, 0), 3 * 87 + 79 - 270, 'cut at the bottom: its thumbnails on the view bottom, less than a row');
+    assert.ok(reveal(3, 0)! < 87);
+    assert.equal(reveal(9, 0), 592, 'the last row: the end of the grid');
+    assert.equal(reveal(5, 0), 5 * 87 + 79 - 270, 'beyond the bottom: on the view bottom');
+    assert.equal(reveal(1, 200), 87, 'cut at the top: on the top');
+    assert.equal(reveal(0, 400), 0, 'above the view: on the top');
+    assert.equal(reveal(1, 0, 0), null, 'nothing to scroll');
+    assert.equal(gridReveal(3, 87, 79, 340, 0, 0), null, 'a row that ends on the view bottom without its gap is whole');
   });
 
-  it('stripCell places the liveries column-major, the first row on top', () => {
-    assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((index) => stripCell(index, 3)), [
-      { column: 0, row: 0 },
-      { column: 0, row: 1 },
-      { column: 0, row: 2 },
-      { column: 1, row: 0 },
-      { column: 1, row: 1 },
-      { column: 1, row: 2 },
-      { column: 2, row: 0 },
-    ]);
-    assert.deepEqual(stripCell(4, 1), { column: 4, row: 0 });
+  it('gridFor depends on the count and the sizes only: wide when the rows fit, scrolling when they fit in neither form', () => {
+    // A grid 248 high. Wide: 166 x 78, rows 86 apart: 2 rows (164) fit, 3 rows (250) do not. Narrow: 158 x 74, 82 apart:
+    // 3 rows (238) fit, 4 rows (320) do not.
+    const wide = showcasePlaces(691, 765, 32, 1.333, false).grid;
+    const narrow = showcasePlaces(691, 765, 32, 1.333, true).grid;
+    assert.equal(wide.height, 248);
+    assert.deepEqual(gridFor(0, wide, narrow), wide);
+    assert.deepEqual(gridFor(8, wide, narrow), wide);
+    assert.deepEqual(gridFor(13, wide, narrow), narrow);
+    assert.deepEqual(gridFor(27, wide, narrow), narrow);
+    assert.equal(narrow.scrolls, true);
+    assert.equal(narrow.top, wide.top);
+    assert.equal(narrow.height, wide.height, 'the scroll bar changes only the thumbnails');
   });
 
-  it('stripReveal leaves a whole column in view, brings another to the edge it was beyond, within the scroll range', () => {
-    // Ten columns 160 wide, 8 apart (a step of 168), in a view 600 wide: 3.5 columns; the strip 1672 wide, 1072 at most.
-    assert.equal(stripReveal(0, 10, 160, 8, 600, 0), null);
-    assert.equal(stripReveal(2, 10, 160, 8, 600, 0), null, 'ends at 496');
-    assert.equal(stripReveal(3, 10, 160, 8, 600, 0), 64, 'cut on the right: on the right edge, less than a column');
-    assert.equal(stripReveal(6, 10, 160, 8, 600, 0), 1008 + 160 - 600, 'beyond the right edge: on it');
-    assert.equal(stripReveal(1, 10, 160, 8, 600, 200), 168, 'cut on the left: on the left edge');
-    assert.equal(stripReveal(0, 10, 160, 8, 600, 400), 0, 'beyond the left edge: on it');
-    assert.equal(stripReveal(9, 10, 160, 8, 600, 0), 10 * 160 + 9 * 8 - 600, 'the last column: the end of the strip');
-    assert.equal(stripReveal(5, 10, 160, 8, 600, 1072), 840, 'from the end, a column cut on the left');
-    assert.equal(stripReveal(0, 1, 160, 8, 600, 0), null, 'one livery');
+  it('gridFor lowers the wide thumbnails when only the narrow rows would fit: on the panel edges, no bar, no list that does not scroll', () => {
+    const wide = showcasePlaces(691, 765, 32, 1.333, false).grid;
+    const narrow = showcasePlaces(691, 765, 32, 1.333, true).grid;
+    for (const count of [9, 12]) {
+      const grid = gridFor(count, wide, narrow);
+      assert.equal(grid.scrolls, false);
+      assert.equal(grid.thumbWidth, wide.thumbWidth);
+      assert.equal(grid.lastWidth, wide.lastWidth);
+      assert.equal(grid.thumbHeight, 77, 'three rows of 77 and two gaps of 8 in 248');
+      assert.equal(grid.rowStep, 85);
+      assert.ok(3 * grid.thumbHeight + 2 * 8 <= grid.height);
+    }
+  });
+
+  it('the fourth column takes what the whole pixels leave: the grid ends on the panel edge, or on the bar room', () => {
+    for (const [width, height, unit] of sizes) {
+      const gap = Math.round(6 * unit);
+      const wide = showcasePlaces(width, height, Math.round(36 * unit), unit, false).grid;
+      assert.equal(3 * (wide.thumbWidth + gap) + wide.lastWidth, width);
+      assert.ok(wide.lastWidth >= wide.thumbWidth && wide.lastWidth < wide.thumbWidth + 4);
+      const narrow = showcasePlaces(width, height, Math.round(36 * unit), unit, true).grid;
+      assert.equal(3 * (narrow.thumbWidth + gap) + narrow.lastWidth, width - Math.round(24 * unit));
+    }
+  });
+
+  it('sharedColumns shares the block in halves, whole pixels, until the needs are measured', () => {
+    const columns = sharedColumns(691, 8);
+    assert.deepEqual(columns, { configure: 342, right: 341, tailTitle: 166, fuel: 166 });
+    assert.equal(columns.configure + 8 + columns.right, 691);
   });
 });
 

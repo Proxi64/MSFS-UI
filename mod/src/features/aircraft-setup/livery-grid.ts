@@ -1,9 +1,8 @@
-// The Showcase panel's strip of small liveries, under the large one (panel.ts): the sim's livery buttons in the sim's
-// horizontal scrolling list, in rows filling the strip's height, column-major (showcase-layout.ts: stripCell), in the
-// large livery's order (favourites first), a heart on each. Only the thumbnails near the visible part get components,
-// from a pool (sim/component-pool.ts): an aircraft may have hundreds of liveries. A click chooses the livery as the
-// large one's steps do (large-livery.ts); the livery the large one shows is outlined (Selected) and brought into view
-// when it changes.
+// The Showcase panel's grid of small liveries, under the large one (panel.ts): the sim's livery buttons in the sim's
+// vertical scrolling list, four to a row, row-major (showcase-layout.ts: gridCell), in the large livery's order
+// (favourites first), a heart on each. Only the thumbnails near the visible part get components, from a pool
+// (sim/component-pool.ts): an aircraft may have hundreds of liveries. A click chooses the livery as the large one's steps
+// do (large-livery.ts); the livery the large one shows is outlined (Selected) and brought into view when it changes.
 
 import { el, setStyle, setVariable, toggleClass } from '../../core/dom.ts';
 import { iconToggle } from '../../core/icon-toggle.ts';
@@ -16,24 +15,21 @@ import { isFavoriteLivery, loadFavoriteLiveries, type FavoriteLivery } from '../
 import { liveryFolder } from '../../sim/liveries.ts';
 import { createRealScroll, removeFromList } from '../../sim/real-scroll.ts';
 import { GAP } from './setup-layout.ts';
-import { STRIP_BAR_UNITS, stripCell, stripReveal, type Span } from './showcase-layout.ts';
-
-/** The strip's place (transitional: the next task replaces the strip by the grid of ShowcasePlaces). */
-export type StripPlace = Span & { rows: number; thumbWidth: number; thumbHeight: number };
+import { gridCell, gridReveal, type GridPlace } from './showcase-layout.ts';
 
 /**
  * How near the visible part the thumbnails get components, in layout units: closer than the gallery's (its tiles are
- * larger), so that a long strip keeps at most 27 alive at 1440 lines (9 columns of 3) where the gallery's margins would
- * keep about 40; still more than a wheel step ahead (the sim's: 187 pixels at 1440 lines, measured on 1.9.21).
+ * larger), so that a long grid keeps about 30 alive (7 or 8 rows of 4) where the gallery's margins would keep about 50;
+ * still more than a wheel step ahead.
  */
-const STRIP_MARGINS: PoolMargins = { create: 150, keep: 250 };
+const GRID_MARGINS: PoolMargins = { create: 150, keep: 250 };
 
 /** The sim's livery button (ImageButtonLiveryManipulator). */
 interface LiveryButtonManipulator {
   setData(image: string, callback: () => void): void;
 }
 
-/** A small livery: its host keeps its place in the strip, its slot and button are there while it is near the view. */
+/** A small livery: its host keeps its place in the grid, its slot and button are there while it is near the view. */
 interface Cell {
   livery: ConfiguratorLivery;
   host: HTMLElement;
@@ -41,7 +37,7 @@ interface Cell {
   card: SimComponent | null;
 }
 
-export interface LiveryStripEvents {
+export interface LiveryGridEvents {
   /** An available livery was clicked. */
   choose(id: string): void;
   /** A heart was clicked. */
@@ -50,23 +46,22 @@ export interface LiveryStripEvents {
   hover(id: string | null): void;
 }
 
-export class LiveryStrip {
+export class LiveryGrid {
   private readonly scope: Scope;
   private readonly host: HTMLElement;
-  private readonly events: LiveryStripEvents;
-  private readonly list = createRealScroll('x', 'msfs-ui-setup__strip-list');
+  private readonly events: LiveryGridEvents;
+  private readonly list = createRealScroll('y', 'msfs-ui-setup__grid-list');
   private readonly pooled: PooledCells<Cell>;
   private cells: Cell[] = [];
-  /** The column hosts in the list, `rows` cells each. */
-  private columns: HTMLElement[] = [];
+  /** The row hosts in the list, four cells each. */
+  private rows: HTMLElement[] = [];
   private cellScope: Scope | null = null;
-  /** What the cells were built for: the ids in order and the rows. */
-  private key = '';
+  /** The ids in order the cells were built for. */
+  private key: string | null = null;
   private liveries: readonly ConfiguratorLivery[] = [];
   private favorites: FavoriteLivery[] = [];
-  /** The strip as last laid out (null until then). */
-  private place: StripPlace | null = null;
-  private gap = 0;
+  /** The grid as last laid out (null until then). */
+  private place: GridPlace | null = null;
   /** Sizes last given to the cells: the list measures its content again when they change. */
   private sizes = '';
   /** The livery the large one shows, outlined; brought into view once laid out (`revealWanted`). */
@@ -75,19 +70,24 @@ export class LiveryStrip {
   /** The image each slot's button shows: the sim's button is given a new one only when it changes. */
   private readonly images = new WeakMap<PoolSlot<Cell>, string>();
 
-  constructor(scope: Scope, host: HTMLElement, events: LiveryStripEvents) {
+  constructor(scope: Scope, host: HTMLElement, events: LiveryGridEvents) {
     this.scope = scope;
     this.host = host;
     this.events = events;
     host.appendChild(this.list);
     this.pooled = new PooledCells<Cell>(scope, host, {
       kind: () => 'livery',
-      maker: () => ({ cardClass: 'msfs-ui-setup__strip-button', iconClass: 'msfs-ui-setup__strip-icon', create: (slot, slotScope) => this.createSlot(slot, slotScope) }),
+      maker: () => ({ cardClass: 'msfs-ui-setup__grid-button', iconClass: 'msfs-ui-setup__grid-icon', create: (slot, slotScope) => this.createSlot(slot, slotScope) }),
       assigned: (cell) => this.update(cell),
-      margins: STRIP_MARGINS,
+      margins: GRID_MARGINS,
     });
     // The sim's list scrolls itself (wheel, scroll bar): the thumbnails coming into view get their components.
     scope.listen(this.list, 'ui-scroll', () => this.materialize());
+  }
+
+  /** How many liveries the grid shows: its form depends on it (showcase-layout.ts: gridFor). */
+  get count(): number {
+    return this.liveries.length;
   }
 
   /** The liveries in the large livery's order. */
@@ -108,34 +108,32 @@ export class LiveryStrip {
     this.reveal();
   }
 
-  /**
-   * At each layout pass of the Showcase panel: the strip's host at its place, its scroll bar in the room under the rows
-   * (`STRIP_BAR_UNITS`); the thumbnails in whole pixels (variables written only when they change).
-   */
-  layout(strip: StripPlace, unit: number): void {
+  /** At each layout pass of the Showcase panel: the grid's host at its place, the thumbnails in whole pixels (only written when they change). */
+  layout(place: GridPlace, unit: number): void {
     const style = this.host.style;
-    setStyle(style, 'top', `${strip.top}px`);
-    setStyle(style, 'height', `${strip.height + Math.ceil(STRIP_BAR_UNITS * unit)}px`);
-    const rowsChanged = !this.place || this.place.rows !== strip.rows;
-    this.place = strip;
-    this.gap = Math.round(GAP * unit);
-    setVariable(style, '--strip-w', `${strip.thumbWidth}px`);
-    setVariable(style, '--strip-h', `${strip.thumbHeight}px`);
-    setVariable(style, '--strip-gap', `${this.gap}px`);
-    if (rowsChanged) this.render(this.liveries);
-    const sizes = `${strip.thumbWidth}/${strip.thumbHeight}/${this.gap}/${strip.height}`;
+    const gap = Math.round(GAP * unit);
+    this.place = place;
+    setStyle(style, 'top', `${place.top}px`);
+    setStyle(style, 'height', `${place.height}px`);
+    setVariable(style, '--grid-w', `${place.thumbWidth}px`);
+    setVariable(style, '--grid-last-w', `${place.lastWidth}px`);
+    setVariable(style, '--grid-h', `${place.thumbHeight}px`);
+    setVariable(style, '--grid-gap', `${gap}px`);
+    toggleClass(this.list, 'is-scrolling', place.scrolls);
+    const sizes = `${place.thumbWidth}/${place.thumbHeight}/${gap}/${place.height}/${place.scrolls}`;
     if (sizes !== this.sizes) {
       this.sizes = sizes;
       if (this.list.updateSizes) this.list.updateSizes();
+      // Other thumbnails: the shown livery's row moved.
+      this.revealWanted = true;
     }
     this.reveal();
     this.materialize();
   }
 
-  /** The cells again when the liveries or the rows change: column hosts of `rows` cells, column-major. */
+  /** The cells again when the liveries change: row hosts of four cells, row-major. */
   private build(): void {
-    const rows = this.place ? this.place.rows : 0;
-    const key = `${rows}|${this.liveries.map((livery) => livery.id).join('|')}`;
+    const key = this.liveries.map((livery) => livery.id).join('|');
     if (key === this.key) {
       // Same cells: availability, hearts and selection refreshed in place.
       this.cells.forEach((cell, at) => (cell.livery = this.liveries[at]!));
@@ -146,16 +144,17 @@ export class LiveryStrip {
     this.pooled.releaseAll();
     if (this.cellScope) this.cellScope.dispose();
     this.cellScope = null;
-    removeFromList(this.columns);
-    this.columns = [];
+    removeFromList(this.rows);
+    this.rows = [];
     this.cells = [];
     // A host taken away under the pointer sends no mouseleave.
     this.events.hover(null);
-    if (!rows) return;
     const scope = (this.cellScope = this.scope.child());
     this.liveries.forEach((livery, at) => {
-      if (stripCell(at, rows).row === 0) this.columns.push(el('div', 'msfs-ui-setup__strip-column', this.list));
-      const host = el('div', 'msfs-ui-setup__strip-cell', this.columns[this.columns.length - 1]);
+      const place = gridCell(at);
+      if (place.column === 0) this.rows.push(el('div', 'msfs-ui-setup__grid-row', this.list));
+      const host = el('div', 'msfs-ui-setup__grid-cell', this.rows[this.rows.length - 1]);
+      toggleClass(host, 'is-last', place.column === 3);
       const cell: Cell = { livery, host, slot: null, card: null };
       scope.listen(host, 'mouseenter', () => this.events.hover(cell.livery.id));
       scope.listen(host, 'mouseleave', () => this.events.hover(null));
@@ -166,26 +165,26 @@ export class LiveryStrip {
     if (this.list.updateSizes) this.list.updateSizes();
   }
 
-  /** Components only for the thumbnails near the visible part of the strip (none while it is hidden). */
+  /** Components only for the thumbnails near the visible part of the grid (none while it is hidden). */
   private materialize(): void {
     if (!this.cellScope || this.cells.length === 0) return;
-    this.pooled.materialize(this.cells, this.list, 'x');
+    this.pooled.materialize(this.cells, this.list, 'y');
   }
 
   /**
-   * The selected livery's column whole in view, once the strip is laid out (stripReveal: on the edge it was beyond);
-   * the thumbnails coming into view get their components at once.
+   * The selected livery's row whole in view, once the grid is laid out (gridReveal: a click on the row cut at the bottom
+   * moves the grid less than a row); the thumbnails coming into view get their components at once.
    */
   private reveal(): void {
     const place = this.place;
     if (!this.revealWanted || !place || this.cells.length === 0) return;
-    const view = this.list.getBoundingClientRect().width;
+    const view = this.list.getBoundingClientRect().height;
     if (view <= 0) return;
     this.revealWanted = false;
     const at = this.cells.findIndex((cell) => cell.livery.id === this.selectedId);
     if (at < 0) return;
-    const columns = this.columns.length;
-    const position = stripReveal(stripCell(at, place.rows).column, columns, place.thumbWidth, this.gap, view, this.list.currentScroll || 0);
+    const max = Math.max(0, this.rows.length * place.rowStep - (place.rowStep - place.thumbHeight) - view);
+    const position = gridReveal(gridCell(at).row, place.rowStep, place.thumbHeight, view, this.list.currentScroll || 0, max);
     if (position === null) return;
     if (this.list.updateSizes) this.list.updateSizes();
     this.list.scrollToPosition(position);

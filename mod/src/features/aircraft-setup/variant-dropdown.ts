@@ -1,10 +1,13 @@
-// The Showcase panel's variants (panel.ts): the sim's dropdown, one row high, showing the selected variant. Opened, its
-// list lies over the livery header and the large livery and ends on the large livery's bottom edge, whole items at
-// rest (sim/dropdown-list.ts). With one variant it is Disabled and does not open. Open while another aircraft is chosen,
-// it closes (close, panel.ts): it would list the previous aircraft's variants until the configurator reports the new
-// ones (0.3 to 1.2 s, measured on 1.9.21; a real click elsewhere closes it too, the sim listening to the window's clicks).
+// The Showcase panel's variants (panel.ts): a row in the livery header's style holding the sim's dropdown. "Variant" on
+// the left, the selected variant and the dropdown's arrow on the right; the dropdown fills the row, its own background
+// transparent at rest so that the header's shows (aircraft-setup.css), so a click anywhere on the row opens the list.
+// Opened, the list lies over the livery header and the large livery and ends on the large livery's bottom edge, whole
+// items at rest (sim/dropdown-list.ts). With one variant the dropdown is Disabled and does not open. Open while another
+// aircraft is chosen, it closes (close, panel.ts): it would list the previous aircraft's variants until the configurator
+// reports the new ones (0.3 to 1.2 s, measured on 1.9.21; a real click elsewhere closes it too, the sim listening to the
+// window's clicks).
 
-import { setVariable } from '../../core/dom.ts';
+import { el, setVariable, toggleClass } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { COMPONENTS, createComponent, type DropdownItem, type DropdownManipulator, type SimComponent } from '../../sim/components.ts';
@@ -12,17 +15,25 @@ import type { ConfiguratorItem } from '../../sim/configurator.ts';
 import { DROPDOWN_METRICS, dropdownListSize, scrollDropdownTo } from '../../sim/dropdown-list.ts';
 import { translate } from '../../sim/localization.ts';
 
+/** The sim's own word for it (its Manufacture screens). */
+const VARIANT_TITLE = 'TT:MANUFACTURE.BREADCRUMB.VARIATION';
+
 export class VariantDropdown {
-  private readonly host: HTMLElement;
+  private readonly row: HTMLElement;
+  private readonly title: HTMLElement;
   private readonly choose: (id: string) => void;
   private dropdown: SimComponent | null = null;
   private variants: ConfiguratorItem[] = [];
   /** The variants and the selected one last given to the dropdown: given again only when they change. */
   private drawn = '';
 
-  constructor(scope: Scope, host: HTMLElement, choose: (id: string) => void) {
-    this.host = host;
+  /** `row`: the header element the panel places; the title and the dropdown go in it. */
+  constructor(scope: Scope, row: HTMLElement, choose: (id: string) => void) {
+    this.row = row;
     this.choose = choose;
+    this.title = el('span', 'msfs-ui-title msfs-ui-setup__variant-title', row);
+    this.title.textContent = translate(VARIANT_TITLE);
+    const host = el('div', 'msfs-ui-setup__dropdown', row);
     createComponent(scope, COMPONENTS.dropdown, host).then(
       (dropdown) => {
         this.dropdown = dropdown;
@@ -46,18 +57,22 @@ export class VariantDropdown {
   }
 
   /**
-   * The list downwards, `below` layout units long (from the dropdown's bottom to the large livery's): the sim's own
-   * scroll for the items that do not fit, the room whole items leave in its top padding (--msfs-ui-variants-top). It
-   * ends there whatever the number of variants (the owner's choice, over a list ending anywhere): a short list keeps
-   * its items at the top and its room under them.
+   * At each layout pass: the selected variant's text starts after the row's title (--msfs-ui-variants-left, in whole
+   * pixels), and the list goes downwards, `below` layout units long (from the row's bottom to the large livery's): the
+   * sim's own scroll for the items that do not fit, the room whole items leave in its top padding
+   * (--msfs-ui-variants-top). It ends there whatever the number of variants (the owner's choice, over a list ending
+   * anywhere): a short list keeps its items at the top and its room under them.
    */
-  sizeList(below: number, unit: number): void {
+  layout(below: number, unit: number): void {
     const dropdown = this.dropdown;
     if (!dropdown) return;
+    const titleBox = this.title.getBoundingClientRect();
+    const rowBox = this.row.getBoundingClientRect();
+    setVariable(this.row.style, '--msfs-ui-variants-left', `${Math.ceil(titleBox.right - rowBox.left)}px`);
     const sized = dropdownListSize({ count: Math.max(1, this.variants.length), below, above: 0, unit }, DROPDOWN_METRICS, 1);
     // Half a pixel more, as dropdownListSize gives a list that scrolls: the engine rounds the height down.
     dropdown.set('List_Size', (sized.up ? sized.size : below + 0.5 / unit).toFixed(2));
-    setVariable(this.host.style, '--msfs-ui-variants-top', `${Math.floor(sized.padding * unit)}px`);
+    setVariable(this.row.style, '--msfs-ui-variants-top', `${Math.floor(sized.padding * unit)}px`);
   }
 
   private draw(): void {
@@ -81,7 +96,9 @@ export class VariantDropdown {
       );
       manipulator.setData(items, items[this.selectedIndex()]);
     }
-    dropdown.disable(this.variants.length <= 1);
+    const single = this.variants.length <= 1;
+    dropdown.disable(single);
+    toggleClass(this.row, 'is-single', single);
   }
 
   private selectedIndex(): number {

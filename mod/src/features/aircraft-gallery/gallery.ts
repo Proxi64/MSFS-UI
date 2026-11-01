@@ -192,7 +192,7 @@ export class Gallery {
     scope.append(this.page.elt, this.root);
     this.liveryColumn = new LiveryColumn(scope, this.root);
     // The setup panel's form follows the view from now on, shown or not; when the gallery goes, it takes its Showcase
-    // form again (the liveries large and in its strip).
+    // form again (the liveries large and in its grid).
     this.tellView();
     scope.add(() => setLiveriesInGallery(false));
     // The sim's grid, hidden while the gallery shows, kept a stale selection: it is refreshed, then shown again.
