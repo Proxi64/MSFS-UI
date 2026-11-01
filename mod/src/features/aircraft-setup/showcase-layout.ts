@@ -84,3 +84,20 @@ export function rowNeed(needs: readonly [number, number, number], gap: number): 
 export function columnExtra(need: number, frame: number, unit: number, base: number): number {
   return Math.ceil((need + frame + 1) / unit - base);
 }
+
+/** The place of livery `index` in the strip of small liveries: column-major, `rows` to a column, the first on top. */
+export function stripCell(index: number, rows: number): { column: number; row: number } {
+  return { column: Math.floor(index / rows), row: index % rows };
+}
+
+/**
+ * The scroll position, in pixels, that brings column `column` of the strip into a view `view` pixels wide scrolled to
+ * `scroll`: null when the column is already whole in view; otherwise the column at the view's left edge, or the
+ * strip's end when nearer. The strip has `columns` columns `thumbWidth` pixels wide, `gap` pixels apart.
+ */
+export function stripReveal(column: number, columns: number, thumbWidth: number, gap: number, view: number, scroll: number): number | null {
+  const left = column * (thumbWidth + gap);
+  if (left >= scroll && left + thumbWidth <= scroll + view) return null;
+  const max = Math.max(0, columns * thumbWidth + (columns - 1) * gap - view);
+  return Math.min(max, left);
+}

@@ -1,7 +1,8 @@
 // The Showcase panel's current livery, large (panel.ts): the sim's livery button as wide as the panel, the sim's arrow
 // button on each side for the previous and the next livery (in the panel's order: favourites first,
 // sim/livery-order.ts), its position and its heart over it; the wheel over it steps too. A step shows its livery at
-// once and reaches the configurator after a short quiet time (livery-stepper.ts), so quick steps send one choice.
+// once and reaches the configurator after a short quiet time (livery-stepper.ts), so quick steps send one choice. A
+// click in the strip of small liveries (livery-strip.ts) goes the same way, sent at once.
 
 import { debounced } from '../../core/async.ts';
 import { el, toggleClass } from '../../core/dom.ts';
@@ -32,6 +33,8 @@ export interface LargeLiveryEvents {
   choose(id: string): Promise<boolean>;
   /** The heart was clicked. */
   favorite(id: string, on: boolean): void;
+  /** The livery shown (at each draw, changed or not), or null. */
+  shown(id: string | null): void;
 }
 
 export class LargeLivery {
@@ -52,6 +55,8 @@ export class LargeLivery {
   private order: LiveryOrder | null = null;
   private favorites: FavoriteLivery[] = [];
   private image = '';
+  /** The livery under the pointer in the strip (null: none): the header names it. */
+  private hovered: string | null = null;
   private readonly wheel = new WheelSteps();
   private readonly settle = debounced(() => this.send(), LIVERY_SETTLE_MS);
   private readonly sends = new LiverySends(this.stepper);
@@ -122,6 +127,26 @@ export class LargeLivery {
     this.draw();
   }
 
+  /** The liveries in the panel's order, as last rendered (the strip shows them in that order). */
+  get items(): readonly ConfiguratorLivery[] {
+    return this.liveries;
+  }
+
+  /** A livery chosen elsewhere (the strip): shown at once and sent without the quiet time. */
+  choose(id: string): void {
+    const shown = this.stepper.shown();
+    if (this.stepper.choose(id) === shown) return;
+    this.draw();
+    this.settle.cancel();
+    if (this.stepper.pending() !== null) this.send();
+  }
+
+  /** The livery under the pointer in the strip (null: none), named by the header instead of the one shown. */
+  hover(id: string | null): void {
+    this.hovered = id;
+    this.draw();
+  }
+
   /** Another variant was chosen: a step not sent yet is dropped. */
   dropStep(): void {
     this.settle.cancel();
@@ -153,7 +178,8 @@ export class LargeLivery {
   private draw(): void {
     const id = this.stepper.shown();
     const livery = this.liveries.filter((candidate) => candidate.id === id)[0];
-    this.name.textContent = livery ? translate(livery.title) : '';
+    const named = this.liveries.filter((candidate) => candidate.id === this.hovered)[0] || livery;
+    this.name.textContent = named ? translate(named.title) : '';
     const position = this.stepper.position();
     this.position.textContent = position ? `${position.index} / ${position.count}` : '';
     toggleClass(this.host, 'is-empty', !livery);
@@ -164,6 +190,7 @@ export class LargeLivery {
     toggleClass(this.host, 'has-heart', !!livery && !!liveryFolder(livery));
     this.heart.set(favorite);
     this.arrows.forEach((arrow, direction) => arrow.disable(!this.stepper.canStep(direction)));
+    this.events.shown(id);
     const image = livery ? livery.imageUrl : '';
     const manipulator = this.button ? this.button.manipulator<LiveryButtonManipulator>() : null;
     if (manipulator && image !== this.image) {

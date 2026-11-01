@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { overflows, rowCount, statisticsRoom, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
-import { actionWidths as showcaseActionWidths, columnExtra, rowNeed, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
+import { actionWidths as showcaseActionWidths, columnExtra, rowNeed, showcasePlaces, stripCell, stripReveal } from '../src/features/aircraft-setup/showcase-layout.ts';
 import { LiverySends, LiveryStepper } from '../src/features/aircraft-setup/livery-stepper.ts';
 import { orderLiveries } from '../src/sim/livery-order.ts';
 import {
@@ -250,6 +250,29 @@ describe('showcase panel layout', () => {
     assert.equal(columnExtra(515, 2, 1, 470), 48, 'at 1080 lines');
     assert.ok(columnExtra(400, 2, 1, 470) < 0, 'a short row needs no extra: the option decides');
   });
+
+  it('stripCell places the liveries column-major, the first row on top', () => {
+    assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((index) => stripCell(index, 3)), [
+      { column: 0, row: 0 },
+      { column: 0, row: 1 },
+      { column: 0, row: 2 },
+      { column: 1, row: 0 },
+      { column: 1, row: 1 },
+      { column: 1, row: 2 },
+      { column: 2, row: 0 },
+    ]);
+    assert.deepEqual(stripCell(4, 1), { column: 4, row: 0 });
+  });
+
+  it('stripReveal leaves a whole column in view, brings another to the left edge, never past the end', () => {
+    // Ten columns 160 wide, 8 apart (a step of 168), in a view 600 wide: 3.5 columns.
+    assert.equal(stripReveal(0, 10, 160, 8, 600, 0), null);
+    assert.equal(stripReveal(2, 10, 160, 8, 600, 0), null, 'ends at 496');
+    assert.equal(stripReveal(3, 10, 160, 8, 600, 0), 504, 'shown in part: to the left edge');
+    assert.equal(stripReveal(1, 10, 160, 8, 600, 200), 168, 'cut on the left');
+    assert.equal(stripReveal(9, 10, 160, 8, 600, 0), 10 * 160 + 9 * 8 - 600, 'the end of the strip');
+    assert.equal(stripReveal(0, 1, 160, 8, 600, 0), null, 'one livery');
+  });
 });
 
 describe('livery stepper', () => {
@@ -296,6 +319,29 @@ describe('livery stepper', () => {
     assert.equal(stepper.step(5), 'c');
     assert.equal(stepper.step(-1), 'b');
     assert.equal(stepper.step(-9), 'a');
+  });
+
+  it('chooses a listed livery directly, from the shown one, and ignores one not listed', () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'a');
+    assert.equal(stepper.choose('c'), 'c');
+    assert.equal(stepper.pending(), 'c');
+    assert.deepEqual(stepper.position(), { index: 3, count: 3 });
+    assert.equal(stepper.choose('unavailable'), 'c', 'an unavailable livery is not in the list');
+    assert.equal(stepper.pending(), 'c');
+    assert.equal(stepper.choose('a'), 'a');
+    assert.equal(stepper.pending(), null, 'back on the current livery: nothing to send');
+  });
+
+  it('chooses against the sent livery until the sim reports it', () => {
+    const stepper = new LiveryStepper();
+    stepper.setLiveries('plane', three, 'a');
+    stepper.choose('b');
+    stepper.sent();
+    assert.equal(stepper.choose('b'), 'b');
+    assert.equal(stepper.pending(), null, 'the sent one: nothing more to send');
+    assert.equal(stepper.choose('a'), 'a');
+    assert.equal(stepper.pending(), 'a');
   });
 
   it('keeps the pending step over a reload that still reports the old livery', () => {

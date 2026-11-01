@@ -8,6 +8,7 @@ import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import type { SimComponent } from '../../sim/components.ts';
 import { ConfigureTile } from './configure-tile.ts';
+import type { LiveryStrip } from './livery-strip.ts';
 import { GAP } from './setup-layout.ts';
 import { actionWidths, rowNeed, showcasePlaces, type ShowcasePlaces, type Span } from './showcase-layout.ts';
 import type { VariantDropdown } from './variant-dropdown.ts';
@@ -23,6 +24,7 @@ export interface ShowcaseParts {
   dropdownHost: HTMLElement;
   liveryHeader: HTMLElement;
   largeHost: HTMLElement;
+  strip: LiveryStrip;
   tailRow: HTMLElement;
   actions: HTMLElement;
   /** Fuel and Identification, once created. */
@@ -95,6 +97,7 @@ export class ShowcaseMode {
     placeSpan(parts.dropdownHost, places.variants);
     placeSpan(parts.liveryHeader, places.header);
     placeSpan(parts.largeHost, places.livery);
+    parts.strip.layout(places.strip, unit);
     placeSpan(parts.tailRow, places.tail);
     placeSpan(parts.actions, places.actions);
 

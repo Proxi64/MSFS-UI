@@ -114,10 +114,12 @@
 .msfs-ui-setup.is-showcase .msfs-ui-setup__stats { display: none !important; }
 .msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__dropdown,
 .msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__large,
-.msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__livery-header { display: none; }
+.msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__livery-header,
+.msfs-ui-setup:not(.is-showcase) .msfs-ui-setup__strip { display: none; }
 .msfs-ui-setup.is-showcase .msfs-ui-setup__dropdown,
 .msfs-ui-setup.is-showcase .msfs-ui-setup__livery-header,
 .msfs-ui-setup.is-showcase .msfs-ui-setup__large,
+.msfs-ui-setup.is-showcase .msfs-ui-setup__strip,
 .msfs-ui-setup.is-showcase .msfs-ui-setup__tail { position: absolute; left: 0; right: 0; margin: 0; }
 .msfs-ui-setup.is-showcase .msfs-ui-setup__actions { position: absolute; left: 0; }
 .msfs-ui-setup.is-showcase .msfs-ui-setup__action { height: 100%; }
@@ -179,6 +181,47 @@
 .msfs-ui-setup__large.is-favorite .msfs-ui-setup__icon { opacity: 1; }
 .msfs-ui-setup__large:not(.has-heart) .msfs-ui-setup__icon { display: none; }
 .msfs-ui-setup__icon .msfs-ui-icon {
+  left: calc(var(--u) * 2);
+  top: calc(var(--u) * 2);
+  right: calc(var(--u) * 2);
+  bottom: calc(var(--u) * 2);
+}
+
+/*
+ * The strip of small liveries (livery-strip.ts): the sim's horizontal list holds a row of columns of thumbnails,
+ * column-major, --strip-w x --strip-h in whole pixels, --strip-gap apart (showcase-layout.ts), without the list's
+ * padding. Its scroll bar from the strip's left edge to its right one, in the room under the rows
+ * (the sim's own CSS: 75 % of the list's width, centred, 24 units below it), as the gallery's Showcase grid.
+ */
+.msfs-ui-setup__strip-list { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.msfs-ui-setup__strip-list .scroll__container { margin-bottom: 0 !important; }
+.msfs-ui-setup__strip-list .scroll__content {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  padding: 0 !important;
+}
+.msfs-ui-setup__strip > .msfs-ui-setup__strip-list > .scroll__bar-container { width: 100% !important; margin: 0 !important; transform: none !important; }
+.msfs-ui-setup__strip-column { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start; margin-right: var(--strip-gap); }
+.msfs-ui-setup__strip-column:last-child { margin-right: 0; }
+.msfs-ui-setup__strip-cell { position: relative; flex-shrink: 0; width: var(--strip-w); height: var(--strip-h); margin-bottom: var(--strip-gap); }
+.msfs-ui-setup__strip-cell:last-child { margin-bottom: 0; }
+.msfs-ui-setup__strip-cell.is-disabled { opacity: 0.45; }
+.msfs-ui-setup__strip-button { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+/* The heart as on the large livery, in the top right corner, 4 units in: on hover of the thumbnail, or a favourite. */
+.msfs-ui-setup__strip-icon {
+  position: absolute;
+  top: calc(var(--u) * 4);
+  right: calc(var(--u) * 4);
+  width: calc(var(--u) * 24);
+  height: calc(var(--u) * 24);
+  border-radius: 50%;
+  background-color: var(--msfs-ui-icon-disc);
+  opacity: 0;
+}
+.msfs-ui-setup__strip-cell:hover .msfs-ui-setup__strip-icon,
+.msfs-ui-setup__strip-cell.is-favorite .msfs-ui-setup__strip-icon { opacity: 1; }
+.msfs-ui-setup__strip-icon .msfs-ui-icon {
   left: calc(var(--u) * 2);
   top: calc(var(--u) * 2);
   right: calc(var(--u) * 2);

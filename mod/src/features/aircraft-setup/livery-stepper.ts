@@ -30,7 +30,12 @@ export class LiveryStepper {
     const from = this.shownIndex();
     const target = Math.min(this.ids.length - 1, Math.max(0, from + delta));
     if (target === from) return this.shown();
-    const id = this.ids[target];
+    return this.choose(this.ids[target]!);
+  }
+
+  /** A livery chosen directly (the strip), shown as a step would be; returns the id now shown (unchanged for one not listed). */
+  choose(id: string): string | null {
+    if (!this.ids.includes(id)) return this.shown();
     this.pendingId = id === (this.sentId ?? this.currentId) ? null : id;
     return id;
   }

@@ -145,15 +145,22 @@ export interface PooledCellsOptions<C> {
   maker(kind: string): PoolSlotMaker<C>;
   /** A cell got a slot: the list shows its item there (a slot still loading has no card yet: `create` shows it once ready). */
   assigned(cell: C): void;
+  /** How near the visible part the cells get components (MARGINS when not given). */
+  readonly margins?: PoolMargins;
 }
 
-/** Components are created for the cells within this distance of the visible part, and kept within the second, in layout units. */
-const CREATE_MARGIN = 300;
-const KEEP_MARGIN = 600;
+/** Components are created for the cells within `create` of the visible part, and kept within `keep`, in layout units. */
+export interface PoolMargins {
+  create: number;
+  keep: number;
+}
+
+/** The margins of the gallery's lists. */
+const MARGINS: PoolMargins = { create: 300, keep: 600 };
 
 /**
  * The components of a list's cells, kept only near its visible part (core/virtual-list.ts), in slots of a pool of the
- * current kind (made when first needed). Shared by the gallery and its livery column.
+ * current kind (made when first needed). Shared by the gallery, its livery column and the setup panel's strip.
  */
 export class PooledCells<C extends PooledCell<C>> {
   private readonly owner: Scope;
@@ -179,7 +186,8 @@ export class PooledCells<C extends PooledCell<C>> {
     const visible = extent(view.getBoundingClientRect());
     if (visible.bottom - visible.top <= 0) return;
     const unit = uiUnit();
-    const margins = { create: CREATE_MARGIN * unit, keep: KEEP_MARGIN * unit };
+    const units = this.options.margins || MARGINS;
+    const margins = { create: units.create * unit, keep: units.keep * unit };
     const actions = cells.map((cell) => cellAction(extent(cell.host.getBoundingClientRect()), cell.slot !== null, visible, margins));
     cells.forEach((cell, at) => {
       if (actions[at] === 'create') this.assign(cell);

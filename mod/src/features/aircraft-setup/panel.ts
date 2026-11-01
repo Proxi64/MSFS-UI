@@ -5,9 +5,9 @@
 //   aircraft's statistics (statistics.ts), the editable tail number (tail-field.ts), Fuel and Identification; the room
 //   shared by setup-layout.ts.
 // - Showcase: every part at a fixed place whatever the aircraft (showcase-layout.ts): the variants in a dropdown
-//   (variant-dropdown.ts), the current livery large (large-livery.ts), the tail number, then Fuel, Identification and
-//   the sim's "Configure your aircraft" tile on one row (configure-tile.ts); no statistics. Laid out by
-//   showcase-mode.ts.
+//   (variant-dropdown.ts), the current livery large (large-livery.ts), the strip of small liveries (livery-strip.ts),
+//   the tail number, then Fuel, Identification and the sim's "Configure your aircraft" tile on one row
+//   (configure-tile.ts); no statistics. Laid out by showcase-mode.ts.
 
 import { answerOrNull, answerWithin } from '../../core/async.ts';
 import { el, setStyle, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
@@ -26,6 +26,7 @@ import { liveriesInGallery, setSetupPanelShown } from '../../sim/selection-layou
 import { ANSWER_TIMEOUT_MS, store, watch } from '../../sim/store.ts';
 import { CONFIGURE_TILE } from './configure-tile.ts';
 import { LargeLivery } from './large-livery.ts';
+import { LiveryStrip } from './livery-strip.ts';
 import { GAP, overflows, PADDING_TOP, rowCount, statisticsRoom, VARIANT_HEIGHT, variantsHeight } from './setup-layout.ts';
 import type { ShowcasePlaces } from './showcase-layout.ts';
 import { ShowcaseMode, type BottomRow } from './showcase-mode.ts';
@@ -64,7 +65,9 @@ export class SetupPanel {
   private readonly dropdownHost = el('div', 'msfs-ui-setup__dropdown');
   private readonly liveryHeader = el('div', 'msfs-ui-header msfs-ui-setup__livery-header');
   private readonly largeHost = el('div', 'msfs-ui-setup__large');
+  private readonly stripHost = el('div', 'msfs-ui-setup__strip');
   private readonly dropdown: VariantDropdown;
+  private readonly strip: LiveryStrip;
   private readonly large: LargeLivery;
   private readonly showcase: ShowcaseMode;
   // Both.
@@ -92,6 +95,12 @@ export class SetupPanel {
     this.variants = new VariantsList(scope, { choose: chooseVariantNow, relayout: () => this.layout() });
     this.statistics = new StatisticRows(scope);
     this.dropdown = new VariantDropdown(scope, this.dropdownHost, chooseVariantNow);
+    const favorite = (id: string, on: boolean) => setFavoriteLivery(this.state, id, on);
+    this.strip = new LiveryStrip(scope, this.stripHost, {
+      choose: (id) => this.large.choose(id),
+      favorite,
+      hover: (id) => this.large.hover(id),
+    });
     this.large = new LargeLivery(scope, this.largeHost, {
       choose: (id) =>
         chooseLivery(this.state, id).then(
@@ -104,13 +113,15 @@ export class SetupPanel {
             throw error;
           },
         ),
-      favorite: (id, on) => setFavoriteLivery(this.state, id, on),
+      favorite,
+      shown: (id) => this.strip.select(id),
     });
     this.showcase = new ShowcaseMode(scope, {
       root: this.root,
       dropdownHost: this.dropdownHost,
       liveryHeader: this.liveryHeader,
       largeHost: this.largeHost,
+      strip: this.strip,
       tailRow: this.tailRow,
       actions: this.actions,
       actionButtons: this.actionButtons,
@@ -159,6 +170,7 @@ export class SetupPanel {
     this.liveryHeader.appendChild(this.large.name);
     this.root.appendChild(this.liveryHeader);
     this.root.appendChild(this.largeHost);
+    this.root.appendChild(this.stripHost);
     this.root.appendChild(this.statistics.element);
 
     // Two blocks over the two buttons under them: the title over Fuel and Payload, the field over Identification.
@@ -315,6 +327,7 @@ export class SetupPanel {
     this.variants.render(state.variants);
     this.dropdown.render(state.variants);
     this.large.render(state.liveries, state.details ? state.details.variationId : '');
+    this.strip.render(this.large.items);
     // A failed read of the statistics shows none, and never stops the identification's refresh (the tail number).
     const current = (await answerOrNull(aircraft.CurrentAircraft(), ANSWER_TIMEOUT_MS, 'the statistics of the aircraft could not be read')) as {
       details?: AircraftStatistic[];
