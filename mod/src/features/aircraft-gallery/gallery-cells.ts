@@ -26,10 +26,10 @@ export type Axis = 'x' | 'y';
 /** The component a cell shows: an aircraft tile (Gallery, Showcase) or a row (List). */
 type CellKind = 'tile' | 'row';
 
-/** The sim's lines of an aircraft tile, fitted in Showcase; its font (`--fontSizeXS`) and side margins, in layout units. */
-const BANNER_LINES = '[name="AircraftName"], [name="Subtitle"], [name="Distance"], .msfs-ui-gal__studio';
-/** The tile's own text block: the tile holds another Banner and Text for a disabled aircraft. */
+/** The tile's own text block: the tile holds another Banner and Text for a disabled aircraft (`DisabledAircraft`). */
 const BANNER_TEXT = '[name="Content"] > [name="Banner"] > [name="Text"]';
+/** The lines of an aircraft tile's own text block, fitted in Showcase; its font (`--fontSizeXS`) and side margins, in layout units. */
+const BANNER_LINES = ['[name="AircraftName"]', '[name="Subtitle"]', '[name="Distance"]', '.msfs-ui-gal__studio'].map((line) => `${BANNER_TEXT} > ${line}`).join(', ');
 const BANNER_FONT_UNITS = 18;
 const BANNER_SIDE_UNITS = 6;
 
@@ -109,6 +109,8 @@ export class GalleryCells {
   /** The message shown instead of tiles, if any. */
   private empty = '';
   private readonly fitter = new TextFitter();
+  /** The Showcase tiles' line width and unit at the last layout pass (fitBanners); null before the first. */
+  private bannerFit: { width: number; unit: number } | null = null;
 
   /** `parking`: where the pool keeps its free slots (the gallery's root). */
   constructor(scope: Scope, parking: HTMLElement, body: HTMLElement, context: CellsContext, actions: CellActions) {
@@ -233,16 +235,20 @@ export class GalleryCells {
 
   /** At each layout pass of Showcase: each line of the tiles' banners, `tileWidth` pixels wide, on its line (a text too long reduced to fit). */
   fitBanners(tileWidth: number, unit: number): void {
-    const width = tileWidth - 2 * Math.round(BANNER_SIDE_UNITS * unit);
-    for (const cell of this.cells) {
-      if (!cell.card) continue;
-      const lines = cell.card.element.querySelectorAll<HTMLElement>(BANNER_LINES);
-      for (let at = 0; at < lines.length; at++) {
-        const line = lines[at]!;
-        // The brand in the name's bold style, the others as the sim's.
-        const bold = line.getAttribute('name') === 'AircraftName' || line.getAttribute('name') === 'Subtitle';
-        this.fitter.fit(line, width, BANNER_FONT_UNITS * unit, bold ? 'bold' : 'light', line.querySelector('.marquee__content') || line);
-      }
+    this.bannerFit = { width: tileWidth - 2 * Math.round(BANNER_SIDE_UNITS * unit), unit };
+    for (const cell of this.cells) this.fitBanner(cell);
+  }
+
+  /** A Showcase tile's lines fitted at the last pass's width: also as soon as a tile gets its texts (scrolled into view), so that none shows unfitted until the next pass. */
+  private fitBanner(cell: Cell): void {
+    const fit = this.bannerFit;
+    if (!cell.card || !fit) return;
+    const lines = cell.card.element.querySelectorAll<HTMLElement>(BANNER_LINES);
+    for (let at = 0; at < lines.length; at++) {
+      const line = lines[at]!;
+      // The brand in the name's bold style, the others as the sim's.
+      const bold = line.getAttribute('name') === 'AircraftName' || line.getAttribute('name') === 'Subtitle';
+      this.fitter.fit(line, fit.width, BANNER_FONT_UNITS * fit.unit, bold ? 'bold' : 'light', line.querySelector('.marquee__content') || line);
     }
   }
 
@@ -352,6 +358,7 @@ export class GalleryCells {
         card.set('Subtitle', names.brand);
         card.set('Distance', subtitle);
         cell.host.classList.remove('has-third-line');
+        this.fitBanner(cell);
       } else {
         // Three lines: the name, the variant (and livery), the studio in the tile's third line (Distance, shown by the
         // CSS); the studio moves up when there is no variant.

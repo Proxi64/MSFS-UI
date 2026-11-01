@@ -18,6 +18,8 @@ function textWidth(element: Element): number {
 
 /** How many times a reduced text is measured again: a font's widths do not scale evenly (409 pixels for the 405 asked, a scale of 0.91 at 26 pixels, measured on 1.9.21). */
 const FIT_ROUNDS = 4;
+/** Texts kept per fitter, the oldest dropped first: a few lines per aircraft, for every aircraft and a change of size or two. */
+const FIT_CACHE = 600;
 
 /**
  * Fits texts to their lines. A text is measured once for its font and its line, so that a layout pass only writes:
@@ -40,6 +42,8 @@ export class TextFitter {
       original = line.style.fontSize;
       this.originals.set(line, original);
     }
+    // A line without width yet (laid out at the next pass): nothing measured, nothing kept.
+    if (!(width > 0)) return;
     const text = measured.textContent || '';
     const key = `${size}|${width}|${weight}|${text}`;
     let fontSize = this.fitted.get(key);
@@ -48,8 +52,15 @@ export class TextFitter {
       const natural = text ? textWidth(measured) : 0;
       // Hidden, it measures nothing: asked again at the next pass.
       if (!(natural > 0)) return;
-      fontSize = this.reduced(line, measured, natural, width, size);
+      const reduced = this.reduced(line, measured, natural, width, size);
+      // A measure without width (the font not ready, the line hidden meanwhile): the line at its own size, asked again next time.
+      if (reduced === null) {
+        setStyle(line.style, 'fontSize', original);
+        return;
+      }
+      fontSize = reduced;
       this.fitted.set(key, fontSize);
+      if (this.fitted.size > FIT_CACHE) this.fitted.delete(this.fitted.keys().next().value as string);
     }
     setStyle(line.style, 'fontSize', fontSize > 0 ? `${fontSize.toFixed(2)}px` : original);
   }
@@ -60,14 +71,15 @@ export class TextFitter {
     if (original !== undefined) setStyle(line.style, 'fontSize', original);
   }
 
-  /** The font size that brings a text `natural` pixels wide at `size` onto its line; 0 when it fits at its own. */
-  private reduced(line: HTMLElement, measured: Element, natural: number, width: number, size: number): number {
+  /** The font size that brings a text `natural` pixels wide at `size` onto its line; 0 when it fits at its own; null when a measure has no width. */
+  private reduced(line: HTMLElement, measured: Element, natural: number, width: number, size: number): number | null {
     let fontSize = 0;
     let textAt = natural;
     for (let round = 0; round < FIT_ROUNDS && textAt > width; round++) {
       fontSize = (fontSize || size) * fitScale(textAt, width);
       setStyle(line.style, 'fontSize', `${fontSize.toFixed(2)}px`);
       textAt = textWidth(measured);
+      if (!(textAt > 0)) return null;
     }
     return fontSize;
   }

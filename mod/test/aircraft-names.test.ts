@@ -108,6 +108,36 @@ describe('variantLabels', () => {
     assert.deepEqual(variantLabels(items, new Map()), ['One', 'Two', 'Three']);
   });
 
+  it('keeps the titles of the variants whose model another variant shares', () => {
+    const items = variants('A320 CFM', 'A320 IAE', 'A321 CFM');
+    assert.deepEqual(
+      variantLabels(
+        items,
+        new Map([
+          ['A320 CFM', 'A320'],
+          ['A320 IAE', 'A320'],
+          ['A321 CFM', 'A321'],
+        ]),
+      ),
+      ['A320 CFM', 'A320 IAE', 'A321'],
+    );
+  });
+
+  it('keeps every title when all the models are the same, three variants or more', () => {
+    const items = variants('Wheels', 'Floats', 'Amphibian');
+    assert.deepEqual(
+      variantLabels(
+        items,
+        new Map([
+          ['Wheels', 'DHC-2'],
+          ['Floats', 'DHC-2'],
+          ['Amphibian', 'DHC-2'],
+        ]),
+      ),
+      ['Wheels', 'Floats', 'Amphibian'],
+    );
+  });
+
   it('keeps the title with one variant', () => {
     assert.deepEqual(variantLabels(variants('Only'), new Map([['Only', 'M1']])), ['Only']);
   });

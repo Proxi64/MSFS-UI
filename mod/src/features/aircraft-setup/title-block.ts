@@ -26,14 +26,17 @@ export class TitleBlock {
   /** The sim's block while held, and its own height. */
   private header: HTMLElement | null = null;
   private original = '';
+  /** The mod's lines have the aircraft's names: until then (or when the sim gives no aircraft) the sim's lines stay. */
+  private named = false;
 
   constructor(scope: Scope) {
     scope.add(() => this.leave());
   }
 
-  /** The aircraft's names. */
-  render(fields: AircraftNameFields): void {
-    const lines = titleLines(fields);
+  /** The aircraft's names; null (the sim gave no aircraft): the sim's own lines show again. */
+  render(fields: AircraftNameFields | null): void {
+    const lines = titleLines(fields || {});
+    this.named = !!(lines.model || lines.brand);
     this.model.textContent = lines.model;
     this.brand.textContent = lines.brand;
     this.studio.textContent = lines.studio;
@@ -41,6 +44,10 @@ export class TitleBlock {
 
   /** At each layout pass, before the panel measures what is under the block (its height is fixed here): the block held, its lines fitted. */
   place(header: HTMLElement, unit: number): void {
+    if (!this.named) {
+      this.leave();
+      return;
+    }
     if (header !== this.header) {
       this.leave();
       this.header = header;

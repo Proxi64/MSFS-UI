@@ -134,16 +134,18 @@
         });
       }
     }
-    // The title on three lines: each whole on its line, whatever the view.
+    // The title on three lines: each text whole inside the sim's title block (Header), whatever the view.
     var titleBox = title.querySelector('.msfs-ui-setup-title');
     if (!titleBox) problems.push('the title block does not hold the mod\'s lines');
     else {
       Array.prototype.slice.call(titleBox.children).forEach(function (line) {
+        if (!(line.textContent || '').trim()) return;
         var q = document.createRange();
         q.selectNodeContents(line);
-        var w = q.getBoundingClientRect().width;
-        if (w > rect(titleBox).w + 0.5) problems.push('a title line cut: "' + line.textContent + '" ' + px(w) + ' > ' + px(rect(titleBox).w));
-        if (rect(line).b > tr.b + 0.5) problems.push('a title line under the block: "' + line.textContent + '"');
+        var tx = q.getBoundingClientRect();
+        if (tx.left < tr.l - 0.5 || tx.right > tr.r + 0.5) problems.push('a title line out of the title block: "' + line.textContent + '" ' + px(tx.left) + '-' + px(tx.right) + ' block ' + px(tr.l) + '-' + px(tr.r));
+        var lr = rect(line);
+        if (lr.t < tr.t - 0.5 || lr.b > tr.b + 0.5) problems.push('a title line above or under the block: "' + line.textContent + '" ' + px(lr.t) + '-' + px(lr.b) + ' block ' + px(tr.t) + '-' + px(tr.b));
       });
     }
     // The variant tiles, by row: the first on the title block's left edge, the last on its right one unless the list
@@ -183,7 +185,11 @@
       if (q.getBoundingClientRect().width > br.w + 0.5) problems.push('a tile line cut: "' + inner.textContent.trim().slice(0, 30) + '"');
     });
     var studio = lines[3];
-    if (studio && (studio.textContent || '').trim() && Math.abs(rect(studio).b - br.b) > 1) problems.push('the studio off the banner\'s lowest line: ' + px(rect(studio).b) + ' banner ' + px(br.b));
+    if (studio && (studio.textContent || '').trim()) {
+      if (Math.abs(rect(studio).b - br.b) > 1) problems.push('the studio off the banner\'s lowest line: ' + px(rect(studio).b) + ' banner ' + px(br.b));
+      // The studio clears the variant's line above it (held at its height, even empty).
+      if (lines[2] && rect(lines[2]).h > 0 && rect(studio).t < rect(lines[2]).b - 0.5) problems.push('the studio over the variant\'s line: ' + px(rect(studio).t) + ' < ' + px(rect(lines[2]).b));
+    }
   });
   return JSON.stringify({ size: W + 'x' + H + ' u=' + px(u * 1000) / 1000, parts: parts, problems: problems });
 })()

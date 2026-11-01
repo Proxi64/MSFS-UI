@@ -8,7 +8,7 @@ const GAP_UNITS = 24;
 /** Proportions of the sim's grid images (480 × 229): the image is never cut. */
 const IMAGE_RATIO = 229 / 480;
 /** Room the text banner needs under the image: its four lines of text (model, brand, variant, studio), and 6 units above and below them. */
-const BANNER_UNITS = 96;
+export const BANNER_UNITS = 96;
 
 /** The grid's measures, in pixels. */
 export interface DefaultGrid {

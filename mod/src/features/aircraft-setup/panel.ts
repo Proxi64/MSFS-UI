@@ -18,7 +18,7 @@ import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { revealPosition, type Rows } from '../../core/virtual-list.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import { variantLabels, type AircraftNameFields } from '../../sim/aircraft-names.ts';
-import { chooseLivery, chooseLiveryWhileSending, chooseVariant, readConfigurator, readVariantModels, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
+import { chooseLivery, chooseLiveryWhileSending, chooseVariant, knownVariantModels, readConfigurator, readVariantModels, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED } from '../../sim/favorites.ts';
 import { TAIL_NUMBER, type Identification } from '../../sim/liveries.ts';
 import { translate } from '../../sim/localization.ts';
@@ -172,7 +172,7 @@ export class SetupPanel {
     // Another aircraft: the variants list closes at once, before the configurator reports the new variants.
     watch<AircraftNameFields | null>(scope, aircraft.CurrentAircraft, (current) => {
       this.dropdown.close();
-      if (current) this.title.render(current);
+      this.title.render(current);
       reload();
     });
     watch<Identification | null>(scope, aircraft.CurrentIdentification, (identification) => this.tail.setIdentification(identification));
@@ -368,14 +368,19 @@ export class SetupPanel {
     this.variants.render(state.variants);
     this.large.render(state.liveries, state.details ? state.details.variationId : '');
     this.grid.render(this.large.items);
+    // The variants' labels from the models known so far, again when the missing ones arrive: the rest never waits for them.
+    this.dropdown.render(state.variants, variantLabels(state.variants, knownVariantModels()));
+    readVariantModels(state.variants)
+      .then((models) => {
+        if (!this.scope.disposed && number === this.reloadNumber) this.dropdown.render(state.variants, variantLabels(state.variants, models));
+      })
+      .catch((error: unknown) => logError('the variants could not be labelled', error));
     // A failed read of the statistics shows none, and never stops the identification's refresh (the tail number).
-    const [current, models] = await Promise.all([
-      answerOrNull(aircraft.CurrentAircraft(), ANSWER_TIMEOUT_MS, 'the statistics of the aircraft could not be read') as Promise<(AircraftNameFields & { details?: AircraftStatistic[] }) | null>,
-      readVariantModels(state.variants),
-    ]);
+    const current = (await answerOrNull(aircraft.CurrentAircraft(), ANSWER_TIMEOUT_MS, 'the statistics of the aircraft could not be read')) as
+      | (AircraftNameFields & { details?: AircraftStatistic[] })
+      | null;
     if (this.scope.disposed || number !== this.reloadNumber) return;
-    this.dropdown.render(state.variants, variantLabels(state.variants, models));
-    if (current) this.title.render(current);
+    this.title.render(current);
     this.statistics.render(current && Array.isArray(current.details) ? current.details.filter((statistic) => !!statistic && !!statistic.name) : []);
     await answerWithin(aircraft.UpdateCurrentAircraftIdentification.request(), ANSWER_TIMEOUT_MS, 'the update of the tail number');
   }

@@ -9,6 +9,7 @@ import { el, setStyle, setVariable, toggleClass } from '../../core/dom.ts';
 import { iconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
+import { settleOnStep } from '../../core/wheel-steps.ts';
 import type { ConfiguratorLivery } from '../../sim/aircraft-loading.ts';
 import { PooledCells, type PoolMargins, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
@@ -88,10 +89,7 @@ export class LiveryGrid {
       list: this.list,
       host,
       step: () => (this.place && this.place.scrolls ? this.place.rowStep : 0),
-      max: () => {
-        if (this.list.updateSizes) this.list.updateSizes();
-        return this.maxScroll();
-      },
+      max: () => this.maxScroll(),
       scrollTo: (position) => {
         this.list.scrollToPosition(position);
         this.materialize();
@@ -186,15 +184,22 @@ export class LiveryGrid {
     this.pooled.materialize(this.cells, this.list, 'y');
   }
 
-  /** The room the rows leave under the view, in whole rows (the grid's view is two rows). */
+  /**
+   * The room the rows leave under the view, in whole rows (the grid's view is two rows), never more than the sim's list
+   * allows (its sizes measured again first: the rows may have just changed).
+   */
   private maxScroll(): number {
     const place = this.place;
-    return place ? Math.max(0, this.rows.length - GRID_ROWS) * place.rowStep : 0;
+    if (!place) return 0;
+    if (this.list.updateSizes) this.list.updateSizes();
+    const rows = Math.max(0, this.rows.length - GRID_ROWS) * place.rowStep;
+    const own = this.list.maxScroll;
+    return typeof own === 'number' ? Math.max(0, Math.min(rows, own)) : rows;
   }
 
   /**
-   * The selected livery's row in view on whole rows, once the grid is laid out (gridReveal); the thumbnails coming into
-   * view get their components at once.
+   * The selected livery's row in view on whole rows, once the grid is laid out (gridReveal); without one in the grid
+   * (sizes changed), the grid back on its nearest whole row. The thumbnails coming into view get their components at once.
    */
   private reveal(): void {
     const place = this.place;
@@ -202,9 +207,9 @@ export class LiveryGrid {
     if (!(this.list.getBoundingClientRect().height > 0)) return;
     this.revealWanted = false;
     const at = this.cells.findIndex((cell) => cell.livery.id === this.selectedId);
-    if (at < 0) return;
-    const position = gridReveal(gridCell(at).row, place.rowStep, this.list.currentScroll || 0, this.rows.length);
-    if (position === null) return;
+    const scroll = this.list.currentScroll || 0;
+    const position = at >= 0 ? gridReveal(gridCell(at).row, place.rowStep, scroll, this.rows.length) : settleOnStep(scroll, place.rowStep, this.maxScroll());
+    if (position === null || position === scroll) return;
     if (this.list.updateSizes) this.list.updateSizes();
     this.list.scrollToPosition(position);
     this.materialize();

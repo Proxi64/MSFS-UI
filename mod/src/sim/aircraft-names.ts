@@ -56,11 +56,17 @@ export function titleLines(fields: AircraftNameFields): TitleLines {
 /**
  * The labels of the variants, in their order: the models (by variant id) when they differ across the variants (some
  * add-ons declare a livery as the variant's name: the Just Flight 146's read "146-200 QC Royal Air Force, 32 Squadron,
- * ZE708 CMk3", their models 146-200, 146-200QC, 146-200QT), else the variants' titles; a variant whose model is not
- * known keeps its title.
+ * ZE708 CMk3", their models 146-200, 146-200QC, 146-200QT), else the variants' titles. A model is shown only when it
+ * tells its variant apart: a variant whose model another variant shares (A320, A320, A321), or is not known, keeps its
+ * title.
  */
 export function variantLabels(variants: readonly VariantTitle[], models: ReadonlyMap<string, string>): string[] {
-  const known = variants.map((variant) => clean(models.get(variant.id))).filter((model) => !!model);
-  const differ = known.some((model) => model !== known[0]);
-  return variants.map((variant) => (differ && clean(models.get(variant.id))) || variant.title);
+  const known = variants.map((variant) => clean(models.get(variant.id)));
+  const uses = new Map<string, number>();
+  for (const model of known) if (model) uses.set(model, (uses.get(model) || 0) + 1);
+  const differ = uses.size > 1;
+  return variants.map((variant, at) => {
+    const model = known[at]!;
+    return differ && model && uses.get(model) === 1 ? model : variant.title;
+  });
 }

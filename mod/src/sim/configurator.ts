@@ -52,22 +52,45 @@ export async function readConfigurator(): Promise<ConfiguratorState> {
   };
 }
 
-/** The models of the variants read so far, by variant id: they do not change while the sim runs. */
+/** The models of the variants the sim answered for, by variant id: they do not change while the sim runs. */
 const variantModels = new Map<string, string>();
+/** The reads under way, by variant id: a reload while one waits does not ask again. */
+const modelReads = new Map<string, Promise<void>>();
+/** The variants (of `unansweredOf`, the current variants' ids) the sim did not answer for: not asked again for them. */
+const unanswered = new Set<string>();
+let unansweredOf = '';
+
+/** The models known so far, by variant id (readVariantModels). */
+export function knownVariantModels(): ReadonlyMap<string, string> {
+  return variantModels;
+}
 
 /**
- * The model of each of `variants`, by id (`GetAircraftFromVariationId`, for the variants' labels: sim/aircraft-names.ts);
- * one the sim does not answer for is left out, and asked again next time. A single variant has no label to choose.
+ * The model of each of `variants`, by id (`GetAircraftFromVariationId`, for the variants' labels: sim/aircraft-names.ts).
+ * One the sim does not answer for (failure or timeout, logged) is left out, and not asked again while the variants
+ * stay those of the same aircraft. A single variant has no label to choose.
  */
 export async function readVariantModels(variants: readonly ConfiguratorItem[]): Promise<ReadonlyMap<string, string>> {
   if (variants.length < 2) return variantModels;
+  const of = variants.map((variant) => variant.id).join('|');
+  if (of !== unansweredOf) {
+    unansweredOf = of;
+    unanswered.clear();
+  }
   const reads = variants
-    .filter((variant) => !variantModels.has(variant.id))
-    .map(async (variant) => {
-      const details = (await answerOrNull(store.Game.Aircraft.GetAircraftFromVariationId.request(variant.id), ANSWER_TIMEOUT_MS, 'the model of a variant could not be read')) as {
-        modelName?: string;
-      } | null;
-      if (details) variantModels.set(variant.id, details.modelName || '');
+    .filter((variant) => !variantModels.has(variant.id) && !unanswered.has(variant.id))
+    .map((variant) => {
+      let read = modelReads.get(variant.id);
+      if (!read) {
+        read = answerOrNull(store.Game.Aircraft.GetAircraftFromVariationId.request(variant.id), ANSWER_TIMEOUT_MS, 'the model of a variant could not be read').then((answer) => {
+          modelReads.delete(variant.id);
+          const details = answer as { modelName?: string } | null;
+          if (details) variantModels.set(variant.id, details.modelName || '');
+          else if (unansweredOf === of) unanswered.add(variant.id);
+        });
+        modelReads.set(variant.id, read);
+      }
+      return read;
     });
   await Promise.all(reads);
   return variantModels;

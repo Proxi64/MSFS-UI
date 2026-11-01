@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { barColumns, columnOf, defaultGrid, shareTabs, VIEW_TAB_UNITS } from '../src/features/aircraft-gallery/default-grid.ts';
+import { BANNER_UNITS, barColumns, columnOf, defaultGrid, shareTabs, VIEW_TAB_UNITS } from '../src/features/aircraft-gallery/default-grid.ts';
 
 describe('default grid', () => {
-  it('sizes the owner\'s screen: three columns, the banner over its three lines', () => {
-    assert.deepEqual(defaultGrid(1614, 854, 1440 / 1080), { columns: 3, gap: 32, tileWidth: 516, gridWidth: 1612, tileHeight: 411, imageHeight: 246 });
+  it('sizes the owner\'s screen: three columns, the banner over its four lines', () => {
+    assert.equal(BANNER_UNITS, 96, 'four lines of text (model, brand, variant, studio) and 6 units above and below');
+    const grid = defaultGrid(1614, 854, 1440 / 1080);
+    assert.deepEqual(grid, { columns: 3, gap: 32, tileWidth: 516, gridWidth: 1612, tileHeight: 411, imageHeight: 246 });
+    assert.ok(grid.tileHeight - grid.imageHeight >= BANNER_UNITS * (1440 / 1080));
   });
 
   it('keeps three columns when the banner fits', () => {
@@ -13,13 +16,13 @@ describe('default grid', () => {
     assert.equal(grid.tileWidth, 387);
     assert.equal(grid.imageHeight, 185);
     assert.equal(grid.tileHeight, 288);
-    assert.ok(grid.tileHeight - grid.imageHeight >= 75);
+    assert.ok(grid.tileHeight - grid.imageHeight >= BANNER_UNITS);
   });
 
   it('adds columns until the banner fits when the rows are short', () => {
     const grid = defaultGrid(1210, 420, 1);
     assert.equal(grid.tileHeight, 198);
-    assert.ok(grid.tileHeight - grid.imageHeight >= 75, `banner ${grid.tileHeight - grid.imageHeight}`);
+    assert.ok(grid.tileHeight - grid.imageHeight >= BANNER_UNITS, `banner ${grid.tileHeight - grid.imageHeight}`);
     assert.ok(grid.columns > 3);
   });
 
