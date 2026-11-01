@@ -1,4 +1,5 @@
 using MsfsUi.Core.Features;
+using MsfsUi.Core.Tests.Contracts;
 
 namespace MsfsUi.Core.Tests.Features;
 
@@ -56,6 +57,20 @@ public sealed class SettingsAndConfigScriptTests
         Assert.IsTrue(fastMenus.Enabled, "missing enabled: default");
         CollectionAssert.AreEqual(ExpectedRepairs, result.Adjustments.ToArray());
     }
+
+    [TestMethod]
+    public void NormalizeDropsARetiredOptionWithoutAdjustment()
+    {
+        var real = ModContractTests.RealCatalog();
+
+        var retired = SettingsNormalizer.Normalize(real, Settings("""{ "schemaVersion": 1, "features": { "aircraftGallery": { "options": { "layout": "classic" } } } }"""));
+        var unknown = SettingsNormalizer.Normalize(real, Settings("""{ "schemaVersion": 1, "features": { "aircraftGallery": { "options": { "other": 1 } } } }"""));
+
+        Assert.IsEmpty(retired.Adjustments);
+        CollectionAssert.AreEqual(ExpectedUnknownOption, unknown.Adjustments.ToArray());
+    }
+
+    private static readonly string[] ExpectedUnknownOption = ["Unknown option 'aircraftGallery.other' dropped."];
 
     private static readonly string[] ExpectedRepairs =
     [

@@ -59,7 +59,6 @@ export interface CellsContext {
   current(): { variationId: string; livery: string };
   hidden(): HiddenAircraft[];
   /** Side by side layout: the List rows on two lines. */
-  sideBySide(): boolean;
   /** The class of the list's element for a view (livery-column.ts). */
   bodyClass(view: View): string;
   /** A list was made for `axis`: what goes with it is disposed with `scope`. */
@@ -325,9 +324,8 @@ export class GalleryCells {
       card.set('Image', image);
       card.set('Title', name);
       const parts = [creator].concat(details).filter((part) => !!part).map((part) => part.trim());
-      // One line: the name in bold, then "- studio - variant (- livery)" in the tile's light second text. Side by side
-      // (a narrower list): two lines, the name, then "studio · variant (· livery)" (aircraft-gallery.css).
-      card.set('Creator', this.context.sideBySide() ? parts.join(' · ') : parts.map((part) => `- ${part}`).join(' '));
+      // Two lines: the name, then "studio · variant (· livery)" (aircraft-gallery.css).
+      card.set('Creator', parts.join(' · '));
     }
   }
 

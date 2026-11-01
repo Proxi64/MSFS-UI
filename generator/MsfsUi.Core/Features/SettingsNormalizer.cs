@@ -18,6 +18,9 @@ public sealed record NormalizationResult(FeatureSelection Selection, IReadOnlyLi
 /// </summary>
 public static class SettingsNormalizer
 {
+    // Options removed from the catalogue, dropped without a message so that users of an older version see none.
+    private static readonly HashSet<string> RetiredOptions = ["aircraftGallery.layout"];
+
     /// <summary>Normalises <paramref name="settings"/> against <paramref name="catalog"/>.</summary>
     public static NormalizationResult Normalize(FeatureCatalog catalog, FeatureSettings? settings)
     {
@@ -42,7 +45,7 @@ public static class SettingsNormalizer
         {
             stored.TryGetValue(feature.Id, out var entry);
             var storedOptions = entry?.Options ?? new Dictionary<string, JsonElement>(StringComparer.Ordinal);
-            foreach (var unknown in storedOptions.Keys.Where(id => feature.Options.All(option => option.Id != id)).Order(StringComparer.Ordinal))
+            foreach (var unknown in storedOptions.Keys.Where(id => feature.Options.All(option => option.Id != id) && !RetiredOptions.Contains($"{feature.Id}.{id}")).Order(StringComparer.Ordinal))
             {
                 adjustments.Add($"Unknown option '{feature.Id}.{unknown}' dropped.");
             }

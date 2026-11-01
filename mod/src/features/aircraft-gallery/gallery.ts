@@ -15,7 +15,6 @@ import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { layoutWidth } from '../../core/virtual-list.ts';
 import { loadData, saveData } from '../../core/storage.ts';
-import type { Settings } from '../../generated/catalog.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, type HiddenAircraft } from '../../sim/hidden.ts';
@@ -46,8 +45,6 @@ import {
   type AircraftItem,
   type LocalSort,
 } from './tiles.ts';
-
-type Layout = Settings['aircraftGallery']['layout'];
 
 /**
  * The sorts offered, in this order. Name and Studio are made by the mod on the tiles (the sim offers neither); Max Range is the sim's (`SetAircraftSortingOption`, "!" prefix for the reverse order), offered
@@ -100,10 +97,8 @@ const aircraft = store.Game.Aircraft;
 export class Gallery {
   private readonly page: Manipulator;
   private readonly scope: Scope;
-  /** The layout chosen in the app (option `layout`). */
-  private readonly layoutChoice: Layout;
-  /** Side by side layout: the liveries of the current aircraft on the right half (liveries.ts). */
-  private liveryColumn: LiveryColumn | null = null;
+  /** The liveries of the current aircraft, on the right half in Gallery and List (liveries.ts); made by mount(), after the bar and the body. */
+  private liveryColumn!: LiveryColumn;
   private readonly root = el('div', 'msfs-ui-root msfs-ui-gal');
   private readonly bar: GalleryBar;
   private readonly body = el('div', 'msfs-ui-gal__body');
@@ -147,10 +142,9 @@ export class Gallery {
    */
   private barUnits = 0;
 
-  constructor(page: Manipulator, scope: Scope, layout: Layout) {
+  constructor(page: Manipulator, scope: Scope) {
     this.page = page;
     this.scope = scope;
-    this.layoutChoice = layout;
     this.bar = new GalleryBar(
       scope,
       { view: () => this.memory.view, filter: () => readFilter(this.memory), sort: () => this.sortView() },
@@ -174,7 +168,6 @@ export class Gallery {
         view: () => this.memory.view,
         current: () => this.current,
         hidden: () => this.hidden,
-        sideBySide: () => this.liveryColumn !== null,
         bodyClass: (view) => this.bodyClass(view),
         listMade: (listScope, list, axis) => {
           if (axis === 'x') this.columns.keep(listScope, list);
@@ -197,11 +190,9 @@ export class Gallery {
     // The gaps between the tiles must not let the mouse through to the scene (core/theme.ts).
     this.body.setAttribute('data-input-group', PANEL_INPUT_GROUP);
     scope.append(this.page.elt, this.root);
-    if (this.layoutChoice === 'sideBySide') {
-      this.liveryColumn = new LiveryColumn(scope, this.root);
-      // The setup panel shows its thumbnails again when the column goes.
-      scope.add(() => setLiveriesInGallery(false));
-    }
+    this.liveryColumn = new LiveryColumn(scope, this.root);
+    // The setup panel shows its thumbnails again when the column goes.
+    scope.add(() => setLiveriesInGallery(false));
     // The sim's grid, hidden while the gallery shows, kept a stale selection: it is refreshed, then shown again.
     scope.add(() => {
       this.refreshStockGrid();
@@ -357,7 +348,7 @@ export class Gallery {
   // ----- Layout -----
 
   /**
-   * On the sim's right block (`RightBlock`), hidden (its grid and search): the gallery covers it whole. Side by side:
+   * On the sim's right block (`RightBlock`), hidden (its grid and search): the gallery covers it whole. Gallery and List:
    * the list on the left half, the livery column on the right half, 12 units apart. Default: the grid (layoutGrid).
    */
   private layout(): void {
@@ -383,13 +374,13 @@ export class Gallery {
     }
     // Side by side: three aircraft and two liveries per row, all of the same width (livery-column.ts).
     const gap = Math.round(TILE_GAP * unit);
-    const halves = this.liveryColumn ? splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, TILE_SIDE * unit) : null;
-    toggleClass(this.body, 'is-side-by-side', !!halves);
-    setStyle(this.body.style, 'width', halves ? `${halves.left}px` : '');
+    const halves = splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, TILE_SIDE * unit);
+    toggleClass(this.body, 'is-side-by-side', true);
+    setStyle(this.body.style, 'width', `${halves.left}px`);
     // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
     // before the scroll bar, and less the bar's own width when the tiles do not fit without it (core/virtual-list.ts:
     // decided on the full width, so the bar cannot make the tiles swing between two sizes).
-    const tileLayout = { room: SCROLL_BAR_ROOM * unit, unit, columns: halves ? AIRCRAFT_COLUMNS : null };
+    const tileLayout = { room: SCROLL_BAR_ROOM * unit, unit, columns: AIRCRAFT_COLUMNS };
     const tileAt = (listWidth: number) => aircraftTileSize(listWidth, tileLayout);
     // The vertical list's bar only (a horizontal one, between two views, is as wide as the grid).
     if (this.cells.axis === 'y') this.barUnits = Math.max(this.barUnits, scrollBarWidth(this.cells.list) / unit);
@@ -397,7 +388,7 @@ export class Gallery {
     // The tiles the Gallery view shows or would show (one per row of the List view): both views keep their edges.
     const tiles = this.cells.count;
     const fit = layoutWidth(
-      halves ? halves.left : Math.round(rect.width),
+      halves.left,
       barWidth,
       (listWidth) => {
         const tile = tileAt(listWidth);
@@ -407,7 +398,7 @@ export class Gallery {
     );
     const tile = tileAt(fit.width);
     // List rows: one width whether the list scrolls or not (the bar's room kept; its width measured once it shows).
-    const rowWidth = aircraftRowWidth(halves ? halves.left : Math.round(rect.width), SCROLL_BAR_ROOM * unit, barWidth || Math.round(SCROLL_BAR_WIDTH * unit));
+    const rowWidth = aircraftRowWidth(halves.left, SCROLL_BAR_ROOM * unit, barWidth || Math.round(SCROLL_BAR_WIDTH * unit));
     // The rows on the tiles' edges (the bar does not move between the two views).
     const edges = aircraftEdges(tile, TILE_SIDE * unit, rowWidth);
     setVariable(style, '--aircraft-row-x', `${edges.left}px`);
@@ -415,18 +406,12 @@ export class Gallery {
     setVariable(style, '--tile-w', `${tile.width}px`);
     setVariable(style, '--tile-image-h', `${tile.image}px`);
     setVariable(style, '--tile-h', `${tile.height}px`);
-    // Classic: the bar on one line from the first tile's left edge to the last one's right edge, as the rows (measured on
-    // 1.9.21, 2026-10-30 at 1920 x 1080: it ran from the list's edge over the scroll bar's room, 6 and 40 pixels off).
-    this.bar.placeLine(halves ? '' : `${edges.left}px`, halves ? '' : `${edges.right - edges.left}px`);
-    // Side by side, the bar's first part on the aircraft tiles' edges (Hidden and Favorites over the last column), its
-    // second on the livery column.
-    this.bar.layout(halves ? { start: edges, filters: lastColumnSpan(tile, TILE_SIDE * unit), end: { left: halves.left + gap, width: halves.right } } : null, unit);
-    if (halves) {
-      const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
-      this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
-    } else {
-      this.placeLiveries(null);
-    }
+    // The bar's first part on the aircraft tiles' edges (Hidden and Favorites over the last column), its second on the
+    // livery column.
+    this.bar.placeLine('', '');
+    this.bar.layout({ start: edges, filters: lastColumnSpan(tile, TILE_SIDE * unit), end: { left: halves.left + gap, width: halves.right } }, unit);
+    const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
+    this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
   }
 
   /**
@@ -459,7 +444,6 @@ export class Gallery {
 
   /** The livery column placed or hidden, and the setup panel told (it drops its thumbnails while the column shows). */
   private placeLiveries(rect: ColumnRect | null): void {
-    if (!this.liveryColumn) return;
     this.liveryColumn.place(rect);
     setLiveriesInGallery(rect !== null);
   }
@@ -546,7 +530,7 @@ export class Gallery {
 
   /** The body's class for a view: Default is the grid (`is-grid`), never side by side. */
   private bodyClass(view: View): string {
-    return view === 'stock' ? galleryBodyClass('grid', false) : galleryBodyClass(view, this.liveryColumn !== null);
+    return view === 'stock' ? galleryBodyClass('grid', false) : galleryBodyClass(view, true);
   }
 
   /**

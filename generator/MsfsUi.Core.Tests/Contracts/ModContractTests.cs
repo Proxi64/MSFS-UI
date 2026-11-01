@@ -74,8 +74,7 @@ public sealed class ModContractTests
               "fastMenus": { "enabled": true, "options": { "speed": 3, "instantImages": false } },
               "weatherBar": { "enabled": false },
               "timeWheel": { "options": { "step": 120, "fastStep": 1800 } },
-              "aircraftSetup": { "options": { "widenColumn": 0 } },
-              "aircraftGallery": { "options": { "layout": "sideBySide" } }
+              "aircraftSetup": { "options": { "widenColumn": 0 } }
             } }
             """)!;
         var result = SettingsNormalizer.Normalize(RealCatalog(), settings);
