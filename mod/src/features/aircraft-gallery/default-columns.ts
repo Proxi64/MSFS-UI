@@ -3,8 +3,9 @@
 
 import { debounced } from '../../core/async.ts';
 import type { Scope } from '../../core/scope.ts';
+import { WheelSteps } from '../../core/wheel-steps.ts';
 import type { RealScroll } from '../../sim/real-scroll.ts';
-import { settleColumn, WheelColumns, type DefaultGrid } from './default-grid.ts';
+import { settleColumn, type DefaultGrid } from './default-grid.ts';
 import type { GalleryCells } from './gallery-cells.ts';
 
 /** Quiet time after the last scroll of the Showcase view before it settles on a whole column. */
@@ -55,14 +56,14 @@ export class DefaultColumns {
   /**
    * The list rests on whole columns. The wheel moves whole columns instead of the sim's own step (a third of a column:
    * 187 pixels of 548 at 1440 lines, measured on 1.9.21, 2026-10-30): one per notch of a mouse wheel, the small deltas
-   * of a touchpad adding up (WheelColumns), each notch going on from the column the previous ones aimed at while the
+   * of a touchpad adding up (WheelSteps), each notch going on from the column the previous ones aimed at while the
    * list still moves. A scroll that ends between columns (the bar dragged) settles on the nearest one 150 ms after the
    * last `ui-scroll` or wheel event; while a mouse button that went down in the gallery is held, it waits for the
    * release: a `mouseup` on the window (where the sim's own drags end), or the first move that reports no button held
    * (a release the page never got). Listeners disposed with `scope` (the list's).
    */
   keep(scope: Scope, list: RealScroll): void {
-    const wheel = new WheelColumns();
+    const wheel = new WheelSteps();
     /** The column the wheel aims at while the list moves; null once it settles (the next notch starts from where it is). */
     let target: number | null = null;
     let held = false;

@@ -9,13 +9,12 @@ import type { Scope } from '../../core/scope.ts';
 import {
   COMPONENTS,
   createComponent,
-  DROPDOWN_ITEM,
-  DROPDOWN_PADDING,
   type ComponentGuid,
   type DropdownItem,
   type DropdownManipulator,
   type SimComponent,
 } from '../../sim/components.ts';
+import { DROPDOWN_ITEM, DROPDOWN_PADDING } from '../../sim/dropdown-list.ts';
 import { translate } from '../../sim/localization.ts';
 import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { barColumns, shareTabs, type DefaultGrid } from './default-grid.ts';

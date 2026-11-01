@@ -3,22 +3,19 @@
 // preset in the header.
 
 import { answerWithin } from '../../core/async.ts';
-import { el, setVariable, toggleClass, uiUnit } from '../../core/dom.ts';
+import { el, setVariable, toggleClass } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import {
   COMPONENTS,
-  DROPDOWN_EDGE,
-  DROPDOWN_ITEM,
-  DROPDOWN_PADDING,
   type DropdownItem,
   type DropdownManipulator,
   type SimComponent,
 } from '../../sim/components.ts';
+import { DROPDOWN_METRICS, dropdownListSize, scrollDropdownTo } from '../../sim/dropdown-list.ts';
 import { translate } from '../../sim/localization.ts';
-import type { RealScroll } from '../../sim/real-scroll.ts';
 import { ANSWER_TIMEOUT_MS, readArray, store } from '../../sim/store.ts';
-import { GAP, presetCellSizes, presetListSize, type PresetCell } from './bar-layout.ts';
+import { GAP, presetCellSizes, type PresetCell } from './bar-layout.ts';
 import type { WeatherPreset } from './model.ts';
 import { isSimPreset, rememberedPreset } from './presets.ts';
 import { run, shortLabel, type MakeComponent, type Section } from './section.ts';
@@ -27,7 +24,7 @@ import { run, shortLabel, type MakeComponent, type Section } from './section.ts'
 const LIVE_PRESET = 'TT:MENU.WEATHERTYPE_0DYNAMIC';
 const PRESETS_PER_ROW = 6;
 /**
- * The presets added by other packages, in the sim's dropdown under the grid: its list (sizes in sim/components.ts)
+ * The presets added by other packages, in the sim's dropdown under the grid: its list (sizes in sim/dropdown-list.ts)
  * opens downwards when at least LIST_LEAST items fit there (sizeList).
  */
 const LIST_LEAST = 3;
@@ -170,9 +167,9 @@ export class PresetsSection {
     const host = list ? list.element.parentElement : null;
     if (!list || !host || panel.style.display === 'none') return;
     const box = host.getBoundingClientRect();
-    const sized = presetListSize(
+    const sized = dropdownListSize(
       { count: this.items.size, below: (panel.getBoundingClientRect().bottom - box.bottom) / unit, above: (box.top - columnTop) / unit, unit },
-      { item: DROPDOWN_ITEM, edge: DROPDOWN_EDGE, padding: DROPDOWN_PADDING },
+      DROPDOWN_METRICS,
       LIST_LEAST,
     );
     toggleClass(host, 'is-up', sized.up);
@@ -180,24 +177,9 @@ export class PresetsSection {
     setVariable(host.style, '--msfs-ui-presets-top', `${Math.floor(sized.padding * unit)}px`);
   }
 
-  /**
-   * Opened, the list of the added presets shows its first items, or the chosen one at its top: the sim kept the
-   * position of an earlier opening, in the middle of an item after a change of resolution (measured 2026-10-30). The
-   * position is a whole number of items, by the items' spacing on the screen, so that they stay whole.
-   */
+  /** Opened, the list of the added presets shows its first items, or the chosen one at its top (scrollDropdownTo). */
   private scrollList(): void {
-    const list = this.list ? this.list.element.querySelector<HTMLElement>('[name="List"]') : null;
-    const scroll = list ? list.querySelector<RealScroll>('real-scroll') : null;
-    if (!list || !scroll || window.getComputedStyle(list).display === 'none') return;
-    const tops = Array.prototype.slice
-      .call(list.querySelectorAll('virtual-list-wrapper'))
-      .map((slot: HTMLElement) => slot.getBoundingClientRect())
-      .filter((box: DOMRect) => box.height > 0)
-      .map((box: DOMRect) => box.top)
-      .sort((a: number, b: number) => a - b);
-    const step = tops.length > 1 ? tops[1]! - tops[0]! : DROPDOWN_ITEM * uiUnit();
-    const chosen = Array.from(this.items.keys()).indexOf(this.index);
-    scroll.scrollToPosition(Math.min(scroll.maxScroll, Math.max(0, chosen) * step));
+    if (this.list) scrollDropdownTo(this.list.element, Array.from(this.items.keys()).indexOf(this.index));
   }
 
   private async choose(preset: WeatherPreset): Promise<void> {
