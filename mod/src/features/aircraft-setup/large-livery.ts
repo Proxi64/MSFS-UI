@@ -65,6 +65,8 @@ export class LargeLivery {
   private readonly sends = new LiverySends(this.stepper);
   /** Abandons the last livery taken if no reload reports it in time (one timer: only the last send counts). */
   private reportTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The sends to the configurator, one after the other (never rejected: every link handles its error). */
+  private chain: Promise<unknown> = Promise.resolve();
 
   constructor(scope: Scope, host: HTMLElement, events: LargeLiveryEvents) {
     this.scope = scope;
@@ -188,10 +190,14 @@ export class LargeLivery {
         if (!this.scope.disposed && this.sends.expired(sent.number)) this.draw();
       }, SENT_REPORT_MS);
     };
-    this.events.choose(sent).then(answer, (error: unknown) => {
-      logError('the livery could not be chosen', error);
-      answer(false);
-    });
+    // Chained: the configurator's sync, check and save take several round trips, and two sends in flight together
+    // could be saved out of order (the sim keeping the older livery). A send superseded before its turn is dropped.
+    this.chain = this.chain
+      .then(() => (this.sends.isLast(sent.number) ? this.events.choose(sent) : false))
+      .then(answer, (error: unknown) => {
+        logError('the livery could not be chosen', error);
+        answer(false);
+      });
   }
 
   private draw(): void {
