@@ -76,7 +76,7 @@ export function checkSimReferences(compat: CompatJson, files: SourceFiles): stri
     for (const match of text.matchAll(/\bname="([A-Za-z0-9_]+)"/g)) require(path, 'anchor', match[1]!, names);
     for (const match of text.matchAll(/\bTT:[A-Z0-9_.]+/g)) require(path, 'translation key', match[0], compat.translations);
     for (const match of text.matchAll(/coui:\/\/html_UI\/VFS\/([^"')\s]+)/g)) require(path, 'sim file', match[1]!, compat.files);
-    for (const match of text.matchAll(/var\((--(?:color[A-Za-z0-9]+|fontSize[A-Za-z0-9]+|unscaledScreenHeight|backgroundOpacity))\)/g)) {
+    for (const match of text.matchAll(/var\((--(?:color[A-Za-z0-9_]+|fontSize[A-Za-z0-9]+|unscaledScreenHeight|backgroundOpacity))\)/g)) {
       require(path, 'CSS variable', match[1]!, compat.colorVariables);
     }
     for (const match of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*'\/Global\/([^']+)'/g)) {

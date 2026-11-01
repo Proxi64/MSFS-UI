@@ -132,7 +132,7 @@
  * pointer goes through it: the Hover state stays the dropdown's). The dropdown's background shows only in its Hover
  * state, white as the sim draws it, the title then dark as the dropdown's own text; at rest the header's own shows. Its
  * text on the right after the title (--msfs-ui-variants-left), before its arrow. Its list opens right under the row and
- * passes over the parts below; its top padding takes the room its whole items leave (--msfs-ui-variants-top).
+ * passes over the parts below, with the sim's own padding.
  */
 .msfs-ui-setup__variant-row { z-index: 1; }
 .msfs-ui-setup__variant-title { position: relative; z-index: 1; pointer-events: none; }
@@ -144,7 +144,6 @@
 .msfs-ui-setup__dropdown > * > [name="Content"] > * { justify-content: flex-end !important; }
 .msfs-ui-setup__dropdown [name="List"] [name="Content"] { left: calc(var(--u) * 12) !important; }
 .msfs-ui-setup__dropdown [name="List"] { top: 100% !important; }
-.msfs-ui-setup__dropdown [name="List"] .scroll__content { padding-top: var(--msfs-ui-variants-top) !important; }
 
 /*
  * The title block on three lines (title-block.ts): the sim's lines hidden, the mod's in their place in the sim's sizes,

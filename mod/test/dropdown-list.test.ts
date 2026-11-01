@@ -1,23 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { dropdownListSize, dropdownListToward, dropdownScrollPosition } from '../src/sim/dropdown-list.ts';
-
-describe('the sim dropdown list size', () => {
-  const metrics = { item: 33, edge: 6, padding: 9, spacing: 3 };
-
-  it('opens downwards to the length of its items when they fit', () => {
-    assert.deepEqual(dropdownListSize({ count: 4, below: 200, above: 300, unit: 1 }, metrics, 3), { up: false, size: 141, padding: 6 });
-  });
-
-  it('scrolls downwards to the bottom of the room, the room left by whole items in its top padding', () => {
-    assert.deepEqual(dropdownListSize({ count: 10, below: 200, above: 300, unit: 4 / 3 }, metrics, 3), { up: false, size: 200.375, padding: 32 });
-  });
-
-  it('opens upwards when fewer than the least items fit below, one item at least', () => {
-    assert.deepEqual(dropdownListSize({ count: 10, below: 100, above: 300, unit: 1 }, metrics, 3), { up: true, size: 273, padding: 6 });
-    assert.deepEqual(dropdownListSize({ count: 10, below: 100, above: 0, unit: 1 }, metrics, 3), { up: true, size: 42, padding: 6 });
-  });
-});
+import { dropdownListToward, dropdownScrollPosition } from '../src/sim/dropdown-list.ts';
 
 describe('the sim dropdown list toward an obstacle under it', () => {
   const metrics = { item: 33, edge: 6, padding: 9, spacing: 3 };
@@ -66,10 +49,10 @@ describe('the sim dropdown list scrolled to an item', () => {
     assert.equal(dropdownScrollPosition({ index: 3, step: 36, height: 32, edge: 0, max: 1000 }), 108);
   });
 
-  it('rounds to the nearest whole pixel, as the sim scrolls', () => {
-    // 1164 lines (measured): 5 x 35.567 + 6 - 3.567 = 180.268; 7 x 35.567 + 2.433 = 251.402; 9 x 35.567 + 2.433 = 322.536.
-    assert.equal(dropdownScrollPosition({ index: 5, step: 35.567, height: 32, edge: 6, max: 10000 }), 180);
-    assert.equal(dropdownScrollPosition({ index: 7, step: 35.567, height: 32, edge: 6, max: 10000 }), 251);
+  it('rounds up to a whole pixel, as the sim scrolls', () => {
+    // 1164 lines (measured): 5 x 35.567 + 6 - 3.567 = 180.268; 7 x 35.567 + 2.433 = 251.402; 9 x 35.567 + 2.433 = 322.536, rounded up.
+    assert.equal(dropdownScrollPosition({ index: 5, step: 35.567, height: 32, edge: 6, max: 10000 }), 181);
+    assert.equal(dropdownScrollPosition({ index: 7, step: 35.567, height: 32, edge: 6, max: 10000 }), 252);
     assert.equal(dropdownScrollPosition({ index: 9, step: 35.567, height: 32, edge: 6, max: 10000 }), 323);
   });
 

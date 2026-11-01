@@ -1,4 +1,4 @@
-// The sim's dropdown list (tested by test/dropdown-list.test.ts): the size of its list in layout units, and its scroll in
+// The sim's dropdown list (tested by test/dropdown-list.test.ts): the metrics of its list in layout units, and its scroll in
 // whole items. The sizes live here, not in components.ts, which needs the sim's bundle: the tests load this module.
 
 import { uiUnit } from '../core/dom.ts';
@@ -22,34 +22,6 @@ export interface DropdownMetrics {
 }
 
 export const DROPDOWN_METRICS: DropdownMetrics = { item: DROPDOWN_ITEM, edge: DROPDOWN_EDGE, padding: DROPDOWN_PADDING, spacing: DROPDOWN_SPACING };
-
-/** The dropdown's list as the mod sets it: upwards or not, its `List_Size` and its top padding, in layout units. */
-export interface DropdownListSize {
-  up: boolean;
-  size: number;
-  padding: number;
-}
-
-/**
- * The list of `list.count` items: downwards, exactly to the bottom of the room under the dropdown (`below`, in layout
- * units), the sim's own scroll for the items that do not fit, whole items at rest (the room they leave goes into the top
- * padding); upwards to the top of the room above (`above`) when fewer than `least` items fit below. `unit`: pixels per
- * layout unit (half a pixel more downwards: the engine rounds the height down).
- */
-export function dropdownListSize(list: { count: number; below: number; above: number; unit: number }, metrics: DropdownMetrics, least: number): DropdownListSize {
-  const fitBelow = Math.floor((list.below - metrics.padding) / metrics.item);
-  if (fitBelow < least) {
-    const fitAbove = Math.floor((list.above - metrics.padding) / metrics.item);
-    return { up: true, size: Math.max(1, Math.min(list.count, fitAbove)) * metrics.item + metrics.padding, padding: metrics.edge };
-  }
-  if (list.count <= fitBelow) return { up: false, size: list.count * metrics.item + metrics.padding, padding: metrics.edge };
-  return {
-    up: false,
-    size: list.below + 0.5 / list.unit,
-    padding: metrics.edge + list.below - (fitBelow * metrics.item + metrics.padding),
-  };
-}
-
 /** A list toward an obstacle under it (dropdownListToward), in layout units. */
 export interface ListToward {
   count: number;
@@ -104,12 +76,12 @@ export interface ScrollTo {
  * than the gap between items), that much further less the gap, so that the previous item passes whole above the top
  * and the item shows the gap's width under it. The sim scrolls by whole pixels while the items' spacing is not one
  * (measured 2026-11-01, 1164 lines: positions rounded down, up to a pixel of the previous item showed; rounded up, up
- * to a pixel of the next one): rounded to the nearest, less than half a pixel of either. The first item, or none (-1):
+ * to a pixel of the next one): rounded up: the top slips at most a pixel into the gap above the item, the next one stays hidden. The first item, or none (-1):
  * the list's top.
  */
 export function dropdownScrollPosition(to: ScrollTo): number {
   if (to.index <= 0) return 0;
-  return Math.min(to.max, Math.round(to.index * to.step + Math.max(0, to.edge - (to.step - to.height))));
+  return Math.min(to.max, Math.ceil(to.index * to.step + Math.max(0, to.edge - (to.step - to.height))));
 }
 
 /**

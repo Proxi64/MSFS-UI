@@ -15,7 +15,7 @@ import type { Scope } from '../../core/scope.ts';
 import { TextFitter } from '../../core/text-fit.ts';
 import { COMPONENTS, createComponent, type DropdownItem, type DropdownManipulator, type SimComponent } from '../../sim/components.ts';
 import type { ConfiguratorItem } from '../../sim/configurator.ts';
-import { DROPDOWN_METRICS, dropdownListSize, scrollDropdownTo } from '../../sim/dropdown-list.ts';
+import { DROPDOWN_EDGE, DROPDOWN_METRICS, dropdownListToward, scrollDropdownTo } from '../../sim/dropdown-list.ts';
 import { translate } from '../../sim/localization.ts';
 
 /** The sim's own word for it (its Manufacture screens). */
@@ -91,9 +91,8 @@ export class VariantDropdown {
   /**
    * At each layout pass: the selected variant's text starts one gap after the row's title (--msfs-ui-variants-left, in
    * whole pixels), and the list goes downwards, `below` layout units long (from the row's bottom to the large livery's): the
-   * sim's own scroll for the items that do not fit, the room whole items leave in its top padding
-   * (--msfs-ui-variants-top). It ends there whatever the number of variants (the owner's choice, over a list ending
-   * anywhere): a short list keeps its items at the top and its room under them. The texts fitted to their places.
+   * sim's own scroll for the items that do not fit, whole items and no top band. A short list ends there whatever the
+   * number of variants (the owner's choice): its items at the top and its room under them. The texts fitted to their places.
    */
   layout(below: number, unit: number): void {
     const dropdown = this.dropdown;
@@ -101,10 +100,13 @@ export class VariantDropdown {
     const titleBox = this.title.getBoundingClientRect();
     const rowBox = this.row.getBoundingClientRect();
     setVariable(this.row.style, '--msfs-ui-variants-left', `${Math.ceil(titleBox.right - rowBox.left + TITLE_GAP * unit)}px`);
-    const sized = dropdownListSize({ count: Math.max(1, this.variants.length), below, above: 0, unit }, DROPDOWN_METRICS, 1);
-    // Half a pixel more, as dropdownListSize gives a list that scrolls: the engine rounds the height down.
-    dropdown.set('List_Size', (sized.up ? sized.size : below + 0.5 / unit).toFixed(2));
-    setVariable(this.row.style, '--msfs-ui-variants-top', `${Math.floor(sized.padding * unit)}px`);
+    const count = Math.max(1, this.variants.length);
+    // All the variants fit: the list ends on the large livery's bottom, the room under the last one empty. Otherwise
+    // whole items only, as the presets' list (dropdownListToward), the sim's own scroll for the others. Half a pixel
+    // more: the engine rounds the height down.
+    const fits = count * DROPDOWN_METRICS.item + DROPDOWN_METRICS.padding <= below;
+    const size = fits ? below + 0.5 / unit : dropdownListToward({ count, below, gap: 0, least: 0, above: 0, unit }, DROPDOWN_METRICS, 1).size;
+    dropdown.set('List_Size', size.toFixed(2));
     this.unit = unit;
     this.fitShown();
     this.fitItems();
@@ -164,7 +166,7 @@ export class VariantDropdown {
 
   /** Opened, the list shows the selected variant at its top, or its first items (scrollDropdownTo). */
   private scrollList(): void {
-    if (this.dropdown) scrollDropdownTo(this.dropdown.element, this.selectedIndex());
+    if (this.dropdown) scrollDropdownTo(this.dropdown.element, this.selectedIndex(), DROPDOWN_EDGE);
     this.fitItems();
   }
 }

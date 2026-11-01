@@ -128,11 +128,11 @@
       "names": ["JS_LISTENER_INPUT_STACK", "JS_LISTENER_INPUTBAR", "ENTER_INPUT_FIELD", "EXIT_INPUT_FIELD", "REGISTER_INPUT_BAR", "SET_INPUT_BAR", "REMOVE_INPUT_BAR", "SCANNING"]
     },
     { "group": "CommBus", "names": ["ADD_VIEW_LISTENER", "JS_LISTENER_COMM_BUS", "EVENT_FROM_VIEW_LISTENER", "COMM_BUS_WASM_CALLBACK"] },
-    { "group": "Styles", "names": ["img-fade--enabled", "--rotation", "--colorComplementary2_Content"] },
+    { "group": "Styles", "names": ["img-fade--enabled", "--rotation"] },
     { "group": "Sim look", "names": ["blurredBackground", "inputLocker"] }
   ],
   "files": ["components/shared/resources/Icons/General/Sort.svg", "components/shared/resources/Icons/General/ArrowFull.svg"],
-  "colorVariables": ["--colorPrimary", "--colorGradient", "--colorSecondary", "--colorComplementary1", "--colorComplementary2", "--fontSizeS", "--fontSizeXS", "--unscaledScreenHeight", "--backgroundOpacity"],
+  "colorVariables": ["--colorPrimary", "--colorGradient", "--colorSecondary", "--colorComplementary1", "--colorComplementary2", "--colorComplementary2_Content", "--fontSizeS", "--fontSizeXS", "--unscaledScreenHeight", "--backgroundOpacity"],
   "translations": [
     "TT:GENERIC.LIST",
     "TT:GENERIC.SORT_BY",
