@@ -115,18 +115,19 @@ export interface BottomColumns {
 }
 
 /**
- * The columns of the bottom block in a row `width` wide, `gap` pixels apart, whole pixels: the right column (the tail
- * number's title and field above Fuel and Identification) is as wide as the wider of its two rows, `title + gap + field`
- * or `fuel + gap + identification`; the Configure tile takes the rest. In the right column the tail title and the Fuel
- * button keep their need, the field and Identification take the rest of their rows. Null when the tile gets less than
- * its own need.
+ * The columns of the bottom block in a row `width` wide, `gap` pixels apart, whole pixels: the right column's two rows
+ * (the tail number's title and field, Fuel and Identification) share one vertical line (the owner's mark, 2026-11-01).
+ * The first column, the tail title and Fuel, is as wide as the wider of the two; the second, the field and
+ * Identification, as wide as the wider of those; the right column is their sum and the gap, the Configure tile takes the
+ * rest. The field and Identification take what remains of their rows, so both end on the panel's edge. Null when the
+ * tile gets less than its own need.
  */
 export function bottomColumns(width: number, gap: number, needs: BottomNeeds): BottomColumns | null {
-  const tailTitle = Math.ceil(needs.tail);
-  const fuel = Math.ceil(needs.fuel);
-  const right = Math.max(tailTitle + gap + Math.ceil(needs.field), fuel + gap + Math.ceil(needs.identification));
+  const first = Math.max(Math.ceil(needs.tail), Math.ceil(needs.fuel));
+  const second = Math.max(Math.ceil(needs.field), Math.ceil(needs.identification));
+  const right = first + gap + second;
   const configure = width - gap - right;
-  return configure < Math.ceil(needs.configure) ? null : { configure, right, tailTitle, fuel };
+  return configure < Math.ceil(needs.configure) ? null : { configure, right, tailTitle: first, fuel: first };
 }
 
 /** The columns until the needs are measured, or while the left column widens to them: halves, in whole pixels. */
@@ -138,7 +139,7 @@ export function sharedColumns(width: number, gap: number): BottomColumns {
 
 /** The width the bottom block needs, in whole pixels: its right column, the gap and the Configure tile (bottomColumns). */
 export function rowNeed(needs: BottomNeeds, gap: number): number {
-  return Math.ceil(needs.configure) + gap + Math.max(Math.ceil(needs.tail) + gap + Math.ceil(needs.field), Math.ceil(needs.fuel) + gap + Math.ceil(needs.identification));
+  return Math.ceil(needs.configure) + gap + Math.max(Math.ceil(needs.tail), Math.ceil(needs.fuel)) + gap + Math.max(Math.ceil(needs.field), Math.ceil(needs.identification));
 }
 
 /**

@@ -233,12 +233,12 @@ describe('showcase panel layout', () => {
 
   const needs = { tail: 120, field: 150, fuel: 160, identification: 200, configure: 250 };
 
-  it('bottomColumns gives the right column the wider of its rows, the tile the rest', () => {
-    // Rows: 120 + 8 + 150 = 278 and 160 + 8 + 200 = 368; the tile 691 - 8 - 368 = 315.
-    assert.deepEqual(bottomColumns(691, 8, needs), { configure: 315, right: 368, tailTitle: 120, fuel: 160 });
-    const wide = bottomColumns(691, 8, { ...needs, tail: 200, field: 200 });
-    assert.deepEqual(wide, { configure: 275, right: 408, tailTitle: 200, fuel: 160 });
-    const columns = bottomColumns(691, 8, { ...needs, tail: 120.2, field: 150.1 });
+  it('bottomColumns shares one vertical line between the right column\'s rows, the tile the rest', () => {
+    // First column max(120, 160) = 160, second max(150, 200) = 200: 160 + 8 + 200 = 368; the tile 691 - 8 - 368 = 315.
+    assert.deepEqual(bottomColumns(691, 8, needs), { configure: 315, right: 368, tailTitle: 160, fuel: 160 });
+    // A wider tail title and field: 200 + 8 + 210 = 418.
+    assert.deepEqual(bottomColumns(691, 8, { ...needs, tail: 200, field: 210 }), { configure: 265, right: 418, tailTitle: 200, fuel: 200 });
+    const columns = bottomColumns(691, 8, { ...needs, tail: 120.2, field: 250.1 });
     assert.ok(columns);
     assert.equal(columns.configure + 8 + columns.right, 691);
     assert.ok(Object.values(columns).every(Number.isInteger));
@@ -252,6 +252,7 @@ describe('showcase panel layout', () => {
   it('rowNeed adds the right column, the gap and the tile, rounded up', () => {
     assert.equal(rowNeed(needs, 8), 368 + 8 + 250);
     assert.equal(rowNeed({ ...needs, fuel: 160.2, configure: 249.5 }, 8), 369 + 8 + 250);
+    assert.equal(rowNeed({ ...needs, tail: 200, field: 210 }, 8), 200 + 8 + 210 + 8 + 250);
   });
 
   it('columnExtra widens the left column to the bottom block, in whole units (measured 2026-11-01 at 1440 lines)', () => {

@@ -98,6 +98,28 @@
       Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__action > *, .msfs-ui-setup__field')).forEach(function (part) {
         if (!reached(part)) problems.push('Showcase: not reached by the pointer: ' + name(part));
       });
+      // The owner's marks of 2026-11-01: the tail title over Fuel and the field over Identification on one vertical line each,
+      // the same gap between the blocks as seen (title block, Variant, Livery, large image, grid), the large image on the panel's edges.
+      var tailTitle = setup.querySelector('.msfs-ui-setup__tail-title');
+      var tailField = setup.querySelector('.msfs-ui-setup__field');
+      var buttons = setup.querySelectorAll('.msfs-ui-setup__action');
+      if (visible(tailTitle) && visible(tailField) && buttons.length > 1) {
+        var tt = rect(tailTitle), tf = rect(tailField), fu = rect(buttons[0]), idr = rect(buttons[1]);
+        if (Math.abs(tt.l - fu.l) > 0.5 || Math.abs(tt.r - fu.r) > 0.5) problems.push('Showcase: the tail title off Fuel and Payload: ' + px(tt.l) + '-' + px(tt.r) + ' Fuel ' + px(fu.l) + '-' + px(fu.r));
+        if (Math.abs(tf.l - idr.l) > 0.5 || Math.abs(tf.r - idr.r) > 0.5) problems.push('Showcase: the tail field off Identification: ' + px(tf.l) + '-' + px(tf.r) + ' Identification ' + px(idr.l) + '-' + px(idr.r));
+      }
+      var largeImage = setup.querySelector('.msfs-ui-setup__large [name="Image"]');
+      var placeRoot = rect(setup);
+      if (visible(largeImage)) {
+        var li = rect(largeImage);
+        if (Math.abs(li.l - placeRoot.l) > 0.5 || Math.abs(li.r - placeRoot.r) > 0.5) problems.push('Showcase: the large livery off the panel: ' + px(li.l) + '-' + px(li.r) + ' panel ' + px(placeRoot.l) + '-' + px(placeRoot.r));
+        var seen = [title, setup.querySelector('.msfs-ui-setup__variant-row'), setup.querySelector('.msfs-ui-setup__livery-header'), largeImage, setup.querySelector('.msfs-ui-setup__grid-cell [name="Image"]')];
+        if (seen.every(visible)) {
+          var gapsSeen = [];
+          for (var g = 1; g < seen.length; g++) gapsSeen.push(Math.round(rect(seen[g]).t - rect(seen[g - 1]).b));
+          if (gapsSeen.some(function (v) { return v !== gapsSeen[0]; })) problems.push('Showcase: unequal gaps between the blocks: ' + gapsSeen.join(', '));
+        }
+      }
       var grid = setup.querySelector('.msfs-ui-setup__grid');
       if (visible(grid) && grid.querySelector('.msfs-ui-setup__grid-row')) {
         var gr = rect(grid);

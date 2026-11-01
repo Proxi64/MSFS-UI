@@ -237,3 +237,12 @@
   right: calc(var(--u) * 2);
   bottom: calc(var(--u) * 2);
 }
+
+/*
+ * The livery images fill their button's whole box (the owner's mark, 2026-11-01): the sim's livery button insets its
+ * Image by 3 units on every side (inline left, top, right and bottom; measured on 1.9.21, 3 pixels at 1164 lines), so
+ * the large livery and the thumbnails stopped short of the panel's edges. The image keeps its cover behaviour (cropped,
+ * not squeezed); the selected outline (the button's Border) stays on the button's edge.
+ */
+.msfs-ui-setup__large-button [name="Image"],
+.msfs-ui-setup__grid-button [name="Image"] { left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important; }
