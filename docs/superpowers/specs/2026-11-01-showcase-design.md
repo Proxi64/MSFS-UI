@@ -28,13 +28,13 @@ Every part at a fixed place for a given screen size, whatever the aircraft, its 
 2. **The variants in a dropdown**, one row high: the sim's `Dropdown` (as the gallery's sort), showing the selected variant (*my call*: not the number of variants shown on the mockup, "4 variants ▾": the sim's dropdown shows only its current item's title). Opened, its list lies over the livery header and the large livery and **ends exactly on the large livery's bottom edge** (the owner chose this over a list ending anywhere, over one covering the whole livery block, and over arrows); its rows share that height in whole rows (the count nearest the sim's dropdown row height, each row in whole pixels), and it scrolls by whole rows past that. One variant: the dropdown shows it in its Disabled state and does not open (*my call*).
 3. **The livery header**, as today: "Livery" and the name of the current livery.
 4. **The current livery, large**, as wide as the panel, in the proportions of the sim's livery images: an arrow on each side for the previous and the next livery (in the panel's livery order: favourites first, as today), its position ("3 / 14"), its heart. The wheel over it moves to the previous or next livery (*my call*, shown on the mockup). At the first or last livery, the arrow toward the end is disabled (*my call*: no wrap-around).
-5. **A strip of small liveries** under it, four per row, as many whole rows as fit (two on the owner's screen), scrolling **horizontally**; a click chooses the livery; the current one is outlined and scrolled into view. Each small livery keeps its heart, as today's thumbnails (*my call*: the mockup showed none; a favourite is set on the large livery or on a small one).
+5. **A strip of small liveries** under it, scrolling **horizontally**, that **fills its height** down to the tail number row (the owner, 2026-11-01, over a leftover of about 70 pixels under two rows of four whole thumbnails): whole rows, as many as come nearest to four thumbnails across (three on the owner's screen), the thumbnails in the sim's proportions, the last column showing in part; a click chooses the livery; the current one is outlined and scrolled into view. Each small livery keeps its heart, as today's thumbnails (*my call*: the mockup showed none; a favourite is set on the large livery or on a small one).
 6. **Tail number** and its field, on one row (as today).
 7. **Fuel and Payload**, **Identification** and **Configure your aircraft** side by side on one row: the sim's "Configure your aircraft" tile reduced to the height of the other buttons, its key (F) kept.
 
 The aircraft's statistics are not shown in Showcase (the owner: there is no fixed place for them; they still show in Gallery and List).
 
-The room left between the strip and the tail number (less than one row of small liveries) stays at the bottom of the livery block; nothing else moves to absorb it (*my call*).
+Nothing is left between the strip and the tail number but its scroll bar and a gap (the rows share the room, a pixel or two at most left over).
 
 ## Constraints
 
