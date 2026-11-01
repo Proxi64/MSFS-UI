@@ -58,15 +58,27 @@
       if (r.r > lr.l + 1 && r.l < lr.r - 1 && (r.l < lr.l - 0.5 || r.r > lr.r + 0.5)) problems.push('tile cut by its list: ' + px(r.l) + '-' + px(r.r) + ' list ' + px(lr.l) + '-' + px(lr.r));
     });
   }
-  // The setup panel: every block on the title block's edges.
+  // The setup panel: every block on the title block's edges. In Showcase the bottom row is Fuel and Payload and
+  // Identification (`__actions`) then the sim's Configure tile, moved there: the row, from the first to the tile, is the
+  // block.
   var setup = document.querySelector('.msfs-ui-setup');
   var title = document.querySelector('[name="Fleet_Details"] [name="Header"]');
   if (visible(setup) && title) {
     var tr = rect(title);
-    Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__variants, .msfs-ui-setup__livery-header, .msfs-ui-setup__liveries, .msfs-ui-setup__stats, .msfs-ui-setup__tail, .msfs-ui-setup__actions')).filter(visible).forEach(function (blk) {
+    var showcase = setup.classList.contains('is-showcase');
+    var offTitle = function (label, l, r) {
+      if (Math.abs(l - tr.l) > 1 || Math.abs(r - tr.r) > 1) problems.push('setup block off the title block: ' + label + ' ' + px(l) + '-' + px(r) + ' title ' + px(tr.l) + '-' + px(tr.r));
+    };
+    Array.prototype.slice.call(setup.querySelectorAll('.msfs-ui-setup__variants, .msfs-ui-setup__livery-header, .msfs-ui-setup__liveries, .msfs-ui-setup__stats, .msfs-ui-setup__tail' + (showcase ? '' : ', .msfs-ui-setup__actions'))).filter(visible).forEach(function (blk) {
       var r = rect(blk);
-      if (Math.abs(r.l - tr.l) > 1 || Math.abs(r.r - tr.r) > 1) problems.push('setup block off the title block: ' + name(blk) + ' ' + px(r.l) + '-' + px(r.r) + ' title ' + px(tr.l) + '-' + px(tr.r));
+      offTitle(name(blk), r.l, r.r);
     });
+    var configure = document.querySelector('[name="Fleet_Details"] [name="TileButton_Watermark_Small_Cockpit"]');
+    var actions = setup.querySelector('.msfs-ui-setup__actions');
+    if (showcase && visible(actions)) {
+      if (!visible(configure)) problems.push('Showcase: the Configure tile is not shown in the bottom row');
+      else offTitle('bottom row (actions and Configure tile)', rect(actions).l, rect(configure).r);
+    }
     // The variant tiles, by row: the first on the title block's left edge, the last on its right one unless the list
     // scrolls (the bar's room is then kept).
     var variants = setup.querySelector('.msfs-ui-setup__variants');
@@ -82,7 +94,10 @@
       if (Math.abs(first.l - tr.l) > 1) problems.push('variant row off the title block on the left: ' + px(first.l) + ' title ' + px(tr.l));
       if (variants && !variants.classList.contains('is-scrolling') && row.length > 1 && Math.abs(last.r - tr.r) > 1.5) problems.push('variant row off the title block on the right: ' + px(last.r) + ' title ' + px(tr.r));
     });
-    if (rect(setup).b > rect(document.querySelector('[name="Fleet_Details"] [name="ButtonBlock"]') || setup).t + 1) problems.push('setup panel runs over the Configure tile');
+    // Gallery and List: the panel ends above the sim's ButtonBlock (the Configure tile); in Showcase the tile is in the
+    // panel's bottom row instead, and the panel ends in Fleet_Details.
+    if (!showcase && rect(setup).b > rect(document.querySelector('[name="Fleet_Details"] [name="ButtonBlock"]') || setup).t + 1) problems.push('setup panel runs over the Configure tile');
+    if (showcase && rect(setup).b > rect(document.querySelector('[name="Fleet_Details"]') || setup).b + 1) problems.push('Showcase: setup panel runs out of Fleet_Details');
   }
   return JSON.stringify({ size: W + 'x' + H + ' u=' + px(u * 1000) / 1000, parts: parts, problems: problems });
 })()
