@@ -1,47 +1,61 @@
-// The gallery's memory, as stored (gallery.ts saves it at each change of view, filter or sort), without the sim (tested
-// by test/aircraft-gallery.test.ts). A stored value is not trusted: each field is kept when it has its type.
+// What the gallery keeps, without the sim (tested by test/aircraft-gallery.test.ts). A stored value is not trusted: each
+// field is kept when it has its type.
 
-import { storedObject } from '../../core/storage.ts';
+import { loadData, saveData, storedObject } from '../../core/storage.ts';
 import type { View } from './gallery-cells.ts';
+import type { GalleryFilter, LocalSort } from './tiles.ts';
 
+const MEMORY_KEY = 'AIRCRAFT_GALLERY';
+
+/** The layout, as stored: what the *Remember my layout* option brings back. */
 export interface GalleryMemory {
   view: View;
-  /** The Favorites filter; never together with `hiddenOnly` (readFilter). */
-  favoritesOnly: boolean;
-  /** The Hidden filter: only the hidden aircraft (absent before 2.0.0). */
-  hiddenOnly?: boolean;
-  /** Sort: the id of one of the gallery's sorts; absent: the sim's order, unchanged. */
-  sort?: { option: string; reversed: boolean } | null;
+  sort: { option: LocalSort; reversed: boolean };
 }
 
 const VIEWS: readonly View[] = ['gallery', 'list', 'showcase'];
+const SORTS: readonly LocalSort[] = ['model', 'manufacturer', 'studio'];
 
-/**
- * The sorts of earlier versions (Name, Max range; 0.3.0 stored the sim's option keys, here without their `TT:` prefix so
- * that no translation key is declared for them): all read as Model now.
- */
-const EARLIER_SORTS: readonly string[] = ['name', 'maxRange', 'MENU.NAME', 'MENU.ACPROPUI_MAX_RANGE'];
-
-/** A stored view: `stock`, the name of the Showcase view until now, is read as `showcase`; the Gallery view for any other. */
+/** A stored view: `stock`, the name of the Showcase view until now, is read as `showcase`, as anything else. */
 function viewFrom(stored: unknown): View {
-  if (stored === 'stock') return 'showcase';
-  return VIEWS.indexOf(stored as View) >= 0 ? (stored as View) : 'gallery';
+  return VIEWS.indexOf(stored as View) >= 0 ? (stored as View) : 'showcase';
 }
 
 /**
- * The memory of a stored value: the Gallery view and no filter when it has none. What it holds besides is dropped (the
- * `lastView` of 2.0.1's development builds, a filter clicked in the sim's grid).
+ * The layout of a stored value: Showcase and Model, A to Z, a new user's, when it has none. A sort of earlier versions
+ * (Name, Max range, the sim's option keys of 0.3.0) reads as Model. What it holds besides is dropped (the filters of
+ * earlier versions, the `lastView` of 2.0.1's development builds).
  */
 export function galleryMemoryFrom(stored: unknown): GalleryMemory {
   const entry = storedObject(stored) || {};
-  const memory: GalleryMemory = {
-    view: viewFrom(entry.view),
-    favoritesOnly: entry.favoritesOnly === true,
-  };
-  if (typeof entry.hiddenOnly === 'boolean') memory.hiddenOnly = entry.hiddenOnly;
   const sort = storedObject(entry.sort);
-  if (sort && typeof sort.option === 'string' && typeof sort.reversed === 'boolean') {
-    memory.sort = { option: EARLIER_SORTS.indexOf(sort.option.replace(/^TT:/, '')) >= 0 ? 'model' : sort.option, reversed: sort.reversed };
+  const known = !!sort && typeof sort.option === 'string' && typeof sort.reversed === 'boolean';
+  return {
+    view: viewFrom(entry.view),
+    sort: {
+      option: known && SORTS.indexOf(sort.option as LocalSort) >= 0 ? (sort.option as LocalSort) : 'model',
+      reversed: known && sort.reversed === true,
+    },
+  };
+}
+
+/**
+ * The gallery's state for one start of the mod, kept from one opening of the screen to the next (the screen's Gallery is
+ * made again each time). The layout comes from the storage with *Remember my layout*, and is saved there; without it, it
+ * starts from the defaults and lives until the sim stops, what is stored staying as it was. The filter is never stored:
+ * it starts off at every start of the sim.
+ */
+export class GallerySession {
+  readonly memory: GalleryMemory;
+  filter: GalleryFilter = 'all';
+  private readonly remember: boolean;
+
+  constructor(remember: boolean) {
+    this.remember = remember;
+    this.memory = galleryMemoryFrom(remember ? loadData<unknown>(MEMORY_KEY, null) : null);
   }
-  return memory;
+
+  save(): void {
+    if (this.remember) saveData(MEMORY_KEY, this.memory);
+  }
 }

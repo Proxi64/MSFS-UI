@@ -6,10 +6,10 @@
 import { log, logError } from '../core/log.ts';
 import type { Scope } from '../core/scope.ts';
 import type { Settings } from '../generated/catalog.ts';
+import { FLIGHT_CONDITIONS_WIDGET } from '../sim/freeflight-layout.ts';
 import { onScreenActive, SCREENS } from '../sim/screens.ts';
 import { store, watch, type TimeInfo } from '../sim/store.ts';
 
-const WIDGET = '[name="Flight_Conditions_History_Widget"]';
 const DAY = 86400;
 /** Notches closer than this build on the value aimed at, not on the value read (which may lag behind). */
 const BURST_MS = 1500;
@@ -29,7 +29,7 @@ export function timeWheel(settings: Settings['timeWheel'], scope: Scope): void {
 
     // One listener on the document (bubbling phase: `wheel` does reach it), filtered on the widget.
     screen.listen(document, 'wheel', (event) => {
-      const widget = event.target instanceof Element ? event.target.closest(WIDGET) : null;
+      const widget = event.target instanceof Element ? event.target.closest(FLIGHT_CONDITIONS_WIDGET) : null;
       if (!widget || !page.elt.contains(widget) || !time || event.deltaY === 0) return;
       event.preventDefault();
       event.stopPropagation();

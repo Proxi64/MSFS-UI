@@ -55,26 +55,15 @@ export function hasFavoriteLivery(liveries: readonly FavoriteLivery[], item: Air
   return favoriteLiveriesOf(liveries, item).length > 0;
 }
 
-/** The `aircraftId` of the favourite aircraft of the list, for an order that stays while the screen does (favoritesFirst). */
+/** The `aircraftId` of the favourite aircraft of the list: a hidden one among them stays in the list, veiled (accumulateKept). */
 export function favoriteAircraftIds(items: readonly AircraftItem[], liveries: readonly FavoriteLivery[]): number[] {
   return items.filter((item) => hasFavoriteLivery(liveries, item)).map((item) => item.aircraftId);
 }
 
 /**
- * The hidden aircraft kept in the normal view, veiled (`keepIds`): those that were favourites when the order was set
- * (`frozen`, kept while the screen stays, as the favourites put first) and those that are favourites now, so that a
- * livery given a heart since shows its hidden aircraft at once ("favourites come first", without exception).
- */
-export function keptAircraftIds(frozen: readonly number[] | null, items: readonly AircraftItem[], liveries: readonly FavoriteLivery[]): number[] {
-  const kept = frozen ? frozen.slice() : [];
-  for (const id of favoriteAircraftIds(items, liveries)) if (kept.indexOf(id) < 0) kept.push(id);
-  return kept;
-}
-
-/**
- * The ids kept so far (`kept`, changed in place) with those of `current` added: a hidden aircraft that was kept veiled
- * (a favourite at some time since the order was set) stays so when its last favourite livery goes, until the order is
- * set again (the gallery empties the list then).
+ * The hidden aircraft kept in the normal view, veiled (`keepIds`): the ids kept so far (`kept`, changed in place) with
+ * those of `current` added, the favourites of now. A livery given a heart shows its hidden aircraft at once, and the
+ * aircraft stays when its last favourite livery goes, until a new sort, search or filter (the gallery empties the list then).
  */
 export function accumulateKept(kept: number[], current: readonly number[]): number[] {
   for (const id of current) if (kept.indexOf(id) < 0) kept.push(id);
@@ -88,7 +77,7 @@ export interface TileQuery {
   /** The Hidden view: only the hidden aircraft (never together with `favoritesOnly`). */
   hiddenOnly: boolean;
   hidden: readonly HiddenAircraft[];
-  /** `aircraftId`s shown although hidden, veiled (the gallery passes keptAircraftIds: its frozen ids and the favourites of now). */
+  /** `aircraftId`s shown although hidden, veiled (accumulateKept). */
   keepIds: readonly number[];
   search: string;
   /** Translation of the sim's keys (variant and livery titles may be `TT:` keys). */
@@ -137,12 +126,6 @@ export function visibleTiles(query: TileQuery): Tile[] {
 
 /** The gallery's filter: every aircraft, the favourite liveries (Favorites) or the hidden aircraft (Hidden). */
 export type GalleryFilter = 'all' | 'favorites' | 'hidden';
-
-/** The filter of the gallery's memory; a memory with both flags (never written) reads as Favorites. */
-export function readFilter(memory: { favoritesOnly?: boolean; hiddenOnly?: boolean }): GalleryFilter {
-  if (memory.favoritesOnly) return 'favorites';
-  return memory.hiddenOnly ? 'hidden' : 'all';
-}
 
 /** A click on the Favorites or Hidden button: that filter on and the other off, or off again when it was on. */
 export function toggleFilter(current: GalleryFilter, clicked: 'favorites' | 'hidden'): GalleryFilter {
@@ -216,11 +199,11 @@ export function sortTiles(tiles: readonly Tile[], sort: LocalSort, reversed: boo
 }
 
 /**
- * Favourites first, whatever the sort: the favourite aircraft (`favoriteIds`, from favoriteAircraftIds) and the
- * favourite livery tiles, then the others, each part in the order given. The gallery keeps the ids of its first
- * display while the screen stays, so that an aircraft whose livery gets a heart does not jump away under the mouse.
+ * The first aircraft of a list as the gallery's Model sort, A to Z, gives it, without the hidden ones (even with a
+ * favourite livery) nor those the user cannot fly; null when none is left. The sim's list may hold an empty entry.
  */
-export function favoritesFirst(tiles: readonly Tile[], favoriteIds: readonly number[]): Tile[] {
-  const isFavorite = (tile: Tile) => !!tile.livery || favoriteIds.indexOf(tile.item.aircraftId) >= 0;
-  return tiles.filter(isFavorite).concat(tiles.filter((tile) => !isFavorite(tile)));
+export function firstAircraft(items: readonly AircraftItem[], hidden: readonly HiddenAircraft[]): AircraftItem | null {
+  const candidates = items.filter((item) => !!item && item.isUsable && !isHidden(hidden, item)).map((item) => ({ item }));
+  const first = sortTiles(candidates, 'model', false)[0];
+  return first ? first.item : null;
 }

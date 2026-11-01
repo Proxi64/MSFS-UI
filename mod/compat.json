@@ -87,6 +87,8 @@
         "CurrentAircraft",
         "AircraftList",
         "FilteredCategory",
+        "SetAircraftCategoryFilter",
+        "UpdateAircraftList",
         "GetAircraftFromVariationId",
         "brandName",
         "modelName",

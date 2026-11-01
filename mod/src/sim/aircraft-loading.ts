@@ -37,6 +37,12 @@ const DIRECT_CHANGE_MS = 1500;
 const CHANGE_TIMEOUT_MS = 3000;
 /** Longest wait for the configurator's liveries to be those of the variant just loaded. */
 const LIVERIES_TIMEOUT_MS = 1500;
+/** Longest wait for the current aircraft to follow the configurator (under 530 ms measured on 1.9.21, 2026-11-02). */
+const CURRENT_TIMEOUT_MS = 3000;
+/** Longest wait for the aircraft list to hold something after it was asked again (278 ms at most measured on 1.9.21). */
+const LIST_TIMEOUT_MS = 3000;
+/** The sim's All tab (`Game.Aircraft.FilteredCategory`). */
+const ALL_CATEGORY = 'PLANETYPE_ALL';
 
 const aircraft = store.Game.Aircraft;
 const configurator = aircraft.Configurator;
@@ -69,12 +75,24 @@ async function recordFavoriteUse(variationId: string): Promise<void> {
 }
 
 /**
- * Loads the variant, then the livery `wanted` when given. The sim's list has one entry per modular aircraft (with its
- * current variant), and `GetAircraftFromVariationId` gives for its other variants a number that
- * `SetAircraftForConfigurator` does not load (seen on sim 1.9.18): the aircraft is then loaded and the variant chosen
- * (`SelectItem`).
+ * Loads the variant as the current aircraft, then the livery `wanted` when given. The configurator is first set on the
+ * current aircraft: a request of the aircraft it already holds changes nothing (measured on 1.9.21, 2026-11-02, with the
+ * ATR 72 in the configurator and the ATR 42 current). Fails, the aircraft as it was, when the sim does not follow.
  */
 export async function loadAircraft(variationId: string, wanted?: LiveryRef): Promise<void> {
+  const ready = await syncConfiguratorToCurrent();
+  if (!ready) throw new Error('the configurator cannot be set on the current aircraft');
+  const name = await setConfigurator(variationId, wanted);
+  log(`aircraft loaded: ${name}${wanted ? `, ${wanted.title}` : ''}`);
+}
+
+/**
+ * Sets the configurator, and with it the current aircraft, on the variant, then the livery `wanted` when given; the
+ * aircraft's name. The sim's list has one entry per modular aircraft (with its current variant), and
+ * `GetAircraftFromVariationId` gives for its other variants a number that `SetAircraftForConfigurator` does not load
+ * (seen on sim 1.9.18): the aircraft is then loaded and the variant chosen (`SelectItem`).
+ */
+async function setConfigurator(variationId: string, wanted?: LiveryRef): Promise<string> {
   const details = (await answerWithin(aircraft.GetAircraftFromVariationId.request(variationId), ANSWER_TIMEOUT_MS, 'the variant')) as AircraftRef | null;
   if (!details) throw new Error(`variant ${variationId} not found`);
   const configuratorIs = async (test: (ref: AircraftRef) => boolean) => {
@@ -106,19 +124,66 @@ export async function loadAircraft(variationId: string, wanted?: LiveryRef): Pro
     }
   }
 
+  const followed = await waitFor(() => currentIs(variationId), CURRENT_TIMEOUT_MS);
+  if (!followed) {
+    const current = (await answerWithin(aircraft.CurrentAircraft(), ANSWER_TIMEOUT_MS, 'the current aircraft')) as { variationId: string } | null;
+    throw new Error(`the current aircraft is still ${current ? current.variationId : '?'}, not ${variationId}`);
+  }
+
   if (wanted) {
-    // Right after a change of variant the configurator may still list the previous variant's liveries: they are read
-    // again until they are this variant's (matchLivery never takes another variant's).
-    let liveries: ConfiguratorLivery[] = [];
-    await waitFor(async () => {
-      liveries = await readArray<ConfiguratorLivery>(configurator.Liveries, 'the liveries');
-      return liveries.some((livery) => !!livery && variationOf(livery.id) === variationId);
-    }, LIVERIES_TIMEOUT_MS);
+    const liveries = await readLiveriesOf(variationId);
     const match = matchLivery(liveries, variationId, wanted);
     if (match && !match.isSelected) await answerWithin(configurator.SaveVariationId.request(match.id), ANSWER_TIMEOUT_MS, 'the change of livery');
     else if (!match) log(`livery "${wanted.title || wanted.dir}" not found for ${details.displayName}: the sim's livery is kept`);
   }
-  log(`aircraft loaded: ${details.displayName}${wanted ? `, ${wanted.title}` : ''}`);
+  return details.displayName;
+}
+
+async function currentIs(variationId: string): Promise<boolean> {
+  const current = (await answerWithin(aircraft.CurrentAircraft(), ANSWER_TIMEOUT_MS, 'the current aircraft')) as { variationId: string } | null;
+  return !!current && current.variationId === variationId;
+}
+
+/**
+ * The configurator's liveries. Right after a change of variant it may still list the previous variant's: they are read
+ * again until they are this variant's, for a bounded time (matchLivery never takes another variant's).
+ */
+export async function readLiveriesOf(variationId: string): Promise<ConfiguratorLivery[]> {
+  let liveries: ConfiguratorLivery[] = [];
+  await waitFor(async () => {
+    liveries = await readArray<ConfiguratorLivery>(configurator.Liveries, 'the liveries');
+    return liveries.some((livery) => !!livery && variationOf(livery.id) === variationId);
+  }, LIVERIES_TIMEOUT_MS);
+  return liveries;
+}
+
+/**
+ * Runs `use` on the aircraft of the All tab, wherever the sim stands. The list is that of the category tab the sim
+ * remembers (empty: every aircraft), which is put back afterwards, its list asked again, so that the user's tab has not
+ * changed. Meant for outside the aircraft selection, whose gallery would follow the list.
+ */
+export async function withAllAircraft<Item, Result>(use: (items: Item[]) => Promise<Result>): Promise<Result> {
+  const category = (await answerWithin(aircraft.FilteredCategory(), ANSWER_TIMEOUT_MS, 'the category tab')) as string | null;
+  const otherTab = !!category && category !== ALL_CATEGORY;
+  if (otherTab) await answerWithin(aircraft.SetAircraftCategoryFilter.request(ALL_CATEGORY), ANSWER_TIMEOUT_MS, 'the category tab');
+  try {
+    await answerWithin(aircraft.UpdateAircraftList.request(''), ANSWER_TIMEOUT_MS, 'the aircraft list');
+    let items: Item[] = [];
+    await waitFor(async () => {
+      items = await readArray<Item>(aircraft.AircraftList, 'the aircraft list');
+      return items.length > 0;
+    }, LIST_TIMEOUT_MS);
+    return await use(items);
+  } finally {
+    if (otherTab) {
+      // A failure here must not take the place of the first one.
+      const back = async () => {
+        await answerWithin(aircraft.SetAircraftCategoryFilter.request(category as string), ANSWER_TIMEOUT_MS, 'the category tab');
+        await answerWithin(aircraft.UpdateAircraftList.request(''), ANSWER_TIMEOUT_MS, 'the aircraft list');
+      };
+      await back().catch((error: unknown) => logError(`the category tab ${category} could not be put back`, error));
+    }
+  }
 }
 
 /**
@@ -135,7 +200,7 @@ export async function syncConfiguratorToCurrent(): Promise<boolean> {
   if (details && details.variationId === current.variationId) return true;
   // Going through the list entry and `SelectItem` puts the first livery back: the current one is applied again.
   const livery = current.thumbnailPath ? { dir: liveryDirectory(current.thumbnailPath), title: '', image: current.thumbnailPath } : undefined;
-  await loadAircraft(current.variationId, livery);
+  await setConfigurator(current.variationId, livery);
   const after = (await answerWithin(configurator.Details(), ANSWER_TIMEOUT_MS, 'the configurator')) as { variationId: string } | null;
   return !!after && after.variationId === current.variationId;
 }

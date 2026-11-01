@@ -122,10 +122,25 @@
     {
       "id": "aircraftGallery",
       "title": "Aircraft gallery and list",
-      "description": "Replaces the aircraft list with a gallery or a compact list beside the liveries of the current aircraft, or with large tiles scrolling sideways (Showcase), with favourite liveries (their aircraft first), a filter and sorts by model, manufacturer and studio.",
+      "description": "Replaces the aircraft list with a gallery or a compact list beside the liveries of the current aircraft, or with large tiles scrolling sideways (Showcase), with favourite liveries, a filter and sorts by model, manufacturer and studio.",
       "screen": "Aircraft selection",
       "enabledByDefault": true,
-      "options": []
+      "options": [
+        {
+          "id": "rememberLayout",
+          "type": "boolean",
+          "title": "Remember my layout",
+          "description": "Brings the last view, sort and sort direction back when the sim starts. Off, every start of the sim opens Showcase sorted by Model, A to Z.",
+          "default": true
+        },
+        {
+          "id": "rememberPlane",
+          "type": "boolean",
+          "title": "Remember my last plane",
+          "description": "Keeps the sim's last aircraft when the sim starts. Off, the first time Free Flight shows after the sim starts, the first aircraft of the All tab (sorted by Model, A to Z, hidden aircraft left out) is selected with its first livery.",
+          "default": true
+        }
+      ]
     },
     {
       "id": "freeflightFavorites",

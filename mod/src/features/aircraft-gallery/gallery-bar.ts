@@ -20,7 +20,7 @@ import { createTextField, type TextField } from '../../sim/text-field.ts';
 import { barColumns, shareTabs, type DefaultGrid } from './default-grid.ts';
 import type { View } from './gallery-cells.ts';
 import { shortCount } from './livery-column.ts';
-import type { GalleryFilter } from './tiles.ts';
+import type { GalleryFilter, LocalSort } from './tiles.ts';
 
 const SORT_ICON = 'coui://html_UI/VFS/components/shared/resources/Icons/General/Sort.svg';
 /** Narrowest search before the count drops its total, in layout units (its placeholder's first words stay readable). */
@@ -32,11 +32,11 @@ const VIEWS: { view: View; label: string }[] = [
   { view: 'showcase', label: 'Showcase' },
 ];
 
-/** The sorts as the dropdown shows them: the choices offered, the one chosen (-1: none), the sort remembered. */
+/** The sorts as the dropdown shows them: the choices offered, the one chosen, its direction. */
 export interface SortView {
-  choices: { id: string; label: string }[];
+  choices: { id: LocalSort; label: string }[];
   current: number;
-  sort: { reversed: boolean } | null;
+  reversed: boolean;
 }
 
 /** What the bar shows, read from the gallery whenever it draws. */
@@ -52,7 +52,7 @@ export interface BarEvents {
   filter(clicked: 'favorites' | 'hidden'): void;
   reverse(): void;
   view(view: View): void;
-  sort(id: string): void;
+  sort(id: LocalSort): void;
 }
 
 /**
@@ -174,15 +174,11 @@ export class GalleryBar {
         coma: '',
         selectedCallback: () => this.events.sort(choice.id),
       }));
-      const current = sorts.current >= 0 ? items[sorts.current] : undefined;
-      if (manipulator) manipulator.setData(items, current);
+      if (manipulator) manipulator.setData(items, items[sorts.current]);
       // The list's height, in layout units (sim/dropdown-list.ts).
       dropdown.set('List_Size', String(Math.max(1, items.length) * DROPDOWN_ITEM + DROPDOWN_PADDING));
     }
-    if (this.reverseButton) {
-      this.reverseButton.select(!!sorts.sort && sorts.sort.reversed);
-      this.reverseButton.disable(!sorts.sort);
-    }
+    if (this.reverseButton) this.reverseButton.select(sorts.reversed);
   }
 
   /** The count's two texts, written only when they change. */

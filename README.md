@@ -16,7 +16,7 @@ Free Flight: *Search location* and the favourite liveries on the left; on the ri
 
 ![Free Flight with the favourites and the weather and time bar](docs/images/free-flight.png)
 
-Aircraft selection: the gallery, the list and the Showcase view, and the favourites first; the setup panel on the left (variant, livery, tail number). Gallery and List show the current aircraft's liveries as large tiles next to the aircraft; in Showcase the panel shows them itself, the current one large and the others in a grid.
+Aircraft selection: the gallery, the list and the Showcase view; the setup panel on the left (variant, livery, tail number). Gallery and List show the current aircraft's liveries as large tiles next to the aircraft; in Showcase the panel shows them itself, the current one large and the others in a grid.
 
 ![Aircraft gallery](docs/images/gallery.png)
 

@@ -1,5 +1,5 @@
 // The aircraft gallery and list in the aircraft selection, in place of the sim's grid (right block): search (name,
-// publisher, variant), favourites (an aircraft with a favourite livery, first), hidden aircraft (the eye in each aircraft
+// publisher, variant), favourites (a filter: one tile per favourite livery), hidden aircraft (the eye in each aircraft
 // tile's corner; the Hidden filter shows them), three views of the same tiles (Gallery, a compact List, and Showcase:
 // the layout of the sim's own grid, two rows of large tiles scrolling horizontally), the sorts by model, manufacturer and
 // studio. Made of the sim's components: the bar (gallery-bar.ts), the list of tiles (gallery-cells.ts), the Showcase view's whole columns
@@ -14,7 +14,6 @@ import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { layoutWidth } from '../../core/virtual-list.ts';
-import { loadData, saveData } from '../../core/storage.ts';
 import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, type HiddenAircraft } from '../../sim/hidden.ts';
@@ -29,16 +28,13 @@ import { columnOf, defaultGrid } from './default-grid.ts';
 import { GalleryBar, type SortView } from './gallery-bar.ts';
 import { axisOf, GalleryCells, type View } from './gallery-cells.ts';
 import { LiveryColumn, type ColumnRect } from './liveries.ts';
-import { galleryMemoryFrom, type GalleryMemory } from './memory.ts';
+import type { GallerySession } from './memory.ts';
 import { AIRCRAFT_COLUMNS, aircraftEdges, aircraftRowWidth, aircraftTileSize, galleryBodyClass, lastColumnSpan, splitColumns } from './livery-column.ts';
 import {
   accumulateKept,
   emptyMessage,
   favoriteAircraftIds,
-  favoritesFirst,
-  keptAircraftIds,
   normalize,
-  readFilter,
   sortTiles,
   toggleFilter,
   visibleTiles,
@@ -60,7 +56,6 @@ const SORTS: SortChoice[] = [
   { id: 'studio', label: () => 'Studio' },
 ];
 
-const MEMORY_KEY = 'AIRCRAFT_GALLERY';
 /**
  * Around the tiles, in layout units (aircraft-gallery.css): TILE_SIDE on each side of a tile, TILE_GAP under each row;
  * the side by side layout's two columns TILE_GAP apart.
@@ -104,18 +99,14 @@ export class Gallery {
   private items: AircraftItem[] = [];
   /** Favourite liveries (their hearts: setup panel, livery column, Favorites tiles): an aircraft that has some is a favourite. */
   private favoriteLiveries: FavoriteLivery[] = loadFavoriteLiveries();
-  /**
-   * The favourite aircraft put first (`aircraftId`), as they were when the order was set: kept while the screen stays,
-   * so that a heart clicked does not move the tiles; set again on a new sort, search or filter (resetOrder).
-   */
-  private favoriteIds: number[] | null = null;
-  /** The hidden aircraft shown veiled since the order was set (the union of keptAircraftIds at each drawing): one stays even when its last favourite livery goes. */
+  /** The hidden aircraft shown veiled, for a favourite livery, since the last new sort, search or filter (resetKept): one stays even when its last favourite livery goes. */
   private keptIds: number[] = [];
   /** The aircraft hidden by the user (their eye): out of the gallery, unless kept veiled for their favourite liveries. */
   private hidden: HiddenAircraft[] = loadHidden();
   /** The aircraft under the mouse (`aircraftId`), whose name the left column's header shows; null: the selected one. */
   private hoveredId: number | null = null;
-  private readonly memory: GalleryMemory = galleryMemoryFrom(loadData<unknown>(MEMORY_KEY, null));
+  /** The view, the sort and the filter, kept from one opening of the screen to the next. */
+  private readonly session: GallerySession;
   /** Current aircraft (variant and livery, as `liveryKey`): selection of the livery tiles. */
   private current = { variationId: '', livery: '' };
   private loading = false;
@@ -128,15 +119,16 @@ export class Gallery {
    */
   private barUnits = 0;
 
-  constructor(page: Manipulator, scope: Scope) {
+  constructor(page: Manipulator, scope: Scope, session: GallerySession) {
     this.page = page;
     this.scope = scope;
+    this.session = session;
     this.bar = new GalleryBar(
       scope,
-      { view: () => this.memory.view, filter: () => readFilter(this.memory), sort: () => this.sortView() },
+      { view: () => this.session.memory.view, filter: () => this.session.filter, sort: () => this.sortView() },
       {
         search: () => {
-          this.resetOrder();
+          this.resetKept();
           this.render();
           this.scrollToTop();
         },
@@ -151,7 +143,7 @@ export class Gallery {
       this.root,
       this.body,
       {
-        view: () => this.memory.view,
+        view: () => this.session.memory.view,
         current: () => this.current,
         hidden: () => this.hidden,
         bodyClass: (view) => this.bodyClass(view),
@@ -194,9 +186,9 @@ export class Gallery {
 
     const reload = () => this.scheduleReload();
     watch(scope, aircraft.AircraftList, reload);
-    // Another category tab is another list: its favourites are put first again.
+    // Another category tab is another list.
     watch(scope, aircraft.FilteredCategory, () => {
-      this.resetOrder();
+      this.resetKept();
       reload();
     });
     watch(scope, aircraft.CurrentAircraft, reload);
@@ -211,8 +203,6 @@ export class Gallery {
       this.hidden = loadHidden();
       if (this.items.length > 0) this.render();
     });
-    // A remembered sort that is not one of the gallery's is forgotten.
-    if (this.memory.sort && !this.sortChoice()) this.memory.sort = null;
     this.bar.renderSort();
   }
 
@@ -222,25 +212,22 @@ export class Gallery {
     this.root.appendChild(this.bar.element);
     this.bar.build();
     this.root.appendChild(this.body);
-    this.cells.makeList(axisOf(this.memory.view));
+    this.cells.makeList(axisOf(this.session.memory.view));
   }
 
   /** Favorites or Hidden clicked, in any view: that filter on and the other off, or off again; a new list starts from its start. */
   private setFilter(clicked: 'favorites' | 'hidden'): void {
-    const filter = toggleFilter(readFilter(this.memory), clicked);
-    this.memory.favoritesOnly = filter === 'favorites';
-    this.memory.hiddenOnly = filter === 'hidden';
-    this.saveMemory();
-    this.resetOrder();
+    this.session.filter = toggleFilter(this.session.filter, clicked);
+    this.resetKept();
     this.render();
     this.scrollToTop();
   }
 
   /** Another view: the same tiles in its layout, the selected one in view. */
   private setView(view: View): void {
-    this.memory.view = view;
+    this.session.memory.view = view;
     this.tellView();
-    this.saveMemory();
+    this.session.save();
     this.render();
     this.scrollToSelected();
   }
@@ -248,42 +235,38 @@ export class Gallery {
   // ----- Sort -----
   // The sorts are made on the tiles when they are drawn (render); the sim's own list is never reordered.
 
-  /** The remembered sort, when it is one of the gallery's. */
-  private sortChoice(): SortChoice | undefined {
-    const sort = this.memory.sort;
-    return sort ? SORTS.filter((choice) => choice.id === sort.option)[0] : undefined;
-  }
-
   /** The sorts as the bar's dropdown shows them. */
   private sortView(): SortView {
-    const choices = SORTS.map((choice) => ({ id: choice.id, label: choice.label() }));
-    const choice = this.sortChoice();
-    return { choices, current: choice ? SORTS.indexOf(choice) : -1, sort: this.memory.sort || null };
+    const sort = this.session.memory.sort;
+    return {
+      choices: SORTS.map((choice) => ({ id: choice.id, label: choice.label() })),
+      current: SORTS.map((choice) => choice.id).indexOf(sort.option),
+      reversed: sort.reversed,
+    };
   }
 
-  private chooseSort(option: string): void {
-    this.memory.sort = { option, reversed: this.memory.sort ? this.memory.sort.reversed : false };
+  private chooseSort(option: LocalSort): void {
+    this.session.memory.sort.option = option;
     this.sortChanged();
   }
 
-  /** The sort's direction button: the other direction, when a sort is chosen. */
+  /** The sort's direction button: the other direction. */
   private reverseSort(): void {
-    if (!this.memory.sort) return;
-    this.memory.sort.reversed = !this.memory.sort.reversed;
+    const sort = this.session.memory.sort;
+    sort.reversed = !sort.reversed;
     this.sortChanged();
   }
 
   private sortChanged(): void {
-    this.saveMemory();
-    this.resetOrder();
+    this.session.save();
+    this.resetKept();
     this.bar.renderSort();
     this.render();
     this.scrollToTop();
   }
 
-  /** The favourites put first are taken again at the next drawing (a new sort, search or filter). */
-  private resetOrder(): void {
-    this.favoriteIds = null;
+  /** The hidden aircraft kept veiled are taken again at the next drawing (a new sort, search or filter). */
+  private resetKept(): void {
     this.keptIds = [];
   }
 
@@ -321,7 +304,7 @@ export class Gallery {
     style.width = `${rect.width}px`;
     style.top = `${rect.top - origin.top}px`;
     style.height = `${rect.height}px`;
-    if (this.memory.view === 'showcase') {
+    if (this.session.memory.view === 'showcase') {
       this.layoutGrid(rect, unit);
       return;
     }
@@ -363,7 +346,7 @@ export class Gallery {
     this.bar.placeWidth('');
     this.bar.layout({ start: edges, filters: lastColumnSpan(tile, TILE_SIDE * unit), end: { left: halves.left + gap, width: halves.right } }, unit);
     const top = Math.round(this.body.getBoundingClientRect().top - rect.top);
-    this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.memory.view === 'list' });
+    this.placeLiveries({ left: halves.left + gap, top, width: halves.right, height: Math.round(rect.height) - top, list: this.session.memory.view === 'list' });
   }
 
   /**
@@ -406,7 +389,7 @@ export class Gallery {
    * and took the Showcase form for that time when the column, hidden with the screen, cleared the flag.
    */
   private tellView(): void {
-    setLiveriesInGallery(this.memory.view !== 'showcase');
+    setLiveriesInGallery(this.session.memory.view !== 'showcase');
   }
 
   private showStockGrid(show: boolean): void {
@@ -446,7 +429,7 @@ export class Gallery {
    * scrolls along x (a change of axis replaces the list first, its tiles parked).
    */
   private render(): void {
-    const view = this.memory.view;
+    const { view, sort } = this.session.memory;
     const axis = axisOf(view);
     if (axis !== this.cells.axis) {
       this.cells.remake(axis);
@@ -457,12 +440,10 @@ export class Gallery {
     this.bar.render();
     this.layout();
 
-    // Favourites always come first, whatever the sort, as they were when the order was set; a
-    // hidden aircraft among them stays, veiled, until the order is set again, and one whose livery is given a heart since
-    // shows at once, veiled, in its place (keptAircraftIds).
-    if (this.favoriteIds === null && this.items.length > 0) this.favoriteIds = favoriteAircraftIds(this.items, this.favoriteLiveries);
-    accumulateKept(this.keptIds, keptAircraftIds(this.favoriteIds, this.items, this.favoriteLiveries));
-    const filter = readFilter(this.memory);
+    // The tiles follow the sort, with or without a favourite livery. A hidden aircraft with one shows, veiled, in its
+    // place, at once when its livery is given a heart, and stays until a new sort, search or filter (accumulateKept).
+    accumulateKept(this.keptIds, favoriteAircraftIds(this.items, this.favoriteLiveries));
+    const filter = this.session.filter;
     const search = this.bar.searchValue();
     const shown = visibleTiles({
       items: this.items,
@@ -474,9 +455,7 @@ export class Gallery {
       search,
       translate,
     });
-    const choice = this.sortChoice();
-    const sorted = choice ? sortTiles(shown, choice.id, !!this.memory.sort && this.memory.sort.reversed) : shown;
-    const tiles = favoritesFirst(sorted, this.favoriteIds || []);
+    const tiles = sortTiles(shown, sort.option, sort.reversed);
     // The tiles shown (veiled ones included) out of the aircraft of the category tab.
     this.bar.setCount(String(tiles.length), ` / ${this.items.length}`);
     // The aircraft under the mouse has left (hidden, filtered out): the left column's header shows the selected one again.
@@ -557,9 +536,5 @@ export class Gallery {
     if (setupPanelShown()) return;
     const content = this.page.elt.querySelector(CONTENT);
     if (content) content.dispatchEvent(new CustomEvent('tileHover', { detail: item, bubbles: true }));
-  }
-
-  private saveMemory(): void {
-    saveData(MEMORY_KEY, this.memory);
   }
 }

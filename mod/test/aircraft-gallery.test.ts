@@ -4,19 +4,18 @@ import {
   compareNatural,
   emptyMessage,
   favoriteAircraftIds,
-  favoritesFirst,
+  firstAircraft,
   hasFavoriteLivery,
   accumulateKept,
-  keptAircraftIds,
   normalize,
-  readFilter,
   sortTiles,
   toggleFilter,
   visibleTiles,
   type AircraftItem,
 } from '../src/features/aircraft-gallery/tiles.ts';
 import type { FavoriteLivery } from '../src/sim/favorites.ts';
-import { galleryMemoryFrom } from '../src/features/aircraft-gallery/memory.ts';
+import { galleryMemoryFrom, GallerySession } from '../src/features/aircraft-gallery/memory.ts';
+import { setStorageBackend, type StorageBackend } from '../src/core/storage.ts';
 import { aircraftEdges, aircraftRowWidth, aircraftTileSize, lastColumnSpan, galleryBodyClass, liveryFit, liveryTail, liveryTileSize, shortCount, splitColumns } from '../src/features/aircraft-gallery/livery-column.ts';
 
 let nextAircraftId = 1;
@@ -104,35 +103,26 @@ describe('hidden aircraft', () => {
     assert.deepEqual(tiles.map((tile) => `${tile.item.variationId}:${!!tile.veiled}`), ['sf50-exec:true', 'c172:false', 'cap4:false']);
   });
 
-  it('keeps a hidden aircraft veiled when its favourite was added after the order was set', () => {
-    // The order was set without favourites (frozen ids empty); a livery of the hidden Vision Jet got its heart since.
+  it('keeps a hidden aircraft veiled when its livery gets a heart', () => {
     const liveries = [livery('sf50-exec', 'Alpine')];
-    const tiles = query({ liveries, keepIds: keptAircraftIds([], ITEMS, liveries) });
+    const tiles = query({ liveries, keepIds: accumulateKept([], favoriteAircraftIds(ITEMS, liveries)) });
     const vision = tiles.filter((tile) => tile.item.variationId === 'sf50-exec')[0];
     assert.ok(vision, 'the hidden aircraft is shown');
     assert.equal(vision.veiled, true);
   });
 
-  it('keeps a hidden aircraft veiled after its last heart goes, until the order is set again', () => {
+  it('keeps a hidden aircraft veiled after its last heart goes, until the list is emptied', () => {
     const kept: number[] = [];
-    const hearted = [livery('sf50-exec', 'Alpine')];
-    accumulateKept(kept, keptAircraftIds([], ITEMS, hearted));
+    accumulateKept(kept, favoriteAircraftIds(ITEMS, [livery('sf50-exec', 'Alpine')]));
     // The heart is removed: the aircraft stays, veiled.
-    accumulateKept(kept, keptAircraftIds([], ITEMS, []));
+    accumulateKept(kept, favoriteAircraftIds(ITEMS, []));
     const vision = query({ liveries: [], keepIds: kept }).filter((tile) => tile.item.variationId === 'sf50-exec')[0];
     assert.ok(vision, 'the hidden aircraft is still shown');
     assert.equal(vision.veiled, true);
-    // The order set again: the list is emptied and the aircraft leaves.
+    // A new sort, search or filter: the list is emptied and the aircraft leaves.
     kept.length = 0;
-    accumulateKept(kept, keptAircraftIds(null, ITEMS, []));
+    accumulateKept(kept, favoriteAircraftIds(ITEMS, []));
     assert.equal(query({ liveries: [], keepIds: kept }).some((tile) => tile.item.variationId === 'sf50-exec'), false);
-  });
-
-  it('keeps the aircraft frozen with the order and those of the favourites now, once each', () => {
-    const liveries = [livery('sf50-exec', 'Alpine')];
-    // The Cessna was a favourite when the order was set: it stays until the order is set again.
-    assert.deepEqual(keptAircraftIds([ITEMS[1]!.aircraftId, ITEMS[0]!.aircraftId], ITEMS, liveries), [ITEMS[1]!.aircraftId, ITEMS[0]!.aircraftId]);
-    assert.deepEqual(keptAircraftIds(null, ITEMS, liveries), [ITEMS[0]!.aircraftId]);
   });
 
   it('shows only the hidden aircraft in the Hidden view, not veiled, one tile per aircraft', () => {
@@ -156,14 +146,6 @@ describe('hidden aircraft', () => {
 });
 
 describe('gallery filter', () => {
-  it('reads the remembered filter, Favorites winning when both were stored', () => {
-    assert.equal(readFilter({}), 'all');
-    assert.equal(readFilter({ favoritesOnly: false, hiddenOnly: false }), 'all');
-    assert.equal(readFilter({ favoritesOnly: true }), 'favorites');
-    assert.equal(readFilter({ hiddenOnly: true }), 'hidden');
-    assert.equal(readFilter({ favoritesOnly: true, hiddenOnly: true }), 'favorites');
-  });
-
   it('turns one filter on and the other off, and the current one off on a second click', () => {
     assert.equal(toggleFilter('all', 'hidden'), 'hidden');
     assert.equal(toggleFilter('all', 'favorites'), 'favorites');
@@ -265,21 +247,35 @@ describe('sortTiles', () => {
   });
 });
 
-describe('favoritesFirst', () => {
-  it('puts the favourite aircraft given and the livery tiles first, keeping the order of each part', () => {
-    const items = [aircraft('a', 'A', 'S'), aircraft('b', 'B', 'S'), aircraft('c', 'C', 'S'), aircraft('d', 'D', 'S')];
-    const tiles = [{ item: items[0]! }, { item: items[1]! }, { item: items[2]!, livery: livery('c', 'Red') }, { item: items[3]! }];
-    const sorted = favoritesFirst(tiles, [items[3]!.aircraftId]);
-    assert.deepEqual(sorted.map((tile) => tile.item.variationId), ['c', 'd', 'a', 'b']);
+describe('the aircraft list follows the sort', () => {
+  it('leaves an aircraft with a favourite livery in its place', () => {
+    const items = [aircraft('c', 'C', 'S'), aircraft('a', 'A', 'S'), aircraft('b', 'B', 'S')];
+    const liveries = [livery('c', 'Red')];
+    const shown = visibleTiles({ items, liveries, favoritesOnly: false, search: '', hiddenOnly: false, hidden: [], keepIds: favoriteAircraftIds(items, liveries), translate: identity });
+    assert.deepEqual(sortTiles(shown, 'model', false).map((tile) => tile.item.variationId), ['a', 'b', 'c']);
+  });
+});
+
+describe('firstAircraft', () => {
+  const named = (variationId: string, displayName: string, usable = true) => Object.assign(aircraft(variationId, displayName, 'Studio'), { isUsable: usable });
+  const items = [named('c172', 'Cessna 172'), named('atr72', 'ATR 72-600'), named('atr42', 'ATR 42-600'), named('b737', 'Boeing 737')];
+
+  it('is the first of the list by model, A to Z, numbers in natural order', () => {
+    assert.equal(firstAircraft(items, [])!.variationId, 'atr42');
   });
 
-  it('keeps an aircraft in its place while the favourites given are those of an earlier order', () => {
-    const items = [aircraft('a', 'A', 'S'), aircraft('b', 'B', 'S')];
-    const tiles = items.map((item) => ({ item }));
-    // A livery of b made a favourite since the order was set: b does not jump to the top under the mouse.
-    const earlier = favoriteAircraftIds(items, []);
-    assert.deepEqual(favoritesFirst(tiles, earlier).map((tile) => tile.item.variationId), ['a', 'b']);
-    assert.deepEqual(favoritesFirst(tiles, favoriteAircraftIds(items, [livery('b', 'Red')])).map((tile) => tile.item.variationId), ['b', 'a']);
+  it('leaves the hidden aircraft out, even with a favourite livery', () => {
+    assert.equal(firstAircraft(items, [{ displayName: 'ATR 42-600', creator: 'Studio' }])!.variationId, 'atr72');
+  });
+
+  it('leaves out an aircraft the user cannot fly', () => {
+    assert.equal(firstAircraft([named('a', 'A', false), named('b', 'B')], [])!.variationId, 'b');
+  });
+
+  it('gives null when none is left, and skips an empty entry of the sim', () => {
+    assert.equal(firstAircraft([], []), null);
+    assert.equal(firstAircraft([named('a', 'A', false)], []), null);
+    assert.equal(firstAircraft([null as unknown as AircraftItem, named('a', 'A')], [])!.variationId, 'a');
   });
 });
 
@@ -403,27 +399,79 @@ describe('gallery body class', () => {
   });
 });
 describe('the gallery memory in the storage', () => {
+  const DEFAULTS = { view: 'showcase', sort: { option: 'model', reversed: false } };
+
   it('reads the stored stock view as Showcase', () => {
-    assert.equal(galleryMemoryFrom({ view: 'stock', favoritesOnly: false }).view, 'showcase');
-    assert.equal(galleryMemoryFrom({ view: 'showcase', favoritesOnly: false }).view, 'showcase');
+    assert.equal(galleryMemoryFrom({ view: 'stock' }).view, 'showcase');
+    assert.equal(galleryMemoryFrom({ view: 'showcase' }).view, 'showcase');
   });
 
-  it('keeps each field that has its type', () => {
-    const stored = { view: 'list', favoritesOnly: true, hiddenOnly: false, sort: { option: 'studio', reversed: true } };
+  it('keeps the view, the sort and its direction', () => {
+    const stored = { view: 'list', sort: { option: 'studio', reversed: true } };
     assert.deepEqual(galleryMemoryFrom(stored), stored);
+  });
+
+  it('drops the filters stored by earlier versions', () => {
+    assert.deepEqual(galleryMemoryFrom({ view: 'gallery', favoritesOnly: true, hiddenOnly: true, sort: { option: 'studio', reversed: false } }), {
+      view: 'gallery',
+      sort: { option: 'studio', reversed: false },
+    });
   });
 
   it('reads the earlier sorts Name and Max range as Model, keeping the direction', () => {
     for (const option of ['name', 'TT:MENU.NAME', 'maxRange', 'TT:MENU.ACPROPUI_MAX_RANGE']) {
-      assert.deepEqual(galleryMemoryFrom({ view: 'list', favoritesOnly: false, sort: { option, reversed: true } }).sort, { option: 'model', reversed: true }, option);
+      assert.deepEqual(galleryMemoryFrom({ view: 'list', sort: { option, reversed: true } }).sort, { option: 'model', reversed: true }, option);
     }
   });
 
-  it('gives the Gallery view without filter or sort for a wrong value, and drops what it does not know', () => {
-    assert.deepEqual(galleryMemoryFrom({ view: 'grid', favoritesOnly: 'yes', hiddenOnly: 1, sort: { option: 3 }, lastView: 'stock' }), {
-      view: 'gallery',
-      favoritesOnly: false,
+  it('gives Showcase and Model, A to Z, to a new user and for a wrong value', () => {
+    for (const stored of [null, [], 'list']) assert.deepEqual(galleryMemoryFrom(stored), DEFAULTS);
+    assert.deepEqual(galleryMemoryFrom({ view: 'grid', sort: { option: 3 }, lastView: 'stock' }), DEFAULTS);
+    assert.deepEqual(galleryMemoryFrom({ view: 'list', sort: null }), { view: 'list', sort: DEFAULTS.sort });
+  });
+});
+
+describe('the gallery session', () => {
+  const KEY = 'MSFS_UI_AIRCRAFT_GALLERY';
+  const withBackend = (initial: unknown, test: (data: Map<string, string>) => void) => {
+    const data = new Map<string, string>(initial === undefined ? [] : [[KEY, JSON.stringify(initial)]]);
+    const backend: StorageBackend = { kind: 'vault', get: (key) => data.get(key), set: (key, value) => void data.set(key, value), remove: (key) => void data.delete(key) };
+    setStorageBackend(backend);
+    try {
+      test(data);
+    } finally {
+      setStorageBackend(null);
+    }
+  };
+  const STORED = { view: 'gallery', favoritesOnly: true, sort: { option: 'studio', reversed: true } };
+
+  it('starts a new user in Showcase, Model, A to Z, without a filter', () => {
+    withBackend(undefined, () => {
+      const session = new GallerySession(true);
+      assert.deepEqual(session.memory, { view: 'showcase', sort: { option: 'model', reversed: false } });
+      assert.equal(session.filter, 'all');
     });
-    for (const stored of [null, [], 'list']) assert.deepEqual(galleryMemoryFrom(stored), { view: 'gallery', favoritesOnly: false });
+  });
+
+  it('remembers the layout: read back, saved without the filter', () => {
+    withBackend(STORED, (data) => {
+      const session = new GallerySession(true);
+      assert.equal(session.memory.view, 'gallery');
+      assert.equal(session.filter, 'all', 'a stored filter is not read');
+      session.memory.view = 'list';
+      session.filter = 'hidden';
+      session.save();
+      assert.deepEqual(JSON.parse(data.get(KEY)!), { view: 'list', sort: { option: 'studio', reversed: true } });
+    });
+  });
+
+  it('without the option, starts from the defaults and writes nothing, what is stored staying as it was', () => {
+    withBackend(STORED, (data) => {
+      const session = new GallerySession(false);
+      assert.deepEqual(session.memory, { view: 'showcase', sort: { option: 'model', reversed: false } });
+      session.memory.view = 'list';
+      session.save();
+      assert.deepEqual(JSON.parse(data.get(KEY)!), STORED);
+    });
   });
 });

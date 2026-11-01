@@ -9,3 +9,6 @@
  * rounded down, as the engine draws the other gaps.
  */
 export const GROUP_GAP = 24;
+
+/** The sim's Flight Conditions widget on Free Flight: shown (`isShown`) once the screen is really on display. */
+export const FLIGHT_CONDITIONS_WIDGET = '[name="Flight_Conditions_History_Widget"]';

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import { overflows, rowCount, statisticsRoom, variantsHeight, variantsPerRow } from '../src/features/aircraft-setup/setup-layout.ts';
 import { bottomColumns, columnExtra, gridCell, gridReveal, panelHasRoom, rowNeed, sharedColumns, showcaseColumnExtra, showcasePlaces } from '../src/features/aircraft-setup/showcase-layout.ts';
 import { LiverySends, LiveryStepper } from '../src/features/aircraft-setup/livery-stepper.ts';
-import { orderLiveries } from '../src/sim/livery-order.ts';
+import { firstAvailableLivery, orderLiveries } from '../src/sim/livery-order.ts';
 import {
   favoriteLiveriesOf,
   findFavoriteLivery,
@@ -17,6 +17,20 @@ import {
 import { cleanTail } from '../src/sim/registration.ts';
 
 const livery = (id: string) => ({ id });
+
+describe('firstAvailableLivery', () => {
+  const on = (id: string, isDisabled = false) => ({ id, isDisabled });
+  it("is the first of the panel's order: favourites first, each part in the sim's order", () => {
+    assert.equal(firstAvailableLivery([on('v1:0'), on('v1:1'), on('v1:2')], () => false)!.id, 'v1:0');
+    assert.equal(firstAvailableLivery([on('v1:0'), on('v1:1'), on('v1:2')], (item) => item.id === 'v1:2')!.id, 'v1:2');
+  });
+  it('skips an unavailable livery; null when none is left', () => {
+    assert.equal(firstAvailableLivery([on('v1:0', true), on('v1:1')], () => false)!.id, 'v1:1');
+    assert.equal(firstAvailableLivery([on('v1:0', true), on('v1:1')], (item) => item.id === 'v1:0')!.id, 'v1:1');
+    assert.equal(firstAvailableLivery([on('v1:0', true)], () => false), null);
+    assert.equal(firstAvailableLivery([], () => false), null);
+  });
+});
 
 describe('orderLiveries', () => {
   const favorites = new Set(['v1:2', 'v1:4']);

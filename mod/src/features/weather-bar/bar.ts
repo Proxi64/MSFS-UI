@@ -12,7 +12,7 @@ import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import { createComponent } from '../../sim/components.ts';
 import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
-import { GROUP_GAP } from '../../sim/freeflight-layout.ts';
+import { FLIGHT_CONDITIONS_WIDGET, GROUP_GAP } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
 import { store, watch, type TimeInfo } from '../../sim/store.ts';
 import { GAP } from './bar-layout.ts';
@@ -28,7 +28,6 @@ import { TimeSection } from './time-section.ts';
 const MEMORY_KEY = 'WEATHER_BAR';
 /** Longest wait for a request of the restore. */
 const WEATHER_TIMEOUT_MS = 4000;
-const WIDGET = '[name="Flight_Conditions_History_Widget"]';
 /** The panels the map buttons open (legend, map layers, map display): the sim draws them where the bar is. */
 const MAP_PANELS = ['[name="Worldmap_Filters_Legend"]', '[name="Worldmap_Filters_Layers"]', '[name="Worldmap_Filters_Display"]'];
 
@@ -166,7 +165,7 @@ export class WeatherBar {
    * takes the place as in the sim: the bar and its tabs are hidden while it is open, the card back in its own place.
    */
   private layout(): void {
-    const anchor = this.page.elt.querySelector(WIDGET);
+    const anchor = this.page.elt.querySelector(FLIGHT_CONDITIONS_WIDGET);
     if (!isShown(anchor) || MAP_PANELS.some((selector) => isOnScreen(this.page.elt.querySelector<HTMLElement>(selector)))) {
       this.panel.style.display = 'none';
       this.column.hide();

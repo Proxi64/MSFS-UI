@@ -36,3 +36,8 @@ export function orderLiveries<T extends { id: string }>(
   const ordered = items.map((item, at) => ({ item, at })).sort((a, b) => rank(a.item) - rank(b.item) || a.at - b.at);
   return { items: ordered.map((entry) => entry.item), order, reordered };
 }
+
+/** The first livery of the order `orderLiveries` sets, an unavailable one left out; null when none is left. */
+export function firstAvailableLivery<T extends { id: string; isDisabled?: boolean }>(items: readonly T[], isFavorite: (item: T) => boolean): T | null {
+  return orderLiveries(items, isFavorite, null).items.filter((item) => !item.isDisabled)[0] || null;
+}
