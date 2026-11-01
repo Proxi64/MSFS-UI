@@ -26,7 +26,7 @@ import type { GalleryFilter } from './tiles.ts';
 const SORT_ICON = 'coui://html_UI/VFS/components/shared/resources/Icons/General/Sort.svg';
 /** Narrowest search before the count drops its total, in layout units (its placeholder's first words stay readable). */
 const MIN_SEARCH = 240;
-/** View tabs (the sim has no keys for Gallery and Showcase), each with its class: its width in the CSS (TAB_UNITS). */
+/** View tabs (the sim has no keys for Gallery and Showcase), of one width (VIEW_TAB_UNITS, default-grid.ts). */
 const VIEWS: { view: View; label: string }[] = [
   { view: 'gallery', label: 'Gallery' },
   { view: 'list', label: translate('TT:GENERIC.LIST') },
@@ -143,7 +143,7 @@ export class GalleryBar {
       button.onClick(this.scope, () => this.events.reverse());
     });
     for (const { view, label } of VIEWS) {
-      component(this.end, COMPONENTS.textTab, `msfs-ui-gal__view msfs-ui-gal__view--${view}`, { Text: label }, (tab) => {
+      component(this.end, COMPONENTS.textTab, 'msfs-ui-gal__view', { Text: label }, (tab) => {
         this.viewTabs.set(view, tab);
         tab.onClick(this.scope, () => this.events.view(view));
       });
@@ -254,13 +254,13 @@ export class GalleryBar {
     setStyle(this.end.style, 'width', `${grid.gridWidth - startWidth}px`);
     const sortMargin = Math.round(sort.getBoundingClientRect().left - this.end.getBoundingClientRect().left);
     setStyle(sort.style, 'width', `${Math.max(0, spans.middle.right - startWidth - sortMargin)}px`);
-    // The tabs in whole pixels after the direction, in the proportions of TAB_UNITS, the last one taking the rest.
+    // The tabs in whole pixels after the direction, equal, the last one taking the rest (shareTabs).
     const reverse = bar.querySelector<HTMLElement>('.msfs-ui-gal__reverse');
     const tabs = Array.prototype.slice.call(bar.querySelectorAll('.msfs-ui-gal__view')) as HTMLElement[];
     if (reverse && tabs.length > 0) {
       const margin = Math.round(6 * unit);
       const room = Math.floor(bar.getBoundingClientRect().left + spans.last.right - reverse.getBoundingClientRect().right) - tabs.length * margin;
-      const widths = shareTabs(room);
+      const widths = shareTabs(room, tabs.length);
       tabs.forEach((tab, at) => {
         setStyle(tab.style, 'marginLeft', `${margin}px`);
         setStyle(tab.style, 'width', `${widths[at]}px`);

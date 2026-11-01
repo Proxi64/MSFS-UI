@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { barColumns, columnOf, defaultGrid, settleColumn, shareTabs, TAB_UNITS, WheelColumns } from '../src/features/aircraft-gallery/default-grid.ts';
+import { barColumns, columnOf, defaultGrid, settleColumn, shareTabs, VIEW_TAB_UNITS, WheelColumns } from '../src/features/aircraft-gallery/default-grid.ts';
 
 describe('default grid', () => {
   it('sizes the owner\'s screen: three columns, the banner over its three lines', () => {
@@ -94,7 +94,7 @@ describe('barColumns', () => {
 
   it('gives the middle part every column between the first and the last', () => {
     const grid = { columns: 4, tileWidth: 379, tileHeight: 404, imageHeight: 181, gap: 32, gridWidth: 1612 };
-    assert.deepEqual(barColumns(grid, unit), { first: { left: 0, right: 379 }, middle: { left: 411, right: 1201 }, last: { left: 1233, right: 1612 } });
+    assert.deepEqual(barColumns(grid, 1), { first: { left: 0, right: 379 }, middle: { left: 411, right: 1201 }, last: { left: 1233, right: 1612 } });
   });
 
   it('keeps one line under three columns, or when a part is too narrow for its controls', () => {
@@ -104,24 +104,16 @@ describe('barColumns', () => {
   });
 });
 describe('view tabs', () => {
-  it('shares 300 units as 100, 80 and 120', () => {
-    assert.deepEqual(TAB_UNITS, { gallery: 100, list: 80, showcase: 120 });
-    assert.deepEqual(shareTabs(300), [100, 80, 120]);
+  it('shares the room equally in whole pixels, the last tab taking the rest', () => {
+    assert.deepEqual(shareTabs(330, 3), [110, 110, 110]);
+    assert.deepEqual(shareTabs(332, 3), [110, 110, 112]);
+    assert.deepEqual(shareTabs(331, 3), [110, 110, 111]);
   });
 
-  it('shares whole pixels, the last tab taking the rest', () => {
-    const tabs = shareTabs(301);
-    assert.equal(tabs.reduce((sum, width) => sum + width, 0), 301);
-    assert.ok(tabs.every((width) => Number.isInteger(width)));
-    assert.equal(tabs[0], Math.floor((301 * 100) / 300));
-    assert.equal(tabs[1], Math.floor((301 * 80) / 300));
-  });
-
-  it('keeps each tab at its minimum in the narrowest room', () => {
-    const tabs = shareTabs(211);
-    assert.equal(tabs[0], 70);
-    assert.equal(tabs[1], 56);
-    assert.ok(tabs[2]! >= 84);
-    assert.equal(tabs[0]! + tabs[1]! + tabs[2]!, 211);
+  it('keeps the bar over the columns at the minimum last column, and on one line below it', () => {
+    const min = 30 + 3 * (6 + VIEW_TAB_UNITS);
+    const grid = (last: number) => ({ columns: 3, tileWidth: last, tileHeight: 404, imageHeight: 246, gap: 32, gridWidth: 3 * last + 64 });
+    assert.notEqual(barColumns(grid(min), 1), null);
+    assert.equal(barColumns(grid(min - 1), 1), null);
   });
 });

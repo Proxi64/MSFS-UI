@@ -53,10 +53,8 @@
 .msfs-ui-gal__label-icon svg { display: block; width: 100%; height: 100%; }
 .msfs-ui-gal__sort { width: calc(var(--u) * 240); }
 .msfs-ui-gal__reverse { width: calc(var(--u) * 30); }
-/* The view tabs: TAB_UNITS (default-grid.ts), 300 units together; the Showcase view writes them in whole pixels (gallery-bar.ts). */
-.msfs-ui-gal__view--gallery { width: calc(var(--u) * 100); }
-.msfs-ui-gal__view--list { width: calc(var(--u) * 80); }
-.msfs-ui-gal__view--showcase { width: calc(var(--u) * 120); }
+/* The view tabs: VIEW_TAB_UNITS (default-grid.ts) wide, the room of "Showcase" with its tick; the Showcase view writes whole pixels (gallery-bar.ts). */
+.msfs-ui-gal__view { width: calc(var(--u) * 110); }
 
 /*
  * The sim's scrolling list fills the body; its content (the sim's `scroll__content`, a plain block) leaves room on the

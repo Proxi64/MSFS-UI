@@ -1,8 +1,6 @@
 // Geometry of the gallery's Showcase view: two rows of large tiles scrolling horizontally, laid out like the sim's own
 // grid (measured at 3440 x 1440 on 2026-10-30). Pure functions, tested by test/default-grid.test.ts; no sim here.
 
-import type { View } from './gallery-cells.ts';
-
 /** Tile width of the sim's grid, in units: measured on the sim's grid at 3440 x 1440 (2026-10-30). */
 const TILE_UNITS = 360;
 /** Gap between two tiles of the sim's grid, in units: measured on the sim's grid at 3440 x 1440 (2026-10-30). */
@@ -99,28 +97,21 @@ export interface BarSpan {
  */
 const MIDDLE_MIN_UNITS = 114 + 6 + 130 + 6 + 100;
 /**
- * Narrowest room for the sort's direction (30) and the three view tabs (6 before each), in units: 70 for a tab, room
- * for its label ("Gallery", "List", "Showcase"), its padding and the selected tab's corner tick.
+ * Width of each of the three view tabs, in units: "Showcase", the longest label, needs 110 with its padding (6) and the
+ * selected tab's tick (21 before the right edge, at the label's height). Measured in the sim on 2026-11-01 at 3440 x
+ * 1440 (1.333 pixels per unit): the label is 110 pixels wide (82.5 units), and in a 100-unit tab the tick overlapped it
+ * by 10 units. The CSS gives the same width to `.msfs-ui-gal__view`.
  */
-const LAST_MIN_UNITS = 30 + 3 * (6 + 70);
+export const VIEW_TAB_UNITS = 110;
 
-/**
- * Width of each view tab, in units (together 300, as three tabs of 100 were): List is the shortest label, Showcase the
- * longest. The CSS gives the same widths to the tabs of Gallery and List (`msfs-ui-gal__view--gallery|list|showcase`).
- */
-export const TAB_UNITS: Record<View, number> = { gallery: 100, list: 80, showcase: 120 };
-
-/**
- * The three tabs' widths in whole pixels in `room` pixels, in the proportions of `TAB_UNITS` (Gallery, List, Showcase),
- * the last one taking the rest: shared by the engine, they ended a pixel past the last column (measured at 3440 x
- * 1440, 2026-10-30).
- */
-export function shareTabs(room: number): number[] {
-  const total = TAB_UNITS.gallery + TAB_UNITS.list + TAB_UNITS.showcase;
-  const first = Math.floor((room * TAB_UNITS.gallery) / total);
-  const second = Math.floor((room * TAB_UNITS.list) / total);
-  return [first, second, room - first - second];
+/** `count` widths in whole pixels adding up to `room`: equal, the last one taking the rest. */
+export function shareTabs(room: number, count: number): number[] {
+  const each = Math.floor(room / count);
+  return Array.from({ length: count }, (_, at) => (at === count - 1 ? room - each * (count - 1) : each));
 }
+
+/** Narrowest room for the sort's direction (30) and the three view tabs (6 before each, `VIEW_TAB_UNITS` wide), in units. */
+const LAST_MIN_UNITS = 30 + 3 * (6 + VIEW_TAB_UNITS);
 
 /**
  * The bar of the Showcase view over the grid's columns (the owner's wish, 2026-10-30): the search and count over the
