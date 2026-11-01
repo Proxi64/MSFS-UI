@@ -240,6 +240,11 @@ describe('sortTiles', () => {
     it('reverses the manufacturer order, the aircraft without a brand staying last', () => {
       assert.deepEqual(ids(sortTiles(owner, 'manufacturer', true)), ['longitude', 'dhc2', 'c208', 'c172', 'c42', 'airbus', 'addon']);
     });
+
+    it('sorts an aircraft with a brand but no model under its brand, the display name standing in for the model', () => {
+      const withBrandOnly = owner.concat([named('cessna-only', 'Cessna 152', 'Cessna')]);
+      assert.deepEqual(ids(sortTiles(withBrandOnly, 'manufacturer', false)), ['airbus', 'c42', 'c172', 'c208', 'cessna-only', 'dhc2', 'longitude', 'addon']);
+    });
   });
 
   it('sorts by studio then name, ignoring spaces and case', () => {

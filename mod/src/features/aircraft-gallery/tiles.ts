@@ -4,7 +4,7 @@
 // liveries is.
 
 import { favoriteLiveriesOf, type FavoriteLivery } from '../../sim/favorites.ts';
-import { aircraftNames } from '../../sim/aircraft-names.ts';
+import { aircraftNames, displayBrand } from '../../sim/aircraft-names.ts';
 import { isHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 
 /** An item of `Game.Aircraft.AircraftList` (fields used). */
@@ -163,10 +163,14 @@ export function emptyMessage(filter: GalleryFilter, counts: { favorites: number;
 /** Sorts made by the mod on the tiles (the sim offers none of them). */
 export type LocalSort = 'model' | 'manufacturer' | 'studio';
 
-/** Sort keys of an aircraft, normalised: its model and its brand as displayed (sim/aircraft-names.ts), its studio. */
+/**
+ * Sort keys of an aircraft, normalised: its model as displayed (sim/aircraft-names.ts: the display name when the model
+ * or the brand is missing), its brand as displayed even without a model (it then sorts under its brand, the display
+ * name standing in for the model), its studio.
+ */
 function sortKeys(item: AircraftItem): { studio: string; model: string; brand: string } {
   const names = aircraftNames(item);
-  return { studio: normalize(item.creator || ''), model: normalize(names.model), brand: normalize(names.brand) };
+  return { studio: normalize(item.creator || ''), model: normalize(names.model), brand: normalize(displayBrand(item.brandName || '')) };
 }
 
 /**
