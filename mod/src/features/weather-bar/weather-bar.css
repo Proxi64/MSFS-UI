@@ -32,13 +32,12 @@
 .msfs-ui-wx__presets { position: relative; z-index: 1; height: calc(var(--u) * 36); margin-top: calc(var(--u) * 6); }
 /*
  * Its text 12 units in, as the headers' (the sim's template: 6). Its list opens right under it (the template: 30 units
- * down, the dropdown being 36 high here), or above it (is-up); its top padding takes the room its whole items leave
- * (bar.ts, sizePresetList).
+ * down, the dropdown being 36 high here), or above it (is-up), the sim's own edge above its first item; its length in
+ * whole items (presets-section.ts, sizeList).
  */
 .msfs-ui-wx__presets [name="Content"] { left: calc(var(--u) * 12) !important; }
 .msfs-ui-wx__presets [name="List"] { top: 100% !important; }
 .msfs-ui-wx__presets.is-up [name="List"] { top: auto !important; bottom: 100% !important; }
-.msfs-ui-wx__presets [name="List"] .scroll__content { padding-top: var(--msfs-ui-presets-top) !important; }
 
 /* Times of day, traffic, multiplayer: tiles sharing the width, 36 units high (msfs-ui-compact-tile, core/theme.css). */
 .msfs-ui-wx__choice {

@@ -207,7 +207,7 @@ export class WeatherBar {
     } else this.column.releaseCard();
     style.display = tab === 'weather' ? '' : 'none';
     style.top = `${top}px`;
-    this.presets.sizeList(rect.top, unit, this.panel);
+    this.presets.sizeList(rect.top, unit, this.panel, this.page.elt);
   }
 
   /** `gap` pixels above every section but the first (a hidden one, the METAR, takes no room). */

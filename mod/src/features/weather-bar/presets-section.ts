@@ -3,7 +3,7 @@
 // preset in the header.
 
 import { answerWithin } from '../../core/async.ts';
-import { el, setVariable, toggleClass } from '../../core/dom.ts';
+import { el, toggleClass } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import {
@@ -12,7 +12,8 @@ import {
   type DropdownManipulator,
   type SimComponent,
 } from '../../sim/components.ts';
-import { DROPDOWN_METRICS, dropdownListSize, scrollDropdownTo } from '../../sim/dropdown-list.ts';
+import { DROPDOWN_EDGE, DROPDOWN_METRICS, dropdownListToward, scrollDropdownTo } from '../../sim/dropdown-list.ts';
+import { GROUP_GAP } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
 import { ANSWER_TIMEOUT_MS, readArray, store } from '../../sim/store.ts';
 import { GAP, presetCellSizes, type PresetCell } from './bar-layout.ts';
@@ -25,9 +26,19 @@ const LIVE_PRESET = 'TT:MENU.WEATHERTYPE_0DYNAMIC';
 const PRESETS_PER_ROW = 6;
 /**
  * The presets added by other packages, in the sim's dropdown under the grid: its list (sizes in sim/dropdown-list.ts)
- * opens downwards when at least LIST_LEAST items fit there (sizeList).
+ * opens downwards when at least LIST_LEAST items fit there (sizeList), never less than LIST_GAP_LEAST units above the
+ * map's buttons and scale.
  */
 const LIST_LEAST = 3;
+const LIST_GAP_LEAST = 6;
+/**
+ * Free Flight's map buttons (legend, layers, display) at the bottom right, the map's scale left of them (under the
+ * presets' list), the EFB button under them (measured 2026-11-01, 1.9.21). Direct children: the map layers' panel has
+ * scale blocks of its own, the Flight Conditions widget and the bottom buttons a `Buttons` each.
+ */
+const MAP_BUTTONS = '[name="Worldmap_Filters"] > [name="Buttons"]';
+const MAP_SCALE = '[name="Worldmap_Filters"] > [name="ScaleBlock"]';
+const EFB_BUTTON = '[name="EFB"]';
 
 export interface PresetEvents {
   /** A preset was clicked and applied. */
@@ -156,34 +167,58 @@ export class PresetsSection {
   }
 
   /**
-   * The list of the added presets opens downwards, exactly to the bottom of the `panel`'s last buttons (multiplayer's),
-   * inside the panel (lower, it would pass under the search field), the sim's own scroll for the items that do not
-   * fit. Whole items at rest: the room they leave goes into the list's top padding (--msfs-ui-presets-top). With fewer
-   * than LIST_LEAST items there (traffic sections turned off), it opens upwards, to the top of the column (`columnTop`,
-   * in the window).
+   * The list of the added presets opens downwards, over what is under it, toward the map's buttons (the owner's
+   * choice, 2026-11-01): its first item at the sim's own edge under the dropdown, whole items only, as many as leave
+   * above the higher of the map buttons and the map's scale the gap nearest the one between the map buttons and the
+   * EFB button (at least LIST_GAP_LEAST units; dropdownListToward), the sim's own scroll for the others. Without the
+   * map buttons on the page, down to the bottom of the `panel`. With fewer than LIST_LEAST items there, it opens
+   * upwards, to the top of the column (`columnTop`, in the window). Measured at each layout pass of `page`, written when
+   * it changes.
    */
-  sizeList(columnTop: number, unit: number, panel: HTMLElement): void {
+  sizeList(columnTop: number, unit: number, panel: HTMLElement, page: HTMLElement): void {
     const list = this.list;
     const host = list ? list.element.parentElement : null;
     if (!list || !host || panel.style.display === 'none') return;
     const box = host.getBoundingClientRect();
-    const sized = dropdownListSize(
-      { count: this.items.size, below: (panel.getBoundingClientRect().bottom - box.bottom) / unit, above: (box.top - columnTop) / unit, unit },
+    const limit = mapLimit(page, unit) || { top: panel.getBoundingClientRect().bottom, gap: 0, least: 0 };
+    const sized = dropdownListToward(
+      { count: this.items.size, below: (limit.top - box.bottom) / unit, gap: limit.gap / unit, least: limit.least, above: (box.top - columnTop) / unit, unit },
       DROPDOWN_METRICS,
       LIST_LEAST,
     );
     toggleClass(host, 'is-up', sized.up);
     list.set('List_Size', sized.size.toFixed(2));
-    setVariable(host.style, '--msfs-ui-presets-top', `${Math.floor(sized.padding * unit)}px`);
   }
 
   /** Opened, the list of the added presets shows its first items, or the chosen one at its top (scrollDropdownTo). */
   private scrollList(): void {
-    if (this.list) scrollDropdownTo(this.list.element, Array.from(this.items.keys()).indexOf(this.index));
+    if (this.list) scrollDropdownTo(this.list.element, Array.from(this.items.keys()).indexOf(this.index), DROPDOWN_EDGE);
   }
 
   private async choose(preset: WeatherPreset): Promise<void> {
     await answerWithin(store.Game.Weather.FlightConditions.SetWeatherPreset.request(String(preset.index)), ANSWER_TIMEOUT_MS, 'the change of weather');
     this.events.chosen(preset);
   }
+}
+
+/**
+ * Where the presets' list stops on `page` (sizeList), in the window's pixels: the top of the higher of the map buttons
+ * and the map's scale, the gap wanted above it (the map buttons' own gap to the EFB button under them, GROUP_GAP units
+ * without it) and the least one (in units); null without the map buttons.
+ */
+function mapLimit(page: HTMLElement, unit: number): { top: number; gap: number; least: number } | null {
+  const shown = (selector: string) => {
+    const element = page.querySelector<HTMLElement>(selector);
+    const box = element ? element.getBoundingClientRect() : null;
+    return box && box.height > 0 ? box : null;
+  };
+  const buttons = shown(MAP_BUTTONS);
+  if (!buttons) return null;
+  const scale = shown(MAP_SCALE);
+  const efb = shown(EFB_BUTTON);
+  return {
+    top: scale ? Math.min(buttons.top, scale.top) : buttons.top,
+    gap: efb && efb.top > buttons.bottom ? efb.top - buttons.bottom : GROUP_GAP * unit,
+    least: LIST_GAP_LEAST,
+  };
 }

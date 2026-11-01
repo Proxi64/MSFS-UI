@@ -4,7 +4,7 @@
   // field under the aircraft button), the bar or the sim's card 6 units under them, 6 units between the sections, the
   // METAR last, the whole column above the map buttons; each section a card of its own (every gap shows the map); every
   // block on the widget's edges; headers 6 units above their content; the weather grid to the bar's edges; the presets
-  // list, when open, ending on the bottom of the bar. Left column: the favourites under the search field at the sim's
+  // list, when open, in whole items toward the map buttons. Left column: the favourites under the search field at the sim's
   // gap, on the button's edges, ending on a whole row, their scroll bar 6 units from the rows.
   // Returns { u, gaps, favourites, problems }.
   var u = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--unscaledScreenHeight')) / 1080;
@@ -88,9 +88,31 @@
       var r = rows[k];
       if (!near(r[0].left, p.left) || !near(r[r.length - 1].right, p.right)) problems.push('grid row edges ' + Math.round(r[0].left - p.left) + '/' + Math.round(p.right - r[r.length - 1].right));
     });
-    // The presets list, when open: down to the bottom of the bar (its last buttons).
+    // The presets list, when open downwards: its first item 6 units under its top, whole items only (less than half a
+    // pixel of its neighbours), its bottom above the higher of the map buttons and the map scale by the gap nearest
+    // the one between the map buttons and the EFB button, 6 units at least.
     var list = panel.querySelector('.msfs-ui-wx__presets:not(.is-up) [name="List"]');
-    if (list && getComputedStyle(list).display !== 'none' && !near(R(list).bottom, p.bottom)) problems.push('presets list bottom ' + Math.round(R(list).bottom - p.bottom));
+    if (list && getComputedStyle(list).display !== 'none') {
+      var l = R(list);
+      var slots = Array.prototype.slice.call(list.querySelectorAll('virtual-list-wrapper')).map(R).filter(function (b) { return b.height > 0; }).sort(function (a, b) { return a.top - b.top; });
+      var whole = slots.filter(function (b) { return b.top >= l.top - 0.5 && b.bottom <= l.bottom + 0.5; });
+      var cut = slots.filter(function (b) { return (b.top < l.top - 0.5 && b.bottom > l.top + 0.5) || (b.top < l.bottom - 0.5 && b.bottom > l.bottom + 0.5); });
+      if (cut.length > 0) problems.push('presets list: ' + cut.length + ' item(s) cut at its edges');
+      var scroll = list.querySelector('real-scroll');
+      if (whole.length > 0 && scroll && scroll.currentScroll === 0 && Math.abs(whole[0].top - l.top - 6 * u) > 1) problems.push('presets list: first item ' + (whole[0].top - l.top).toFixed(1) + ' under its top, not ' + (6 * u).toFixed(1));
+      var mapButtons = page.querySelector('[name="Worldmap_Filters"] > [name="Buttons"]');
+      var mapScale = page.querySelector('[name="Worldmap_Filters"] > [name="ScaleBlock"]');
+      var efb = page.querySelector('[name="EFB"]');
+      if (mapButtons && efb && slots.length > 1) {
+        var stop = Math.min(R(mapButtons).top, mapScale && R(mapScale).height > 0 ? R(mapScale).top : Infinity);
+        var wanted = R(efb).top - R(mapButtons).bottom;
+        var step = slots[1].top - slots[0].top;
+        var under = stop - l.bottom;
+        var more = whole.length < slots.length && under - step >= 6 * u - 1;
+        if (under < 6 * u - 1) problems.push('presets list ' + under.toFixed(1) + ' above the map buttons / scale, under 6 units');
+        else if (Math.abs(under - wanted) > step / 2 + 1 && (under > wanted ? more : true)) problems.push('presets list ' + under.toFixed(1) + ' above the map buttons / scale, ' + wanted.toFixed(1) + ' wanted');
+      }
+    }
   }
 
   // Left column: the favourites, under the search field at the sim's gap above it.

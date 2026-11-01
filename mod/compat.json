@@ -50,7 +50,11 @@
     "Text",
     "Worldmap_Filters_Legend",
     "Worldmap_Filters_Layers",
-    "Worldmap_Filters_Display"
+    "Worldmap_Filters_Display",
+    "Worldmap_Filters",
+    "Buttons",
+    "ScaleBlock",
+    "EFB"
   ],
   "componentPatterns": [
     {
