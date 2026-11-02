@@ -5,6 +5,7 @@
 // so a stored name may not be in it; a livery by its folder (`liveryKey`).
 
 import { loadData, saveData, storedObject } from '../../core/storage.ts';
+import { NO_VARIANT_GROUPS, type VariantGroups } from '../../sim/variant-groups.ts';
 import { isHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
 import type { AircraftItem } from './tiles.ts';
@@ -84,12 +85,19 @@ export interface LastPlaneVariant {
 
 /**
  * Why the last plane stays where it is; null when it can come back. `variant`: the sim's answer for the stored variant.
- * Hidden under its own name, or under the name of its entry in the list (the name the owner hid it by).
+ * Hidden under its own name, under the name of its entry in the list (the name the owner hid it by), or on another
+ * variant of its group (`groups`).
  */
-export function lastPlaneProblem(variant: LastPlaneVariant | null, items: readonly AircraftItem[], last: LastPlane, hidden: readonly HiddenAircraft[]): string | null {
+export function lastPlaneProblem(
+  variant: LastPlaneVariant | null,
+  items: readonly AircraftItem[],
+  last: LastPlane,
+  hidden: readonly HiddenAircraft[],
+  groups: VariantGroups = NO_VARIANT_GROUPS,
+): string | null {
   if (!variant || variant.aircraftId < 0) return 'it is no longer installed';
   const entry = items.filter((item) => !!item && item.aircraftId === variant.aircraftId)[0];
-  if (isHidden(hidden, last) || (entry && isHidden(hidden, entry))) return 'it is hidden';
+  if (isHidden(hidden, last, groups) || (entry && isHidden(hidden, entry, groups))) return 'it is hidden';
   if (variant.isUsable === false) return 'it cannot be flown';
   return null;
 }

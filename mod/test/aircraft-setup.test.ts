@@ -124,6 +124,12 @@ describe('favourites', () => {
     assert.deepEqual(favoriteLiveriesOf(favorites, { variationId: 'v9', displayName: 'Vision Jet', creator: 'Cirrus' }).map((f) => f.title), ['Red', 'Blue']);
     assert.deepEqual(favoriteLiveriesOf(favorites, { variationId: 'v3' }).map((f) => f.title), ['Green']);
   });
+
+  it('gives the favourite liveries of another variant of its group, under another name', () => {
+    const aircraft = { variationId: 'v8', displayName: 'Caravan Amphibian', creator: 'Cessna' };
+    assert.deepEqual(favoriteLiveriesOf(favorites, aircraft).map((f) => f.title), []);
+    assert.deepEqual(favoriteLiveriesOf(favorites, aircraft, [['v3', 'v8']]).map((f) => f.title), ['Green']);
+  });
 });
 
 describe('favourites in the storage', () => {

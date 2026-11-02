@@ -16,7 +16,8 @@ import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { layoutWidth } from '../../core/virtual-list.ts';
 import { loadAircraft, withAllAircraft } from '../../sim/aircraft-loading.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
-import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, type HiddenAircraft } from '../../sim/hidden.ts';
+import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, withVariationIds, type HiddenAircraft } from '../../sim/hidden.ts';
+import { loadVariantGroups, VARIANT_GROUPS_CHANGED, type VariantGroups } from '../../sim/variant-groups.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
 import { isShown, type Manipulator } from '../../sim/screens.ts';
 import { scrollBarWidth } from '../../sim/real-scroll.ts';
@@ -103,6 +104,8 @@ export class Gallery {
   private keptIds: number[] = [];
   /** The aircraft hidden by the user (their eye): out of the gallery, unless kept veiled for their favourite liveries. */
   private hidden: HiddenAircraft[] = loadHidden();
+  /** The variants of the aircraft whose name follows the variant: a hidden one or a favourite's found under another name. */
+  private variantGroups: VariantGroups = loadVariantGroups();
   /** The aircraft under the mouse (`aircraftId`), whose name the left column's header shows; null: the selected one. */
   private hoveredId: number | null = null;
   /** The view, the sort and the filter, kept from one opening of the screen to the next. */
@@ -145,7 +148,7 @@ export class Gallery {
       {
         view: () => this.session.memory.view,
         current: () => this.current,
-        hidden: () => this.hidden,
+        isHidden: (item) => isHidden(this.hidden, item, this.variantGroups),
         bodyClass: (view) => this.bodyClass(view),
         listMade: (listScope, list, axis) => {
           if (axis === 'x') this.columns.keep(listScope, list);
@@ -201,6 +204,11 @@ export class Gallery {
     // An eye clicked: the aircraft leaves (or comes back); the list keeps its scroll, the next tiles close the gap.
     scope.listen(document, HIDDEN_AIRCRAFT_CHANGED, () => {
       this.hidden = loadHidden();
+      if (this.items.length > 0) this.render();
+    });
+    // The setup panel learned the variants of an aircraft whose name follows its variant (sim/variant-groups.ts).
+    scope.listen(document, VARIANT_GROUPS_CHANGED, () => {
+      this.variantGroups = loadVariantGroups();
       if (this.items.length > 0) this.render();
     });
     this.bar.renderSort();
@@ -413,6 +421,9 @@ export class Gallery {
     ]);
     if (this.scope.disposed || number !== this.reloadNumber) return;
     this.items = items.filter((item) => !!item);
+    // An aircraft hidden by 2.1.0 or before (by name) gets the variant id it shows, to stay hidden under another name.
+    const named = withVariationIds(this.hidden, this.items);
+    if (named) saveHidden(named);
     this.current = {
       variationId: current ? current.variationId : '',
       livery: current && current.thumbnailPath ? liveryKey(liveryDirectory(current.thumbnailPath)) : '',
@@ -442,7 +453,8 @@ export class Gallery {
 
     // The tiles follow the sort, with or without a favourite livery. A hidden aircraft with one shows, veiled, in its
     // place, at once when its livery is given a heart, and stays until a new sort, search or filter (accumulateKept).
-    accumulateKept(this.keptIds, favoriteAircraftIds(this.items, this.favoriteLiveries));
+    const groups = this.variantGroups;
+    accumulateKept(this.keptIds, favoriteAircraftIds(this.items, this.favoriteLiveries, groups));
     const filter = this.session.filter;
     const search = this.bar.searchValue();
     const shown = visibleTiles({
@@ -454,6 +466,7 @@ export class Gallery {
       keepIds: this.keptIds,
       search,
       translate,
+      variantGroups: groups,
     });
     const tiles = sortTiles(shown, sort.option, sort.reversed);
     // The tiles shown (veiled ones included) out of the aircraft of the category tab.
@@ -517,7 +530,8 @@ export class Gallery {
    * (nothing goes to the configurator). The gallery redraws on the event of the hidden aircraft.
    */
   private toggleHidden(item: AircraftItem): void {
-    const next = withHidden(this.hidden, item, !isHidden(this.hidden, item));
+    const groups = this.variantGroups;
+    const next = withHidden(this.hidden, item, !isHidden(this.hidden, item, groups), groups);
     if (next) saveHidden(next);
   }
 

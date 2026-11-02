@@ -76,6 +76,13 @@ describe('finding the last plane again', () => {
     assert.match(lastPlaneProblem(variant(), [item('atr42', 'ATR 42-600')], plane(), [{ displayName: 'ATR 42-600', creator: 'Studio' }])!, /hidden/);
   });
 
+  it('leaves an aircraft hidden on another variant of its group, under another name', () => {
+    const hidden = [{ displayName: 'Other name', creator: 'Studio', variationId: 'other-variant' }];
+    assert.equal(lastPlaneProblem(variant(), [], plane(), hidden), null, 'without its group');
+    assert.match(lastPlaneProblem(variant(), [], plane(), hidden, [['other-variant', plane().variationId]])!, /hidden/);
+    assert.equal(lastPlaneProblem(variant(), [], plane(), hidden, [['other-variant', 'third']]), null, 'another group');
+  });
+
   it('leaves an aircraft that cannot be flown', () => {
     assert.match(lastPlaneProblem(variant(1, false), [], plane(), [])!, /cannot be flown/);
   });

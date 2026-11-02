@@ -13,7 +13,6 @@ import { aircraftNames, sameName } from '../../sim/aircraft-names.ts';
 import { PooledCells, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, markOwned, TILE_EVENTS, type SimComponent } from '../../sim/components.ts';
 import type { FavoriteLivery } from '../../sim/favorites.ts';
-import { isHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 import { translate } from '../../sim/localization.ts';
 import { createRealScroll, type RealScroll } from '../../sim/real-scroll.ts';
 import { columnOf } from './default-grid.ts';
@@ -68,7 +67,8 @@ export interface CellsContext {
   view(): View;
   /** Current aircraft (variant and livery, as `liveryKey`): selection of the livery tiles. */
   current(): { variationId: string; livery: string };
-  hidden(): HiddenAircraft[];
+  /** Whether the aircraft is hidden (its eye). */
+  isHidden(item: AircraftItem): boolean;
   /** The class of the list's element for a view (livery-column.ts). */
   bodyClass(view: View): string;
   /** A list was made for `axis`: what goes with it is disposed with `scope`. */
@@ -400,7 +400,7 @@ export class GalleryCells {
     if (slot && slot.icon && extras) {
       slot.icon.element.style.display = livery ? '' : 'none';
       extras.eye.element.style.display = livery ? 'none' : '';
-      extras.eye.set(isHidden(this.context.hidden(), item));
+      extras.eye.set(this.context.isHidden(item));
       extras.veil.style.display = cell.tile.veiled ? '' : 'none';
     }
   }

@@ -5,6 +5,7 @@
 
 import { log } from '../core/log.ts';
 import { deleteData, loadData, saveData, storedObject } from '../core/storage.ts';
+import { NO_VARIANT_GROUPS, sameVariantGroup, type VariantGroups } from './variant-groups.ts';
 import { liveryFolder, liveryKey, variationOf } from './liveries.ts';
 
 /** A favourite livery, for one variant. */
@@ -92,11 +93,19 @@ export function saveFavoriteLiveries(favorites: FavoriteLivery[]): void {
   document.dispatchEvent(new CustomEvent(FAVORITE_LIVERIES_CHANGED));
 }
 
-/** Favourite liveries of an aircraft: same variant, or same name and publisher (its other variants). */
-export function favoriteLiveriesOf(favorites: readonly FavoriteLivery[], aircraft: { variationId: string; displayName?: string; creator?: string }): FavoriteLivery[] {
+/**
+ * Favourite liveries of an aircraft: same variant, or another variant of its group (`groups`: its name may follow the
+ * variant, sim/variant-groups.ts), or same name and publisher.
+ */
+export function favoriteLiveriesOf(
+  favorites: readonly FavoriteLivery[],
+  aircraft: { variationId: string; displayName?: string; creator?: string },
+  groups: VariantGroups = NO_VARIANT_GROUPS,
+): FavoriteLivery[] {
   return favorites.filter(
     (favorite) =>
-      favorite.variationId === aircraft.variationId || (!!favorite.displayName && favorite.displayName === aircraft.displayName && favorite.creator === aircraft.creator),
+      sameVariantGroup(groups, favorite.variationId, aircraft.variationId) ||
+      (!!favorite.displayName && favorite.displayName === aircraft.displayName && favorite.creator === aircraft.creator),
   );
 }
 

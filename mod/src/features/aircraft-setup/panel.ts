@@ -18,6 +18,7 @@ import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { revealPosition, type Rows } from '../../core/virtual-list.ts';
 import { COMPONENTS, createComponent, type SimComponent } from '../../sim/components.ts';
 import { variantLabels, type AircraftNameFields } from '../../sim/aircraft-names.ts';
+import { learnVariantGroup } from '../../sim/variant-groups.ts';
 import { chooseLivery, chooseLiveryWhileSending, chooseVariant, knownVariantModels, readConfigurator, readVariantModels, setFavoriteLivery, syncConfigurator, type ConfiguratorState } from '../../sim/configurator.ts';
 import { FAVORITE_LIVERIES_CHANGED } from '../../sim/favorites.ts';
 import { TAIL_NUMBER, type Identification } from '../../sim/liveries.ts';
@@ -376,6 +377,8 @@ export class SetupPanel {
     this.dropdown.render(state.variants, variantLabels(state.variants, knownVariantModels()));
     readVariantModels(state.variants)
       .then((models) => {
+        // Variants of different models: the gallery's entry of this aircraft changes its name with them (sim/variant-groups.ts).
+        learnVariantGroup(state.variants.map((variant) => variant.id), models);
         if (!this.scope.disposed && number === this.reloadNumber) this.dropdown.render(state.variants, variantLabels(state.variants, models));
       })
       .catch((error: unknown) => logError('the variants could not be labelled', error));

@@ -17,6 +17,7 @@ import { loadHidden } from '../../sim/hidden.ts';
 import { variationOf } from '../../sim/liveries.ts';
 import { firstAvailableLivery } from '../../sim/livery-order.ts';
 import { isShown, onScreenActive, SCREENS } from '../../sim/screens.ts';
+import { loadVariantGroups } from '../../sim/variant-groups.ts';
 import { lastPlaneOf, lastPlaneProblem, liveryRefOf, loadLastPlane, planeToRecord, saveLastPlane, type CurrentPlane, type LastPlaneVariant, type StartPlaneState } from './last-plane.ts';
 import { firstAircraft, type AircraftItem } from './tiles.ts';
 
@@ -87,7 +88,7 @@ async function selectFirstPlane(screen: Scope): Promise<Outcome> {
   return withAllAircraft<AircraftItem, Outcome>(async (items) => {
     // The screen closed before anything was sent: left to its next display.
     if (screen.disposed) return 'later';
-    const first = firstAircraft(items, hidden);
+    const first = firstAircraft(items, hidden, loadVariantGroups());
     if (!first) {
       log('first aircraft not selected: the list has no aircraft to fly');
       return 'made';
@@ -123,7 +124,7 @@ async function restoreLastPlane(screen: Scope): Promise<Outcome> {
   const hidden = loadHidden();
   return withAllAircraft<AircraftItem, Outcome>(async (items) => {
     if (screen.disposed) return 'later';
-    const problem = lastPlaneProblem(await readVariant<LastPlaneVariant>(last.variationId), items, last, hidden);
+    const problem = lastPlaneProblem(await readVariant<LastPlaneVariant>(last.variationId), items, last, hidden, loadVariantGroups());
     if (problem) {
       log(`last aircraft not restored (${last.displayName}): ${problem}; the sim's aircraft stays`);
       return 'givenUp';

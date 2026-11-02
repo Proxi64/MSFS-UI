@@ -178,6 +178,32 @@ describe('favourite aircraft', () => {
   });
 });
 
+// The 146-200's entry reads "146-200" or "146-200QC" after its variant, even its aircraftId changes (measured on 1.9.21,
+// 2026-11-02): a favourite livery or a hidden aircraft stored on one variant is found by its group of variants.
+describe('an aircraft whose name follows its variant', () => {
+  const airCal = aircraft('aircal', 'Just Flight 146-200', 'Just Flight');
+  const items = [aircraft('c172', 'Cessna 172 Skyhawk', 'Asobo'), airCal];
+  const groups = [['aircal', 'qc', 'qt']];
+  const qcLivery = livery('qc', 'RAF', { displayName: 'Just Flight 146-200QC', creator: 'Just Flight' });
+  const base = { items, liveries: [] as FavoriteLivery[], favoritesOnly: false, search: '', hiddenOnly: false, hidden: [], keepIds: [], translate: identity };
+
+  it('keeps its favourite livery of the other variant', () => {
+    assert.equal(hasFavoriteLivery([qcLivery], airCal, groups), true);
+    assert.equal(hasFavoriteLivery([qcLivery], airCal), false, 'by its name alone: the defect of 2.1.0');
+    assert.deepEqual(favoriteAircraftIds(items, [qcLivery], groups), [airCal.aircraftId]);
+    const tiles = visibleTiles({ ...base, liveries: [qcLivery], favoritesOnly: true, variantGroups: groups });
+    assert.deepEqual(tiles.map((tile) => [tile.item.variationId, tile.livery && tile.livery.title]), [['aircal', 'RAF']]);
+  });
+
+  it('stays hidden, in the Hidden view only, and is never the first aircraft', () => {
+    const hidden = [{ displayName: 'Just Flight 146-200QC', creator: 'Just Flight', variationId: 'qc' }];
+    assert.deepEqual(visibleTiles({ ...base, hidden, variantGroups: groups }).map((tile) => tile.item.variationId), ['c172']);
+    assert.deepEqual(visibleTiles({ ...base, hidden, hiddenOnly: true, variantGroups: groups }).map((tile) => tile.item.variationId), ['aircal']);
+    assert.equal(firstAircraft([airCal], hidden, groups), null);
+    assert.equal(firstAircraft([aircraft('aaa', 'AAA', 'Studio'), airCal], hidden, groups)!.variationId, 'aaa');
+  });
+});
+
 describe('sortTiles', () => {
   const tiles = [
     aircraft('c404', 'Cessna 404 Titan', 'Microsoft/Carenado'),

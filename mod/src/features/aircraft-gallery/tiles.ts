@@ -3,6 +3,7 @@
 // on name, publisher, variant and livery. The favourites are liveries: an aircraft is a favourite when one of its
 // liveries is.
 
+import { NO_VARIANT_GROUPS, type VariantGroups } from '../../sim/variant-groups.ts';
 import { favoriteLiveriesOf, type FavoriteLivery } from '../../sim/favorites.ts';
 import { aircraftNames, displayBrand } from '../../sim/aircraft-names.ts';
 import { isHidden, type HiddenAircraft } from '../../sim/hidden.ts';
@@ -49,15 +50,15 @@ export function normalize(text: string): string {
 
 /**
  * At least one favourite livery, of any variant: the sim's list has one entry per modular aircraft (with its current
- * variant), so a favourite livery of another variant (same name, same publisher) counts too.
+ * variant), so a favourite livery of another variant (of its group, or the same name and publisher) counts too.
  */
-export function hasFavoriteLivery(liveries: readonly FavoriteLivery[], item: AircraftItem): boolean {
-  return favoriteLiveriesOf(liveries, item).length > 0;
+export function hasFavoriteLivery(liveries: readonly FavoriteLivery[], item: AircraftItem, groups: VariantGroups = NO_VARIANT_GROUPS): boolean {
+  return favoriteLiveriesOf(liveries, item, groups).length > 0;
 }
 
 /** The `aircraftId` of the favourite aircraft of the list: a hidden one among them stays in the list, veiled (accumulateKept). */
-export function favoriteAircraftIds(items: readonly AircraftItem[], liveries: readonly FavoriteLivery[]): number[] {
-  return items.filter((item) => hasFavoriteLivery(liveries, item)).map((item) => item.aircraftId);
+export function favoriteAircraftIds(items: readonly AircraftItem[], liveries: readonly FavoriteLivery[], groups: VariantGroups = NO_VARIANT_GROUPS): number[] {
+  return items.filter((item) => hasFavoriteLivery(liveries, item, groups)).map((item) => item.aircraftId);
 }
 
 /**
@@ -82,25 +83,28 @@ export interface TileQuery {
   search: string;
   /** Translation of the sim's keys (variant and livery titles may be `TT:` keys). */
   translate: (key: string) => string;
+  /** The variants of the aircraft whose name follows the variant (sim/variant-groups.ts). */
+  variantGroups?: VariantGroups;
 }
 
 /** The tiles to show, in the order of the sim's list. */
 export function visibleTiles(query: TileQuery): Tile[] {
   const { items, liveries, favoritesOnly, hiddenOnly, hidden, keepIds, translate } = query;
+  const groups = query.variantGroups || NO_VARIANT_GROUPS;
   // Each favourite livery goes to one entry of the list only: its variant's, otherwise the first entry of the same
-  // aircraft (name and publisher), so that it is not repeated when several entries bear the same name.
+  // aircraft (its group, or the same name and publisher), so that it is not repeated when several entries bear the same name.
   const owners = new Map<FavoriteLivery, AircraftItem>();
   if (favoritesOnly) {
     for (const livery of liveries) {
       const owner =
-        items.filter((item) => item.variationId === livery.variationId)[0] || items.filter((item) => favoriteLiveriesOf([livery], item).length > 0)[0];
+        items.filter((item) => item.variationId === livery.variationId)[0] || items.filter((item) => favoriteLiveriesOf([livery], item, groups).length > 0)[0];
       if (owner) owners.set(livery, owner);
     }
   }
   const tiles: Tile[] = [];
   const seen: AircraftItem[] = [];
   for (const item of items) {
-    const itemHidden = isHidden(hidden, item);
+    const itemHidden = isHidden(hidden, item, groups);
     if (hiddenOnly) {
       // One tile per aircraft: the sim's list may hold several entries of the same name and publisher.
       if (itemHidden && !seen.some((other) => other.displayName === item.displayName && other.creator === item.creator)) {
@@ -202,8 +206,8 @@ export function sortTiles(tiles: readonly Tile[], sort: LocalSort, reversed: boo
  * The first aircraft of a list as the gallery's Model sort, A to Z, gives it, without the hidden ones (even with a
  * favourite livery) nor those the user cannot fly; null when none is left. The sim's list may hold an empty entry.
  */
-export function firstAircraft(items: readonly AircraftItem[], hidden: readonly HiddenAircraft[]): AircraftItem | null {
-  const candidates = items.filter((item) => !!item && item.isUsable && !isHidden(hidden, item)).map((item) => ({ item }));
+export function firstAircraft(items: readonly AircraftItem[], hidden: readonly HiddenAircraft[], groups: VariantGroups = NO_VARIANT_GROUPS): AircraftItem | null {
+  const candidates = items.filter((item) => !!item && item.isUsable && !isHidden(hidden, item, groups)).map((item) => ({ item }));
   const first = sortTiles(candidates, 'model', false)[0];
   return first ? first.item : null;
 }
