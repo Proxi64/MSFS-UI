@@ -24,6 +24,8 @@ export interface Harness {
   loseReads: Set<string>;
   /** Paths that cannot be opened for reading while listed (fsIOOpenRead answers no file). */
   refuseOpens: Set<string>;
+  /** Paths that cannot be opened for writing while listed (fsIOOpen answers no file: a lock, a read-only file, a full disk). */
+  refuseWriteOpens: Set<string>;
   /** Queues the callbacks of the lost reads after all (a callback the sim gives very late); run them with settle(). */
   releaseLost(): void;
   /** Drops every queued callback: the sim stopped now. */
@@ -39,7 +41,8 @@ export interface LoadOptions {
   /**
    * An `fsIOOpenRead` that fails (it returns 0, as for a missing file) still calls its callback later, on file 0 with
    * no byte read: what the sim does (2026-10-31: the module of 2.0.1 to 2.0.3 died in a job the sim's report names
-   * "file 0" at every start with missing files, and runs since its callbacks of failed opens are ignored).
+   * "file 0" at every start with missing files, and runs since its callbacks of failed opens are ignored). An `fsIOOpen`
+   * for writing that fails does the same here (not seen in the sim: a write open has not failed there).
    */
   callbackFailedOpens?: boolean;
 }
@@ -69,6 +72,7 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
   const failReads = new Set<string>();
   const loseReads = new Set<string>(options.loseReads);
   const refuseOpens = new Set<string>(options.refuseOpens);
+  const refuseWriteOpens = new Set<string>();
   const lost: (() => void)[] = [];
   let exports!: Exports;
 
@@ -93,7 +97,10 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
     fsIOOpen(pathPointer: number, flags: number, callback: number, user: number) {
       const path = text(pathPointer);
       const write = (flags & (OPEN_FLAGS.WRONLY | OPEN_FLAGS.RDWR)) !== 0;
-      if (!disk.has(path) && !(write && flags & OPEN_FLAGS.CREAT)) return 0n;
+      if ((!disk.has(path) && !(write && flags & OPEN_FLAGS.CREAT)) || (write && refuseWriteOpens.has(path))) {
+        if (options.callbackFailedOpens) enqueue(() => call(callback, 0n, user));
+        return 0n;
+      }
       const handle = open(path, flags, write);
       enqueue(() => {
         if (write) {
@@ -169,6 +176,7 @@ export async function loadVault(disk: Map<string, Uint8Array>, options: LoadOpti
     failReads,
     loseReads,
     refuseOpens,
+    refuseWriteOpens,
     releaseLost() {
       for (const task of lost.splice(0)) enqueue(task);
     },

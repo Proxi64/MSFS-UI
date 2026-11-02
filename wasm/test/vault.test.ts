@@ -401,6 +401,39 @@ test('answers a LOAD that arrives before the start-up read ends', { skip }, asyn
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['3\n2\nnewest']);
 });
 
+// The sim calls back an open that failed, on file 0 (seen for reads, 2.0.4). Until 2.1.0 the write path went on in that
+// callback with no snapshot, or with the next save's: it could truncate a slot and lose the loaded snapshot.
+test('ignores the callback of a write open that failed', { skip }, async () => {
+  const disk = await twoSnapshots(); // seq 1 in slot a, seq 2 (the newest) in slot b: the next write goes to slot a
+  const vault = await readyVault(disk, { callbackFailedOpens: true });
+  const slotB = [dataOf(disk, 'b'), headOf(disk, 'b')];
+  vault.refuseWriteOpens.add('/work/vault-a.data');
+  vault.send('MSFS_UI_VAULT_SAVE', '3\nthree');
+  await vault.settle(); // the failed open's callback runs
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['3\nerror 4']);
+  assert.deepEqual([dataOf(disk, 'b'), headOf(disk, 'b')], slotB, 'the newest snapshot untouched');
+  vault.send('MSFS_UI_VAULT_LOAD', 'r');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['r\n2\nnewest'], 'still loaded');
+  vault.refuseWriteOpens.clear();
+  vault.send('MSFS_UI_VAULT_SAVE', '3\nthree');
+  await vault.settle();
+  assert.equal(answers(vault, 'MSFS_UI_VAULT_SAVED')[1], '3\nok');
+  assert.equal(dataOf(disk, 'b'), 'newest', 'written to the slot other than the loaded one');
+  assert.equal(await loadedText(disk), 'q\n3\nthree');
+});
+
+test('does not let the callback of a failed write open fail the next save', { skip }, async () => {
+  const disk = await twoSnapshots();
+  const vault = await readyVault(disk, { callbackFailedOpens: true });
+  vault.refuseWriteOpens.add('/work/vault-a.data');
+  vault.send('MSFS_UI_VAULT_SAVE', '3\nthree'); // fails at once; its open is called back later
+  vault.refuseWriteOpens.clear();
+  vault.send('MSFS_UI_VAULT_SAVE', '3\nagain'); // the failed seq is free again: written while the late callback waits
+  await vault.settle();
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['3\nerror 4', '3\nok']);
+  assert.equal(await loadedText(disk), 'q\n3\nagain');
+});
+
 test('keeps the last settled snapshot when the third save stops after its data and before its head', { skip }, async () => {
   const disk = newDisk();
   // Saves 1 and 2 take 4 callbacks each; save 3 writes slot a's data (open, write) and the sim stops before its head.

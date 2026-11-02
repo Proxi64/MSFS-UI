@@ -151,9 +151,24 @@ static void answerAcks(unsigned int upTo, const char* status) {
 
 static void startWrite();
 
+// The write in flight: its callbacks get its number, never a pointer, as the start-up reads' do. The sim calls back an
+// open that failed (it does for fsIOOpenRead, on file 0: 2.0.4), after the module gave the write up and maybe started
+// the next one; a callback whose number is no longer awaited changes nothing (until 2.1.0 it went on with no snapshot,
+// or with the next one's, and could write over the only good slot).
+static unsigned int g_lastWriteId = 0;
+static unsigned int g_awaitedWrite = 0; // 0: none
+
+static void* writeTicket() { return (void*)(uintptr_t)g_awaitedWrite; }
+
+static bool awaitedWrite(void* user) {
+  unsigned int id = (unsigned int)(uintptr_t)user;
+  return id != 0 && id == g_awaitedWrite && g_inflight != nullptr;
+}
+
 static void finishWrite(FsIOErr error) {
   Snapshot* done = g_inflight;
   g_inflight = nullptr;
+  g_awaitedWrite = 0;
   if (error == FsIOErr_Success) {
     freeSnapshot(g_loaded);
     g_loaded = done;
@@ -177,6 +192,7 @@ static void failWrite(FsIOFile file, FsIOErr error) {
 }
 
 static void onHeadWritten(FsIOFile file, const char* buf, int offset, int written, void* user) {
+  if (!awaitedWrite(user)) return;
   if (written != HEAD_SIZE) {
     failWrite(file, fsIOGetLastError(file));
     return;
@@ -186,16 +202,22 @@ static void onHeadWritten(FsIOFile file, const char* buf, int offset, int writte
 }
 
 static void onHeadOpened(FsIOFile file, void* user) {
-  FsIOErr error = fsIOWrite(file, g_head, 0, HEAD_SIZE, onHeadWritten, nullptr);
+  if (!awaitedWrite(user)) return;
+  if (file == FS_IO_ERROR_FILE) {
+    failWrite(file, FsIOErr_FileNotOpened);
+    return;
+  }
+  FsIOErr error = fsIOWrite(file, g_head, 0, HEAD_SIZE, onHeadWritten, writeTicket());
   if (error != FsIOErr_Success) failWrite(file, error);
 }
 
 static void openHead() {
-  FsIOFile file = fsIOOpen(HEAD_PATH[g_inflightSlot], FsIOOpenFlag_WRONLY | FsIOOpenFlag_CREAT | FsIOOpenFlag_TRUNC, onHeadOpened, nullptr);
+  FsIOFile file = fsIOOpen(HEAD_PATH[g_inflightSlot], FsIOOpenFlag_WRONLY | FsIOOpenFlag_CREAT | FsIOOpenFlag_TRUNC, onHeadOpened, writeTicket());
   if (file == FS_IO_ERROR_FILE) failWrite(file, FsIOErr_FileNotOpened);
 }
 
 static void onDataWritten(FsIOFile file, const char* buf, int offset, int written, void* user) {
+  if (!awaitedWrite(user)) return;
   if (written != g_inflight->length) {
     failWrite(file, fsIOGetLastError(file));
     return;
@@ -205,12 +227,17 @@ static void onDataWritten(FsIOFile file, const char* buf, int offset, int writte
 }
 
 static void onDataOpened(FsIOFile file, void* user) {
+  if (!awaitedWrite(user)) return;
+  if (file == FS_IO_ERROR_FILE) {
+    failWrite(file, FsIOErr_FileNotOpened);
+    return;
+  }
   if (g_inflight->length == 0) { // nothing to write: the file is created empty by the open
     fsIOClose(file);
     openHead();
     return;
   }
-  FsIOErr error = fsIOWrite(file, g_inflight->text, 0, g_inflight->length, onDataWritten, nullptr);
+  FsIOErr error = fsIOWrite(file, g_inflight->text, 0, g_inflight->length, onDataWritten, writeTicket());
   if (error != FsIOErr_Success) failWrite(file, error);
 }
 
@@ -225,7 +252,9 @@ static void startWrite() {
                         fnv1a(g_inflight->text, g_inflight->length));
   g_head[length] = ' ';
   g_head[HEAD_SIZE - 1] = '\n';
-  FsIOFile file = fsIOOpen(DATA_PATH[g_inflightSlot], FsIOOpenFlag_WRONLY | FsIOOpenFlag_CREAT | FsIOOpenFlag_TRUNC, onDataOpened, nullptr);
+  if (++g_lastWriteId == 0) g_lastWriteId = 1;
+  g_awaitedWrite = g_lastWriteId;
+  FsIOFile file = fsIOOpen(DATA_PATH[g_inflightSlot], FsIOOpenFlag_WRONLY | FsIOOpenFlag_CREAT | FsIOOpenFlag_TRUNC, onDataOpened, writeTicket());
   if (file == FS_IO_ERROR_FILE) failWrite(file, FsIOErr_FileNotOpened);
 }
 
