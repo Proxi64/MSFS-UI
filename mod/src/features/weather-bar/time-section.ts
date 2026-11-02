@@ -14,6 +14,13 @@ const TIME_LABELS: Record<TimeMode, string> = { now: 'Now', dawn: 'Dawn', day: '
 const flight = store.Game.CurrentFlight;
 const gameFlight = flight.GameFlight;
 
+/**
+ * After a change of departure the sim publishes the time of the new place, in its time zone, a little later (measured on
+ * 1.9.21, 2026-11-02: the departure, then the time); a mode applied at once took the zone of the place left (Dawn at
+ * LFPG 6:37 instead of 7:37). It waits for that time, or this long when none comes (the same zone).
+ */
+const DEPARTURE_TIME_MS = 2000;
+
 /** The sim's time as the bar follows it. */
 export interface TimeState {
   time: TimeInfo;
@@ -38,10 +45,14 @@ export class TimeSection {
   private liveBuffer = false;
   private liveOffset = 0;
   private departureDms = '';
+  /** The mode to apply again at a new departure, once its time comes (DEPARTURE_TIME_MS). */
+  private pendingMode: TimeMode | null = null;
+  private pendingTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(scope: Scope, events: TimeEvents) {
     this.scope = scope;
     this.events = events;
+    scope.add(() => clearTimeout(this.pendingTimer));
   }
 
   build(body: HTMLElement, component: MakeComponent): void {
@@ -57,6 +68,7 @@ export class TimeSection {
 
   setTime(time: TimeInfo): void {
     this.time = time;
+    this.applyPending();
     this.render();
   }
 
@@ -70,11 +82,23 @@ export class TimeSection {
     this.render();
   }
 
-  /** Dawn, day… depend on the place: computed again for a new departure. */
+  /** Dawn, day… depend on the place: computed again for a new departure, with the time of the new place. */
   setDeparture(dms: string): void {
     if (dms === this.departureDms) return;
     this.departureDms = dms;
-    if (this.mode && this.mode !== 'now') run('the time could not be changed', this.apply(this.mode));
+    const mode = this.pendingMode || this.mode;
+    if (!mode || mode === 'now') return;
+    this.pendingMode = mode;
+    clearTimeout(this.pendingTimer);
+    this.pendingTimer = setTimeout(() => this.applyPending(), DEPARTURE_TIME_MS);
+  }
+
+  private applyPending(): void {
+    const mode = this.pendingMode;
+    if (!mode || this.scope.disposed) return;
+    this.pendingMode = null;
+    clearTimeout(this.pendingTimer);
+    run('the time could not be changed', this.apply(mode));
   }
 
   /** The state read at once by the restore of the last choice (the watches may not have answered yet). */
