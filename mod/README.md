@@ -232,6 +232,8 @@ Since 2.0 the mod keeps its data in the **vault**: the `msfs-ui.wasm` module of 
 | `MSFS_UI_AIRCRAFT_USES` | Last livery and date of use per variant, recorded up to 2.0.4 and read by nobody: **removed** at the first start of the next version (`dropAircraftUses`, logged) | Nothing since |
 | `MSFS_UI_LIVERY_TAILS` | Per livery folder (lower case, for example `simobjects/airplanes/microsoft_sf50/liveries/microsoft/apex_corso_red`): the tail number chosen | Changes of the tail number field |
 | `MSFS_UI_BASE_TAIL` | Default tail number: the sim's field the first time the mod reads it while the key is empty | Recorded once, or set by hand |
+| `MSFS_UI_FALLBACK_WRITES` | In `datastorage` only: `{ "id": …, "keys": [ … ] }`, the keys of the mod's data that sessions without the vault wrote there, and the id of the last such session; taken into the vault at its next start, then cleared with the rest (`takeFallbackWrites`, `core/storage.ts`) | Each write of the mod's data to `datastorage` (the vault not answering) |
+| `MSFS_UI_FALLBACK_TAKEN` | In the vault only: the id of the last mark whose keys the vault took, so that a mark not yet cleared from `datastorage` is not taken twice | The start of a session with the vault, when a mark is there |
 
 A stored value is not trusted: each reader keeps only what has its type (`storedObject`, `core/storage.ts`; the favourite liveries and the uses in `sim/favorites.ts`, the tail numbers in `sim/liveries.ts`, the hidden aircraft in `sim/hidden.ts`, the groups of variants in `sim/variant-groups.ts`, the memories in `weather-bar/memory.ts` and `aircraft-gallery/memory.ts`), so that a damaged value (another version, a write cut short) gives defaults instead of a wrong value sent to the sim.
 

@@ -55,6 +55,49 @@ function noteWrite(key: string): void {
   if (!written.has(key)) written.set(key, datastorageBackend.get(key));
 }
 
+/**
+ * Kept in `datastorage` by a session without the vault: the mod's keys it wrote and the id of the last such session.
+ * At the next start with the vault, those keys are newer than the vault's (takeFallbackWrites); until 2.1.0 they were
+ * deleted unread (clearDatastorage).
+ */
+const FALLBACK_MARK = 'FALLBACK_WRITES';
+/** Kept in the vault: the id of the last mark whose keys it took, so that a mark not yet cleared is not taken twice. */
+const TAKEN_MARK = 'FALLBACK_TAKEN';
+
+interface FallbackMark {
+  id: string;
+  keys: string[];
+}
+
+/** The id of this session's mark, made at its first write to `datastorage`. */
+let sessionMark = '';
+
+function readMark(): FallbackMark | null {
+  const store = storage();
+  const raw = store ? store.getData(STORAGE_PREFIX + FALLBACK_MARK) : undefined;
+  if (!raw) return null;
+  try {
+    const mark = storedObject(JSON.parse(raw));
+    if (!mark || typeof mark.id !== 'string' || !Array.isArray(mark.keys)) return null;
+    return { id: mark.id, keys: (mark.keys as unknown[]).filter((key): key is string => typeof key === 'string') };
+  } catch (error) {
+    logError('the mark of a session without the vault is unreadable, ignored', error);
+    return null;
+  }
+}
+
+/** Adds a key of the mod's data written to `datastorage` to the mark, under this session's id. */
+function markWrite(key: string, store: DataStorage): void {
+  const name = key.indexOf(STORAGE_PREFIX) === 0 ? key.slice(STORAGE_PREFIX.length) : key;
+  if (DATASTORAGE_KEYS.indexOf(name) < 0) return;
+  if (!sessionMark) sessionMark = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+  const mark = readMark() || { id: sessionMark, keys: [] };
+  if (mark.id === sessionMark && mark.keys.indexOf(name) >= 0) return;
+  mark.id = sessionMark;
+  if (mark.keys.indexOf(name) < 0) mark.keys.push(name);
+  store.setData(STORAGE_PREFIX + FALLBACK_MARK, JSON.stringify(mark));
+}
+
 /** The sim's `datastorage`: the default backend. */
 const datastorageBackend: StorageBackend = {
   kind: 'datastorage',
@@ -73,6 +116,7 @@ const datastorageBackend: StorageBackend = {
       return;
     }
     store.setData(key, value);
+    markWrite(key, store);
     if (afterWrite) afterWrite();
   },
   remove(key) {
@@ -83,6 +127,7 @@ const datastorageBackend: StorageBackend = {
       return;
     }
     store.deleteData(key);
+    markWrite(key, store);
     if (afterWrite) afterWrite();
   },
 };
@@ -103,9 +148,31 @@ const DATASTORAGE_KEYS = ['FAVORITE_LIVERIES', 'LIVERY_TAILS', 'BASE_TAIL', 'WEA
 /** Keys of earlier versions that may linger in `datastorage`: nothing reads them any more. */
 const OLD_DATASTORAGE_KEYS = ['FAVORITE_AIRCRAFT', 'AIRCRAFT_USES'];
 
-/** The mod's keys `datastorage` holds (without the prefix): what clearDatastorage removes. */
+/** The mod's keys `datastorage` holds (without the prefix), the mark of a session without the vault included: what clearDatastorage removes. */
 export function datastorageKeys(): string[] {
-  return DATASTORAGE_KEYS.concat(OLD_DATASTORAGE_KEYS).filter((key) => datastorageBackend.get(STORAGE_PREFIX + key) !== undefined);
+  return DATASTORAGE_KEYS.concat(OLD_DATASTORAGE_KEYS, [FALLBACK_MARK]).filter((key) => datastorageBackend.get(STORAGE_PREFIX + key) !== undefined);
+}
+
+/**
+ * Takes into `target` (the vault) the keys that sessions without the vault wrote to `datastorage` since the vault last
+ * took them (their mark): they are newer than the vault's. The keys this session wrote are left to moveSessionWrites,
+ * which keeps a newer vault value. Returns the keys changed (without the prefix); the mark is recorded as taken.
+ */
+export function takeFallbackWrites(target: StorageBackend): string[] {
+  const mark = readMark();
+  if (!mark) return [];
+  const taken = JSON.stringify(mark.id);
+  if (target.get(STORAGE_PREFIX + TAKEN_MARK) === taken) return [];
+  const changed: string[] = [];
+  for (const key of mark.keys) {
+    if (DATASTORAGE_KEYS.indexOf(key) < 0 || written.has(STORAGE_PREFIX + key)) continue;
+    const value = datastorageBackend.get(STORAGE_PREFIX + key);
+    if (value === undefined || target.get(STORAGE_PREFIX + key) === value) continue;
+    target.set(STORAGE_PREFIX + key, value);
+    changed.push(key);
+  }
+  target.set(STORAGE_PREFIX + TAKEN_MARK, taken);
+  return changed;
 }
 
 /**
@@ -179,6 +246,7 @@ export function resetSessionStorage(): void {
   memory.clear();
   written.clear();
   memoryLogged = false;
+  sessionMark = '';
 }
 
 /**

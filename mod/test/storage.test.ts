@@ -7,6 +7,7 @@ import {
   deleteData,
   loadData,
   moveSessionWrites,
+  takeFallbackWrites,
   onStorageWrite,
   resetSessionStorage,
   saveData,
@@ -261,6 +262,55 @@ describe('storage', () => {
     assert.deepEqual(copyFromDatastorage(backend), ['LIVERY_TAILS']);
     assert.deepEqual(moveSessionWrites(backend), { moved: ['LIVERY_TAILS'], kept: [] });
     assert.equal(copy.get('MSFS_UI_LIVERY_TAILS'), '{"a":"F-ABCD","b":"F-WXYZ"}');
+  });
+
+  it("marks the keys of the mod's data a session writes to datastorage, under one id", () => {
+    const data = fakePage();
+    saveData('FAVORITE_LIVERIES', [{ dir: 'a' }]);
+    saveData('LIVERY_TAILS', { a: 'F-ABCD' });
+    saveData('FAVORITE_LIVERIES', [{ dir: 'b' }]);
+    saveData('OTHER', 1);
+    const mark = JSON.parse(data.get('MSFS_UI_FALLBACK_WRITES')!) as { id: string; keys: string[] };
+    assert.deepEqual(mark.keys, ['FAVORITE_LIVERIES', 'LIVERY_TAILS'], 'the data copied into a vault only, once each');
+    assert.ok(mark.id);
+    assert.ok(datastorageKeys().indexOf('FALLBACK_WRITES') >= 0, 'cleared with the data');
+  });
+
+  it('takes into the vault the keys sessions without it wrote, once, after they were left in datastorage', () => {
+    const data = fakePage();
+    // An earlier session without the vault: its writes and its mark are in datastorage.
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"clicked"}]');
+    data.set('MSFS_UI_LIVERY_TAILS', '{"a":"STALE"}');
+    data.set('MSFS_UI_FALLBACK_WRITES', JSON.stringify({ id: 'earlier', keys: ['FAVORITE_LIVERIES', 'NOT_DATA'] }));
+    const copy = new Map<string, string>([
+      ['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]'],
+      ['MSFS_UI_LIVERY_TAILS', '{"a":"NEWER"}'],
+    ]);
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), ['FAVORITE_LIVERIES']);
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"clicked"}]', 'newer than the vault');
+    assert.equal(copy.get('MSFS_UI_LIVERY_TAILS'), '{"a":"NEWER"}', 'not written without the vault: a stale leftover');
+    assert.equal(copy.get('MSFS_UI_FALLBACK_TAKEN'), '"earlier"');
+    copy.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"later"}]');
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), [], 'a mark not cleared yet is not taken twice');
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"later"}]');
+  });
+
+  it("leaves this session's writes to moveSessionWrites, which keeps a newer vault value", () => {
+    const data = fakePage();
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"old"}]');
+    saveData('FAVORITE_LIVERIES', [{ dir: 'old' }, { dir: 'clicked' }]);
+    const copy = new Map<string, string>([['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"newer"}]']]);
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), []);
+    assert.deepEqual(moveSessionWrites(vaultOf(copy)), { moved: [], kept: ['FAVORITE_LIVERIES'] });
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"newer"}]');
+  });
+
+  it('takes nothing without a mark (data left by 2.1.0 or before, or by 1.x)', () => {
+    const data = fakePage();
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"old"}]');
+    const copy = new Map<string, string>([['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]']]);
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), []);
+    assert.equal(copy.has('MSFS_UI_FALLBACK_TAKEN'), false);
   });
 
   it('records the base of the session without a datastorage too (absent)', () => {

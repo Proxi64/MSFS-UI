@@ -5,7 +5,7 @@ import { CONFIG_URL, loadSettings } from './core/config.ts';
 import { log, logError } from './core/log.ts';
 import { root, runtime, startRuntime } from './core/runtime.ts';
 import type { Scope } from './core/scope.ts';
-import { clearDatastorage, copyFromDatastorage, datastorageKeys, moveSessionWrites, setStorageBackend } from './core/storage.ts';
+import { clearDatastorage, copyFromDatastorage, datastorageKeys, moveSessionWrites, setStorageBackend, takeFallbackWrites } from './core/storage.ts';
 import { injectTheme } from './core/theme.ts';
 import { FEATURES } from './features.ts';
 import { dropAircraftUses, dropFavoriteAircraft } from './sim/favorites.ts';
@@ -89,6 +89,9 @@ function useVault(vault: Vault, lateMs?: number): string[] {
     const copied = copyFromDatastorage(backend);
     if (copied.length > 0) log(`data of an earlier version copied into the vault: ${copied.join(', ')}`);
   }
+  // A session without the vault since it last saved: its changes are newer, and would otherwise be cleared unread.
+  const taken = takeFallbackWrites(backend);
+  if (taken.length > 0) log(`changes of a session without the vault taken into it: ${taken.join(', ')}`);
   const { moved, kept } = moveSessionWrites(backend);
   if (kept.length > 0) log(`the vault's newer values kept over this session's changes made on the sim storage: ${kept.join(', ')}`);
   setStorageBackend(backend);
