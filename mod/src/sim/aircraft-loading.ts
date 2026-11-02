@@ -84,6 +84,11 @@ export function readCurrentAircraft<Current>(): Promise<Current | null> {
   return answerWithin(aircraft.CurrentAircraft() as Promise<Current | null>, ANSWER_TIMEOUT_MS, 'the current aircraft');
 }
 
+/** The sim's answer for a variant. */
+export function readVariant<Variant>(variationId: string): Promise<Variant | null> {
+  return answerWithin(aircraft.GetAircraftFromVariationId.request(variationId), ANSWER_TIMEOUT_MS, 'the variant') as Promise<Variant | null>;
+}
+
 /**
  * Loads the variant as the current aircraft, then the livery `wanted` when given. The configurator is first set on the
  * current aircraft: a request of the aircraft it already holds changes nothing (measured on 1.9.21, 2026-11-02, with the
@@ -110,7 +115,8 @@ async function setConfigurator(variationId: string, wanted?: LiveryRef): Promise
     const current = (await answerWithin(configurator.Details(), ANSWER_TIMEOUT_MS, 'the configurator')) as AircraftRef | null;
     return !!current && test(current);
   };
-  const sameAircraft = (ref: AircraftRef) => ref.displayName === details.displayName && ref.creator === details.creator;
+  // By number too: the list's entry and the configurator may carry another variant's name ("146-300" for "146-300QT").
+  const sameAircraft = (ref: AircraftRef) => ref.aircraftId === details.aircraftId || (ref.displayName === details.displayName && ref.creator === details.creator);
 
   // 1. Directly.
   await answerWithin(configurator.SetAircraftForConfigurator.request(`${details.aircraftId}||${details.variationIndex}`), ANSWER_TIMEOUT_MS, 'the change of aircraft');
@@ -118,7 +124,10 @@ async function setConfigurator(variationId: string, wanted?: LiveryRef): Promise
   // No `!await …`: Coherent GT does not load a module with an operator before `await`.
   if (!loaded) {
     // 2. Otherwise through the entry of the sim's list for this aircraft (unless the configurator is already on it).
-    const onAircraft = await configuratorIs(sameAircraft);
+    // The direct request may land on the aircraft under another variant (a variant of its own name, "146-300QT" of
+    // "146-300": measured on 1.9.21, 2026-11-02): the configurator then offers the variant, only to be chosen.
+    const offersVariant = async () => (await readArray<{ id: string }>(configurator.Items, 'the variants')).some((item) => !!item && item.id === variationId);
+    const onAircraft = (await configuratorIs(sameAircraft)) || (await waitFor(offersVariant, DIRECT_CHANGE_MS));
     if (!onAircraft) {
       const entry = (await readArray<AircraftRef>(aircraft.AircraftList, 'the aircraft list')).filter((item) => item && sameAircraft(item))[0];
       if (!entry) throw new Error(`${details.displayName} is not in the list (category tab?)`);

@@ -1,7 +1,8 @@
 // What *Remember my last plane* keeps, without the sim (tested by test/last-plane.test.ts). The sim does not keep the last
 // aircraft across a restart (the owner's restart, 2026-11-02): the mod stores the current aircraft, its variant and its
-// livery under MSFS_UI_LAST_PLANE. An aircraft is found by its variant or, for a modular one (one entry in the sim's list),
-// by its name and publisher, as a favourite livery or a hidden aircraft; a livery by its folder (`liveryKey`).
+// livery under MSFS_UI_LAST_PLANE. An aircraft is found by its variant, through the sim (`GetAircraftFromVariationId`): the sim's
+// list has one entry per aircraft, under the name of its last used variant (at a start, "146-300" for a stored "146-300QT"),
+// so a stored name may not be in it; a livery by its folder (`liveryKey`).
 
 import { loadData, saveData, storedObject } from '../../core/storage.ts';
 import { isHidden, type HiddenAircraft } from '../../sim/hidden.ts';
@@ -75,15 +76,22 @@ export function saveLastPlane(plane: LastPlane): void {
   saveData(LAST_PLANE_KEY, plane);
 }
 
-/** The entry of the sim's list for the last plane, or why it stays where it is. */
-export function findLastPlane(items: readonly AircraftItem[], last: LastPlane, hidden: readonly HiddenAircraft[]): { item?: AircraftItem; problem?: string } {
-  const own = items.filter((item) => !!item);
-  const sameName = own.filter((item) => item.displayName === last.displayName && item.creator === last.creator);
-  const item = own.filter((candidate) => candidate.variationId === last.variationId)[0] || sameName[0];
-  if (!item) return { problem: 'it is no longer in the list' };
-  if (isHidden(hidden, last)) return { problem: 'it is hidden' };
-  if (!item.isUsable) return { problem: 'it cannot be flown' };
-  return { item };
+/** The stored variant as the sim answers for it; for a variant it does not know, a number of -1 (measured on 1.9.21). */
+export interface LastPlaneVariant {
+  aircraftId: number;
+  isUsable?: boolean;
+}
+
+/**
+ * Why the last plane stays where it is; null when it can come back. `variant`: the sim's answer for the stored variant.
+ * Hidden under its own name, or under the name of its entry in the list (the name the owner hid it by).
+ */
+export function lastPlaneProblem(variant: LastPlaneVariant | null, items: readonly AircraftItem[], last: LastPlane, hidden: readonly HiddenAircraft[]): string | null {
+  if (!variant || variant.aircraftId < 0) return 'it is no longer installed';
+  const entry = items.filter((item) => !!item && item.aircraftId === variant.aircraftId)[0];
+  if (isHidden(hidden, last) || (entry && isHidden(hidden, entry))) return 'it is hidden';
+  if (variant.isUsable === false) return 'it cannot be flown';
+  return null;
 }
 
 /** The livery to ask for (`loadAircraft`): by its folder alone; none without one. */

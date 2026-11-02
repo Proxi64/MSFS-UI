@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { AircraftItem } from '../src/features/aircraft-gallery/tiles.ts';
-import { findLastPlane, lastPlaneFrom, lastPlaneOf, liveryRefOf, planeToRecord, type LastPlane } from '../src/features/aircraft-gallery/last-plane.ts';
+import { lastPlaneFrom, lastPlaneProblem, lastPlaneOf, liveryRefOf, planeToRecord, type LastPlane } from '../src/features/aircraft-gallery/last-plane.ts';
 
 const THUMBNAIL = 'coui://html_ui/VFS/SimObjects/Airplanes/asobo_atr/liveries/Asobo/Highline/thumbnail/thumbnail.png';
 const KEY = 'simobjects/airplanes/asobo_atr/liveries/asobo/highline';
@@ -53,32 +53,31 @@ describe('the stored last plane', () => {
 });
 
 describe('finding the last plane again', () => {
-  it('takes the entry of the variant', () => {
-    const found = findLastPlane([item('a380', 'A380'), item('atr72')], plane(), []);
-    assert.equal(found.problem, undefined);
-    assert.equal(found.item!.variationId, 'atr72');
+  const variant = (aircraftId = 1, isUsable = true) => ({ aircraftId, isUsable });
+
+  it('brings back a variant the sim knows, whatever the name of its entry in the list', () => {
+    assert.equal(lastPlaneProblem(variant(), [item('atr42', 'ATR 42-600')], plane(), []), null);
   });
 
-  it('takes the entry of a modular aircraft, on another variant, by name and publisher', () => {
-    assert.equal(findLastPlane([item('atr72-cargo')], plane(), []).item!.variationId, 'atr72-cargo');
+  it('brings it back with an empty list', () => {
+    assert.equal(lastPlaneProblem(variant(), [null as unknown as AircraftItem], plane(), []), null);
   });
 
-  it('prefers the variant among several entries of the same name (one variant per livery)', () => {
-    assert.equal(findLastPlane([item('other'), item('atr72')], plane(), []).item!.variationId, 'atr72');
+  it('leaves a variant the sim no longer knows (no answer, or number -1)', () => {
+    assert.match(lastPlaneProblem(null, [], plane(), [])!, /no longer installed/);
+    assert.match(lastPlaneProblem(variant(-1), [], plane(), [])!, /no longer installed/);
   });
 
-  it('leaves an aircraft no longer in the list', () => {
-    const found = findLastPlane([item('a380', 'A380'), null as unknown as AircraftItem], plane(), []);
-    assert.equal(found.item, undefined);
-    assert.match(found.problem!, /no longer in the list/);
+  it('leaves an aircraft hidden under its own name', () => {
+    assert.match(lastPlaneProblem(variant(), [], plane(), [{ displayName: 'ATR 72-600', creator: 'Studio' }])!, /hidden/);
   });
 
-  it('leaves a hidden aircraft', () => {
-    assert.match(findLastPlane([item('atr72')], plane(), [{ displayName: 'ATR 72-600', creator: 'Studio' }]).problem!, /hidden/);
+  it('leaves an aircraft hidden under the name of its entry in the list', () => {
+    assert.match(lastPlaneProblem(variant(), [item('atr42', 'ATR 42-600')], plane(), [{ displayName: 'ATR 42-600', creator: 'Studio' }])!, /hidden/);
   });
 
   it('leaves an aircraft that cannot be flown', () => {
-    assert.match(findLastPlane([item('atr72', 'ATR 72-600', false)], plane(), []).problem!, /cannot be flown/);
+    assert.match(lastPlaneProblem(variant(1, false), [], plane(), [])!, /cannot be flown/);
   });
 });
 

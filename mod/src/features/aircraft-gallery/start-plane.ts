@@ -9,7 +9,7 @@
 import { log, logError } from '../../core/log.ts';
 import { runtime } from '../../core/runtime.ts';
 import type { Scope } from '../../core/scope.ts';
-import { loadAircraft, readCurrentAircraft, readLiveriesOf, watchCurrentAircraft, withAllAircraft } from '../../sim/aircraft-loading.ts';
+import { loadAircraft, readCurrentAircraft, readLiveriesOf, readVariant, watchCurrentAircraft, withAllAircraft } from '../../sim/aircraft-loading.ts';
 import { chooseLivery, readConfigurator } from '../../sim/configurator.ts';
 import { isFavoriteLivery, loadFavoriteLiveries } from '../../sim/favorites.ts';
 import { FLIGHT_CONDITIONS_WIDGET } from '../../sim/freeflight-layout.ts';
@@ -17,7 +17,7 @@ import { loadHidden } from '../../sim/hidden.ts';
 import { variationOf } from '../../sim/liveries.ts';
 import { firstAvailableLivery } from '../../sim/livery-order.ts';
 import { isShown, onScreenActive, SCREENS } from '../../sim/screens.ts';
-import { findLastPlane, lastPlaneOf, liveryRefOf, loadLastPlane, planeToRecord, saveLastPlane, type CurrentPlane, type StartPlaneState } from './last-plane.ts';
+import { lastPlaneOf, lastPlaneProblem, liveryRefOf, loadLastPlane, planeToRecord, saveLastPlane, type CurrentPlane, type LastPlaneVariant, type StartPlaneState } from './last-plane.ts';
 import { firstAircraft, type AircraftItem } from './tiles.ts';
 
 declare global {
@@ -119,7 +119,7 @@ async function restoreLastPlane(screen: Scope): Promise<Outcome> {
   const hidden = loadHidden();
   return withAllAircraft<AircraftItem, Outcome>(async (items) => {
     if (screen.disposed) return 'later';
-    const { problem } = findLastPlane(items, last, hidden);
+    const problem = lastPlaneProblem(await readVariant<LastPlaneVariant>(last.variationId), items, last, hidden);
     if (problem) {
       log(`last aircraft not restored (${last.displayName}): ${problem}; the sim's aircraft stays`);
       return 'givenUp';
