@@ -140,10 +140,10 @@ describe('loadAircraft', () => {
     await assert.rejects(settled(loadAircraft('atr72')), { message: 'the current aircraft is still atr42, not atr72' });
   });
 
-  it('sends nothing when the current aircraft cannot be used to set the configurator', async () => {
+  it('gets out of an invalid current aircraft: the choice goes through without the sync it cannot make', async () => {
     sim.currentValid = false;
-    await assert.rejects(settled(loadAircraft('atr72')), { message: 'the configurator cannot be set on the current aircraft' });
-    assert.deepEqual(sim.requests, []);
+    await settled(loadAircraft('atr72'));
+    assert.deepEqual(sim.requests, ['set 28||1']);
   });
 });
 

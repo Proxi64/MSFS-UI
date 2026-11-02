@@ -95,10 +95,36 @@ export function readVariant<Variant>(variationId: string): Promise<Variant | nul
  * ATR 72 in the configurator and the ATR 42 current). Fails, the aircraft as it was, when the sim does not follow.
  */
 export async function loadAircraft(variationId: string, wanted?: LiveryRef): Promise<void> {
-  const ready = await syncConfiguratorToCurrent();
-  if (!ready) throw new Error('the configurator cannot be set on the current aircraft');
+  // An invalid current aircraft has nothing to protect and no aircraft to sync on: a new choice is its way out.
+  const current = await readCurrentAircraft<{ isValid: boolean }>();
+  if (current && current.isValid) {
+    const ready = await syncConfiguratorToCurrent();
+    if (!ready) throw new Error('the configurator cannot be set on the current aircraft');
+  } else {
+    await leaveVariant(variationId);
+  }
   const name = await setConfigurator(variationId, wanted);
   log(`aircraft loaded: ${name}${wanted ? `, ${wanted.title || wanted.dir}` : ''}`);
+}
+
+/**
+ * Takes the configurator off the variant: a request of the aircraft it holds changes nothing, and with an invalid current
+ * aircraft (the failed request left it on the target, measured on 1.9.21, 2026-11-02) the current one would stay invalid.
+ */
+async function leaveVariant(variationId: string): Promise<void> {
+  const holds = async () => {
+    const details = (await answerWithin(configurator.Details(), ANSWER_TIMEOUT_MS, 'the configurator')) as AircraftRef | null;
+    return !!details && details.variationId === variationId;
+  };
+  const onIt = await holds();
+  if (!onIt) return;
+  const other = (await readArray<AircraftRef>(aircraft.AircraftList, 'the aircraft list')).filter((item) => !!item && item.variationId !== variationId)[0];
+  if (!other) return;
+  await answerWithin(configurator.SetAircraftForConfigurator.request(`${other.aircraftId}||${other.variationIndex}`), ANSWER_TIMEOUT_MS, 'the change of aircraft');
+  await waitFor(async () => {
+    const still = await holds();
+    return !still;
+  }, CHANGE_TIMEOUT_MS);
 }
 
 /**

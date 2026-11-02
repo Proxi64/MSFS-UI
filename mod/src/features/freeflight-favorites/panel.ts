@@ -9,7 +9,7 @@ import { iconToggle, type IconToggle } from '../../core/icon-toggle.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { panel } from '../../core/theme.ts';
-import { loadAircraft } from '../../sim/aircraft-loading.ts';
+import { loadAircraft, withAllAircraft } from '../../sim/aircraft-loading.ts';
 import { COMPONENTS, createComponent, markOwned, type SimComponent } from '../../sim/components.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
@@ -204,12 +204,15 @@ export class FavoritesPanel {
     }
   }
 
-  /** Loads the variant, then the row's livery; the block is dimmed meanwhile. */
+  /**
+   * Loads the variant, then the row's livery; the block is dimmed meanwhile. On the All tab: the sim's request for an
+   * aircraft outside the tab left in the selection makes the current aircraft invalid (the owner, 2026-11-02).
+   */
   private load(entry: FavoriteEntry): void {
     if (this.loading) return;
     this.loading = true;
     this.root.classList.add('is-loading');
-    loadAircraft(entry.variationId, entry.livery)
+    withAllAircraft(() => loadAircraft(entry.variationId, entry.livery))
       .catch((error: unknown) => logError(`${entry.name} could not be loaded`, error))
       .then(() => {
         this.loading = false;
