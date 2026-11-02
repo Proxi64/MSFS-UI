@@ -89,7 +89,7 @@ src/
                        (its bar and its pooled tiles, made of sim components; the Showcase tiles' four lines), default-columns.ts
                        (Showcase on whole columns), default-grid.ts (pure: the Showcase view's two rows and column width, the
                        view tabs' shared width), memory.ts (pure: the gallery's memory), tiles.ts (pure: search, favourites
-                       tiles, hidden aircraft, filters, favourites first, Model, Manufacturer and Studio sorts), liveries.ts (the livery column of Gallery and
+                       tiles, hidden aircraft, filters, Model, Manufacturer and Studio sorts), liveries.ts (the livery column of Gallery and
                        List), livery-column.ts (pure: split, aircraft and livery tile sizes, tail line), aircraft-gallery.css
                        (layout only)
     aircraft-setup/    index.ts (column width: 400 units in Gallery and List, the option or the bottom block's need in Showcase),

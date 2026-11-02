@@ -27,6 +27,7 @@ interface AircraftRef {
   variationId: string;
   displayName: string;
   creator: string;
+  isUsable?: boolean;
 }
 
 /** The use is recorded a little after the aircraft changes: the livery follows the change of aircraft. */
@@ -118,7 +119,7 @@ async function leaveVariant(variationId: string): Promise<void> {
   };
   const onIt = await holds();
   if (!onIt) return;
-  const other = (await readArray<AircraftRef>(aircraft.AircraftList, 'the aircraft list')).filter((item) => !!item && item.variationId !== variationId)[0];
+  const other = (await readArray<AircraftRef>(aircraft.AircraftList, 'the aircraft list')).filter((item) => !!item && item.variationId !== variationId && item.isUsable !== false)[0];
   if (!other) return;
   await answerWithin(configurator.SetAircraftForConfigurator.request(`${other.aircraftId}||${other.variationIndex}`), ANSWER_TIMEOUT_MS, 'the change of aircraft');
   await waitFor(async () => {
@@ -209,11 +210,24 @@ export async function readLiveriesOf(variationId: string): Promise<ConfiguratorL
  * remembers (empty: every aircraft), which is put back afterwards, its list asked again, so that the user's tab has not
  * changed. Meant for outside the aircraft selection, whose gallery would follow the list.
  */
-export async function withAllAircraft<Item, Result>(use: (items: Item[]) => Promise<Result>): Promise<Result> {
+export function withAllAircraft<Item, Result>(use: (items: Item[]) => Promise<Result>): Promise<Result> {
+  // One at a time: a favourite clicked during the restore at start-up would see the All tab as the user's, and the
+  // restore would put the user's tab back under its request.
+  const run = allAircraftTurn.then(() => onAllAircraft(use));
+  allAircraftTurn = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+let allAircraftTurn: Promise<unknown> = Promise.resolve();
+
+async function onAllAircraft<Item, Result>(use: (items: Item[]) => Promise<Result>): Promise<Result> {
   const category = (await answerWithin(aircraft.FilteredCategory(), ANSWER_TIMEOUT_MS, 'the category tab')) as string | null;
   const otherTab = !!category && category !== ALL_CATEGORY;
-  if (otherTab) await answerWithin(aircraft.SetAircraftCategoryFilter.request(ALL_CATEGORY), ANSWER_TIMEOUT_MS, 'the category tab');
   try {
+    if (otherTab) await answerWithin(aircraft.SetAircraftCategoryFilter.request(ALL_CATEGORY), ANSWER_TIMEOUT_MS, 'the category tab');
     await answerWithin(aircraft.UpdateAircraftList.request(''), ANSWER_TIMEOUT_MS, 'the aircraft list');
     let items: Item[] = [];
     await waitFor(async () => {
@@ -240,11 +254,18 @@ export async function withAllAircraft<Item, Result>(use: (items: Item[]) => Prom
  */
 export async function syncConfiguratorToCurrent(): Promise<boolean> {
   const [current, details] = (await answerWithin(Promise.all([aircraft.CurrentAircraft(), configurator.Details()]), ANSWER_TIMEOUT_MS, 'the current aircraft')) as [
-    { variationId: string; isValid: boolean; thumbnailPath: string } | null,
+    { variationId: string; isValid: boolean; thumbnailPath: string; aircraftId?: number; displayName?: string; category?: string } | null,
     { variationId: string } | null,
   ];
   if (!current || !current.isValid) return false;
   if (details && details.variationId === current.variationId) return true;
+  // The request for an aircraft outside the tab left in the selection makes the current aircraft invalid (measured on
+  // 1.9.21, 2026-11-02, sim-reference.md): nothing is sent then.
+  const category = (await answerWithin(aircraft.FilteredCategory(), ANSWER_TIMEOUT_MS, 'the category tab')) as string | null;
+  if (category && category !== ALL_CATEGORY && category !== current.category) {
+    const list = await readArray<AircraftRef>(aircraft.AircraftList, 'the aircraft list');
+    if (!list.some((item) => !!item && (item.aircraftId === current.aircraftId || item.displayName === current.displayName))) return false;
+  }
   // Going through the list entry and `SelectItem` puts the first livery back: the current one is applied again.
   const livery = current.thumbnailPath ? { dir: liveryDirectory(current.thumbnailPath), title: '', image: current.thumbnailPath } : undefined;
   await setConfigurator(current.variationId, livery);

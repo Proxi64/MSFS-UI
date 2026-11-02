@@ -137,7 +137,7 @@
           "id": "rememberPlane",
           "type": "boolean",
           "title": "Remember my last plane",
-          "description": "The mod keeps your last aircraft, variant and livery, and brings them back the first time Free Flight shows after the sim starts (the sim does not keep them). Off,the first time Free Flight shows after the sim starts, the first aircraft of the All tab (sorted by Model, A to Z, hidden aircraft left out) is selected with its first livery.",
+          "description": "The mod keeps your last aircraft, variant and livery, and brings them back the first time Free Flight shows after the sim starts (the sim does not keep them). Off, the first time Free Flight shows after the sim starts, the first aircraft of the All tab (sorted by Model, A to Z, hidden aircraft left out) is selected with its first livery.",
           "default": true
         }
       ]

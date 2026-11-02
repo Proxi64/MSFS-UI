@@ -14,7 +14,7 @@ import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import { layoutWidth } from '../../core/virtual-list.ts';
-import { loadAircraft } from '../../sim/aircraft-loading.ts';
+import { loadAircraft, withAllAircraft } from '../../sim/aircraft-loading.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, type HiddenAircraft } from '../../sim/hidden.ts';
 import { liveryDirectory, liveryKey } from '../../sim/liveries.ts';
@@ -505,7 +505,7 @@ export class Gallery {
   private selectLivery(item: AircraftItem, livery: FavoriteLivery): void {
     if (!item.isUsable || this.loading) return;
     this.loading = true;
-    loadAircraft(livery.variationId, { dir: livery.dir, title: livery.title, image: livery.image })
+    withAllAircraft(() => loadAircraft(livery.variationId, { dir: livery.dir, title: livery.title, image: livery.image }))
       .catch((error: unknown) => logError(`${item.displayName} could not be loaded`, error))
       .then(() => {
         this.loading = false;

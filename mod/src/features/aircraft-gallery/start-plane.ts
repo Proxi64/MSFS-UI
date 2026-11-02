@@ -28,6 +28,8 @@ declare global {
 }
 
 const POLL_MS = 250;
+/** How long the stored livery may take to show on the current aircraft after its request. */
+const LIVERY_BACK_MS = 3000;
 /** How often the current aircraft is compared with what is stored (the sim's changes arrive by a watch). */
 const RECORD_POLL_MS = 1000;
 
@@ -68,8 +70,11 @@ async function finish(state: StartPlaneState, outcome: Outcome): Promise<void> {
     delete window.__msfsUiStartPlane;
     return;
   }
-  if (outcome === 'givenUp') state.simsChoice = lastPlaneOf(await readCurrentAircraft<CurrentPlane>());
-  state.done = true;
+  try {
+    if (outcome === 'givenUp') state.simsChoice = lastPlaneOf(await readCurrentAircraft<CurrentPlane>());
+  } finally {
+    state.done = true;
+  }
 }
 
 /** *Remember my last plane* off: the first aircraft of the list, once per sim start. */
@@ -125,9 +130,26 @@ async function restoreLastPlane(screen: Scope): Promise<Outcome> {
       return 'givenUp';
     }
     await loadAircraft(last.variationId, liveryRefOf(last));
+    const back = await liveryCameBack(last.dir);
+    if (!back) {
+      log(`last aircraft restored without its livery (${last.displayName}, ${last.dir}): the memory stays`);
+      return 'givenUp';
+    }
     log(`last aircraft restored: ${last.displayName}, ${last.variation}, ${last.dir}`);
     return 'made';
   });
+}
+
+/** Whether the current aircraft shows the stored livery, for a bounded time: it follows the request a little later. */
+async function liveryCameBack(dir: string): Promise<boolean> {
+  if (!dir) return true;
+  const end = Date.now() + LIVERY_BACK_MS;
+  for (;;) {
+    const plane = lastPlaneOf(await readCurrentAircraft<CurrentPlane>());
+    if (plane && plane.dir === dir) return true;
+    if (Date.now() >= end) return false;
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+  }
 }
 
 /**
