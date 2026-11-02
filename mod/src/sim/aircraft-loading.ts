@@ -74,6 +74,16 @@ async function recordFavoriteUse(variationId: string): Promise<void> {
   saveFavoriteLiveries(favorites);
 }
 
+/** Follows the current aircraft until `scope` is disposed (the value at once, then each change of aircraft, variant or livery). */
+export function watchCurrentAircraft<Current>(scope: Scope, callback: (current: Current | null) => void): void {
+  watch<Current | null>(scope, aircraft.CurrentAircraft, callback);
+}
+
+/** The current aircraft. */
+export function readCurrentAircraft<Current>(): Promise<Current | null> {
+  return answerWithin(aircraft.CurrentAircraft() as Promise<Current | null>, ANSWER_TIMEOUT_MS, 'the current aircraft');
+}
+
 /**
  * Loads the variant as the current aircraft, then the livery `wanted` when given. The configurator is first set on the
  * current aircraft: a request of the aircraft it already holds changes nothing (measured on 1.9.21, 2026-11-02, with the
@@ -83,7 +93,7 @@ export async function loadAircraft(variationId: string, wanted?: LiveryRef): Pro
   const ready = await syncConfiguratorToCurrent();
   if (!ready) throw new Error('the configurator cannot be set on the current aircraft');
   const name = await setConfigurator(variationId, wanted);
-  log(`aircraft loaded: ${name}${wanted ? `, ${wanted.title}` : ''}`);
+  log(`aircraft loaded: ${name}${wanted ? `, ${wanted.title || wanted.dir}` : ''}`);
 }
 
 /**
@@ -94,7 +104,8 @@ export async function loadAircraft(variationId: string, wanted?: LiveryRef): Pro
  */
 async function setConfigurator(variationId: string, wanted?: LiveryRef): Promise<string> {
   const details = (await answerWithin(aircraft.GetAircraftFromVariationId.request(variationId), ANSWER_TIMEOUT_MS, 'the variant')) as AircraftRef | null;
-  if (!details) throw new Error(`variant ${variationId} not found`);
+  // For a variant it does not know the sim answers an aircraft without a name, number -1 (measured on 1.9.21, 2026-11-02).
+  if (!details || details.aircraftId < 0) throw new Error(`variant ${variationId} not found`);
   const configuratorIs = async (test: (ref: AircraftRef) => boolean) => {
     const current = (await answerWithin(configurator.Details(), ANSWER_TIMEOUT_MS, 'the configurator')) as AircraftRef | null;
     return !!current && test(current);
@@ -133,7 +144,8 @@ async function setConfigurator(variationId: string, wanted?: LiveryRef): Promise
   if (wanted) {
     const liveries = await readLiveriesOf(variationId);
     const match = matchLivery(liveries, variationId, wanted);
-    if (match && !match.isSelected) await answerWithin(configurator.SaveVariationId.request(match.id), ANSWER_TIMEOUT_MS, 'the change of livery');
+    if (match && match.isDisabled) log(`livery "${match.title}" of ${details.displayName} is unavailable: the sim's livery is kept`);
+    else if (match && !match.isSelected) await answerWithin(configurator.SaveVariationId.request(match.id), ANSWER_TIMEOUT_MS, 'the change of livery');
     else if (!match) log(`livery "${wanted.title || wanted.dir}" not found for ${details.displayName}: the sim's livery is kept`);
   }
   return details.displayName;

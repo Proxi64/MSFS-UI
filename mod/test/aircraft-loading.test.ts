@@ -62,7 +62,8 @@ const model = {
       FilteredCategory: () => Promise.resolve(sim.category),
       AircraftList: listNode,
       GetAircraftFromVariationId: {
-        request: (id: string) => Promise.resolve([atr42, atr72, helicopter].filter((plane) => plane.variationId === id)[0] || null),
+        // An unknown variant, as measured on 1.9.21 (2026-11-02): an aircraft without a name, number -1.
+        request: (id: string) => Promise.resolve([atr42, atr72, helicopter].filter((plane) => plane.variationId === id)[0] || { aircraftId: -1, variationIndex: 0, variationId: id, displayName: '', creator: '' }),
       },
       SetAircraftCategoryFilter: requestNode('category', (param) => {
         sim.category = param || '';
@@ -126,6 +127,12 @@ describe('loadAircraft', () => {
     await settled(loadAircraft('atr72'));
     assert.deepEqual(sim.requests, ['set 28||1']);
     assert.equal(sim.current!.variationId, 'atr72');
+  });
+
+  it('sends no change of aircraft for a variant the sim does not know: it answers an empty aircraft', async () => {
+    await assert.rejects(settled(loadAircraft('gone')), { message: 'variant gone not found' });
+    assert.deepEqual(sim.requests, []);
+    assert.equal(sim.current!.variationId, 'atr42');
   });
 
   it('fails when the current aircraft does not follow', async () => {
