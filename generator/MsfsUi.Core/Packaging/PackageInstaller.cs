@@ -45,7 +45,7 @@ public sealed partial class PackageInstaller : IDisposable
         var folder = PackageFolder(sim);
         var conflicts = FindConflicts(sim);
         var simRunning = _simLocator.IsSimRunning();
-        if (!Directory.Exists(folder))
+        if (IsMissingOrEmpty(folder))
         {
             return new PackageStatus(PackageStatusKind.NotInstalled, folder, null, [], conflicts, simRunning);
         }
@@ -136,9 +136,12 @@ public sealed partial class PackageInstaller : IDisposable
         PackageState? previous = null;
         byte[]? previousMasterPage = null;
         var existingFiles = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        // A folder made by this installation (or found empty): removed again if the copy fails, rather than left
+        // without its state file, which would make it look like another tool's and block every later operation.
+        var targetIsNew = IsMissingOrEmpty(target);
         try
         {
-            if (Directory.Exists(target))
+            if (!targetIsNew)
             {
                 foreach (var file in Directory.EnumerateFiles(target, "*", SearchOption.AllDirectories))
                 {
@@ -154,12 +157,13 @@ public sealed partial class PackageInstaller : IDisposable
             throw new MsfsUiException($"The installed package could not be read: {ex.Message}", ex);
         }
 
+        ClearStaging();
         var state = await _builder.BuildAsync(sim, inputs, _paths.StagingPackage, cancellationToken).ConfigureAwait(false);
         var newMasterPage = await File.ReadAllBytesAsync(PackageLayout.Resolve(_paths.StagingPackage, PackageLayout.MasterPageHtmlPath), cancellationToken).ConfigureAwait(false);
         var newestFileCreatedUtc = NewestCreationTime(_paths.StagingPackage, existingFiles);
         try
         {
-            SynchronizeFolder(_paths.StagingPackage, target);
+            CopyPackage(_paths.StagingPackage, target, targetIsNew);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -184,6 +188,13 @@ public sealed partial class PackageInstaller : IDisposable
 
         try
         {
+            // An empty folder is no package: a removal whose last step failed, or one made by hand. It goes quietly.
+            if (IsMissingOrEmpty(target))
+            {
+                Directory.Delete(target);
+                return false;
+            }
+
             await RequireOwnPackageAsync(target, cancellationToken).ConfigureAwait(false);
             // Not Directory.Delete(target, recursive): it goes on when a file is locked and may delete the state
             // file before failing, which would leave a folder taken for someone else's, never touched again.
@@ -317,6 +328,56 @@ public sealed partial class PackageInstaller : IDisposable
         }
 
         return reasons;
+    }
+
+    /// <summary>Whether <paramref name="folder"/> is missing or holds nothing: free for the package.</summary>
+    private static bool IsMissingOrEmpty(string folder) => !Directory.Exists(folder) || !Directory.EnumerateFileSystemEntries(folder).Any();
+
+    /// <summary>
+    /// Empties the staging folder, the app's own (under its data folder): a build interrupted there leaves files
+    /// without the state file, which the builder would refuse as a folder of someone else's, at every later install.
+    /// </summary>
+    private void ClearStaging()
+    {
+        try
+        {
+            if (Directory.Exists(_paths.StagingPackage))
+            {
+                Directory.Delete(_paths.StagingPackage, recursive: true);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new MsfsUiException($"The working folder {_paths.StagingPackage} could not be emptied: a file may be in use. Try again.", ex);
+        }
+    }
+
+    /// <summary>
+    /// Copies the generated package over <paramref name="target"/> (<see cref="SynchronizeFolder"/>); when the folder
+    /// was new (<paramref name="targetIsNew"/>), a failed copy removes it again before the error goes on.
+    /// </summary>
+    internal static void CopyPackage(string source, string target, bool targetIsNew)
+    {
+        try
+        {
+            SynchronizeFolder(source, target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            if (targetIsNew)
+            {
+                try
+                {
+                    Directory.Delete(target, recursive: true);
+                }
+                catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException)
+                {
+                    // What could not be removed stays; the copy's error is the one reported.
+                }
+            }
+
+            throw;
+        }
     }
 
     private static async Task<PackageState> RequireOwnPackageAsync(string folder, CancellationToken cancellationToken)

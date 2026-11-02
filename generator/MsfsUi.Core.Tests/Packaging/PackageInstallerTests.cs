@@ -180,6 +180,69 @@ public sealed class PackageInstallerTests
     }
 
     [TestMethod]
+    public async Task AStagingFolderLeftByAnInterruptedBuildDoesNotBlockTheNextInstall()
+    {
+        using var setup = new Setup();
+        // A build stopped before the state file: files, no msfs-ui.json.
+        var staged = new AppPaths(setup.Folder["appdata"]).StagingPackage;
+        setup.Folder.Write(Path.Combine(Path.GetRelativePath(setup.Folder.Path, staged), "msfs-ui", "main.js"), "half written");
+
+        var result = await setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+
+        Assert.IsTrue(result.FirstInstall);
+        Assert.IsFalse(File.Exists(Path.Combine(staged, "msfs-ui", "main.js")), "the staging folder was emptied first");
+    }
+
+    [TestMethod]
+    public void AFirstCopyThatFailsRemovesTheFolderItMade()
+    {
+        using var folder = new TempFolder();
+        folder.Write("staged/a.txt", "a");
+        var locked = folder.Write("staged/b.txt", "b");
+        var target = folder["Community/msfs-ui"];
+
+        // The copy cannot read b.txt: the folder made for the package goes again.
+        using (File.Open(locked, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.ThrowsExactly<IOException>(() => PackageInstaller.CopyPackage(folder["staged"], target, targetIsNew: true));
+        }
+
+        Assert.IsFalse(Directory.Exists(target));
+    }
+
+    [TestMethod]
+    public void AnUpdateCopyThatFailsKeepsTheInstalledFolder()
+    {
+        using var folder = new TempFolder();
+        folder.Write("staged/b.txt", "b");
+        var installed = folder.Write("Community/msfs-ui/msfs-ui.json", "{}");
+
+        using (File.Open(folder["staged/b.txt"], FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.ThrowsExactly<IOException>(() => PackageInstaller.CopyPackage(folder["staged"], folder["Community/msfs-ui"], targetIsNew: false));
+        }
+
+        Assert.IsTrue(File.Exists(installed), "an update keeps the previous package and its state file");
+    }
+
+    [TestMethod]
+    public async Task AnEmptyPackageFolderIsNotInstalledAndTakesTheInstallation()
+    {
+        using var setup = new Setup();
+        Directory.CreateDirectory(setup.Package);
+
+        var status = await setup.Installer.GetStatusAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+        Assert.AreEqual(PackageStatusKind.NotInstalled, status.Kind, "not someone else's");
+        Assert.IsFalse(await setup.Installer.RemoveAsync(setup.Sim, TestContext.CancellationToken), "nothing to remove");
+        Assert.IsFalse(Directory.Exists(setup.Package), "the empty folder went");
+
+        Directory.CreateDirectory(setup.Package);
+        var result = await setup.Installer.InstallAsync(setup.Sim, Inputs, TestContext.CancellationToken);
+        Assert.IsTrue(result.FirstInstall);
+        Assert.AreEqual(PackageStatusKind.UpToDate, (await setup.Installer.GetStatusAsync(setup.Sim, Inputs, TestContext.CancellationToken)).Kind);
+    }
+
+    [TestMethod]
     public async Task RefusesToInstallIntoAMissingCommunityFolder()
     {
         using var setup = new Setup();
