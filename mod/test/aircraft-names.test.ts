@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { aircraftNames, displayBrand, titleLines, variantLabels } from '../src/sim/aircraft-names.ts';
+import { aircraftNames, displayBrand, sameName, titleLines, variantLabels } from '../src/sim/aircraft-names.ts';
 
 describe('displayBrand', () => {
   it('shows the company of "X, a Y company"', () => {
@@ -63,6 +63,13 @@ describe('titleLines', () => {
   it('moves the studio up when there is no brand line', () => {
     assert.deepEqual(titleLines({ displayName: 'Old Add-on', creator: 'Someone' }), { model: 'Old Add-on', brand: 'Someone', studio: '' });
     assert.deepEqual(titleLines({ displayName: 'Old Add-on' }), { model: 'Old Add-on', brand: '', studio: '' });
+  });
+});
+
+describe('sameName', () => {
+  it('ignores the case and the spaces around', () => {
+    assert.equal(sameName('Just Flight', ' JUST FLIGHT '), true);
+    assert.equal(sameName('ATR', 'Microsoft / S&H Software'), false);
   });
 });
 

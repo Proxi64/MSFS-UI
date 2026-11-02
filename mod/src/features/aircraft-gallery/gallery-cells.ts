@@ -9,7 +9,7 @@ import { EYE_SLASH_SVG } from '../../core/icons.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { TextFitter } from '../../core/text-fit.ts';
-import { aircraftNames } from '../../sim/aircraft-names.ts';
+import { aircraftNames, sameName } from '../../sim/aircraft-names.ts';
 import { PooledCells, type PoolSlot } from '../../sim/component-pool.ts';
 import { COMPONENTS, createComponent, markOwned, TILE_EVENTS, type SimComponent } from '../../sim/components.ts';
 import type { FavoriteLivery } from '../../sim/favorites.ts';
@@ -355,7 +355,8 @@ export class GalleryCells {
         // Four lines: the model, the brand, the variant (and livery), and on the banner's lowest line the studio.
         const names = aircraftNames(item);
         card.set('AircraftName', names.model);
-        card.set('Subtitle', names.brand);
+        // The studio alone when it is the brand: the name once on the tile, as in the title (the owner, 2026-11-02).
+        card.set('Subtitle', sameName(names.brand, creator) ? '' : names.brand);
         card.set('Distance', subtitle);
         cell.host.classList.remove('has-third-line');
         this.fitBanner(cell);

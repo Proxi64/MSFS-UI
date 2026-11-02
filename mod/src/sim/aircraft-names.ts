@@ -45,12 +45,17 @@ export function aircraftNames(fields: AircraftNameFields): AircraftNames {
   return { model: clean(fields.displayName) || model || brand, brand: '' };
 }
 
+/** The same name, whatever its case and the spaces around it (a brand and a studio). */
+export function sameName(a: string, b: string): boolean {
+  return clean(a).toLowerCase() === clean(b).toLowerCase();
+}
+
 /** The model, the brand and the studio; one line for the brand and the studio when they are the same. */
 export function titleLines(fields: AircraftNameFields): TitleLines {
   const names = aircraftNames(fields);
   const studio = clean(fields.creator);
   if (!names.brand) return { ...names, brand: studio, studio: '' };
-  return { ...names, studio: studio.toLowerCase() === names.brand.toLowerCase() ? '' : studio };
+  return { ...names, studio: sameName(studio, names.brand) ? '' : studio };
 }
 
 /**
