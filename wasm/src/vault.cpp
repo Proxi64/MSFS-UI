@@ -23,6 +23,11 @@ static const char* const DATA_PATH[2] = {"/work/vault-a.data", "/work/vault-b.da
 static const char* const HEAD_PATH[2] = {"/work/vault-a.head", "/work/vault-b.head"};
 static const FsCommBusBroadcastFlags TO_JS = FsCommBusBroadcast_JS;
 static const int STALLED_AFTER_LOADS = 2; // LOADs received during the start-up read before it may start again
+// The sim gives no way to tell a missing file from one it failed to open (both return file 0): a file never opened
+// counts as absent only from this attempt of the start-up read on, so that one failure cannot pass for an empty vault.
+static const int ABSENT_FROM_ATTEMPT = 2;
+// After this many attempts the start-up read ends with what it could read, rather than wait for good.
+static const int GIVE_UP_AFTER_ATTEMPTS = 5;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Helpers
@@ -301,6 +306,16 @@ static void dispatch(bool isSave, const char* buf, unsigned int size) {
   if (isSave) g_savesReceived++;
   else g_loadsReceived++;
   if (!g_ready) {
+    // The menu asks with the same request while it waits: one answer is enough, and the list does not grow.
+    if (!isSave) {
+      for (int i = 0; i < g_deferredCount; i++) {
+        if (g_deferred[i].isSave || g_deferred[i].length != length || memcmp(g_deferred[i].data, buf, (size_t)length) != 0) continue;
+        free(g_deferred[i].data);
+        memmove(&g_deferred[i], &g_deferred[i + 1], sizeof(Deferred) * (size_t)(g_deferredCount - i - 1));
+        g_deferredCount--;
+        break;
+      }
+    }
     if (g_deferredCount == g_deferredCapacity) {
       int capacity = g_deferredCapacity == 0 ? 4 : g_deferredCapacity * 2;
       Deferred* grown = (Deferred*)realloc(g_deferred, sizeof(Deferred) * (size_t)capacity);
@@ -416,10 +431,19 @@ static void endStartupOperation() {
   else finishStartup();
 }
 
+// Whether a file that cannot be read now (not opened, or fewer bytes than asked) is waited for, its operation left
+// pending until the next attempt, rather than taken as absent or unreadable. Waited for: a file read before (`seen`: a
+// read that never ended may still hold it), a file that must be readable (`mustRead`: the data of the newest valid
+// head, always written before that head), and any file at the first attempt; never once the attempts are used up.
+static bool waitsFor(bool seen, bool mustRead) {
+  if (g_startupAttempts >= GIVE_UP_AFTER_ATTEMPTS) return false;
+  return seen || mustRead || g_startupAttempts < ABSENT_FROM_ATTEMPT;
+}
+
 // Launches a start-up read of `count` bytes of `path` for `slot`, counted in g_startupPending. A file that cannot be
-// opened is taken as absent, unless a read of it was launched before (`seen`): a read that never ended may still hold
-// it, so it stays pending until the next restart rather than leaving out the newest snapshot.
-static void launchRead(Slot* slot, const char* path, int count, FsIOFileReadCallback callback, bool* seen) {
+// opened is taken as absent, unless it is waited for (waitsFor): it then stays pending until the next restart rather
+// than leaving out a snapshot.
+static void launchRead(Slot* slot, const char* path, int count, FsIOFileReadCallback callback, bool* seen, bool mustRead) {
   g_startupPending++;
   if (++g_lastReadId == 0) g_lastReadId = 1;
   unsigned int id = g_lastReadId;
@@ -430,7 +454,7 @@ static void launchRead(Slot* slot, const char* path, int count, FsIOFileReadCall
   FsIOFile file = fsIOOpenRead(path, FsIOOpenFlag_RDONLY, 0, count, callback, (void*)(uintptr_t)id);
   if (file == FS_IO_ERROR_FILE) {
     if (awaited->id == id) awaited->id = 0;
-    if (!*seen) g_startupPending--;
+    if (!waitsFor(*seen, mustRead)) g_startupPending--;
     return;
   }
   if (awaited->id == id) awaited->file = file; // else it has already called back
@@ -453,9 +477,18 @@ static Slot* claim(FsIOFile file, void* user) {
   return nullptr;
 }
 
+// A read of an opened file that called back with fewer bytes than asked: a failure to read, not a short file (the open
+// fails when the count is above the file's size). Waited for until the next attempt, as a read that never ended.
+static bool readFailed(FsIOFile file, int read, int count) {
+  if (read == count || !waitsFor(true, false)) return false;
+  fsIOClose(file);
+  return true;
+}
+
 static void onHeadRead(FsIOFile file, char* buf, int offset, int read, void* user) {
   Slot* slot = claim(file, user);
   if (slot == nullptr) return;
+  if (readFailed(file, read, HEAD_SIZE)) return;
   if (read == HEAD_SIZE && memcmp(buf, "MSFSUI-VAULT 1 ", 15) == 0 && buf[25] == ' ' && buf[36] == ' ' && buf[45] == ' ' &&
       buf[HEAD_SIZE - 1] == '\n') {
     unsigned long long seq, length, hash;
@@ -474,6 +507,7 @@ static void onHeadRead(FsIOFile file, char* buf, int offset, int read, void* use
 static void onDataRead(FsIOFile file, char* buf, int offset, int read, void* user) {
   Slot* slot = claim(file, user);
   if (slot == nullptr) return;
+  if (readFailed(file, read, slot->length)) return;
   if (read == slot->length) {
     memcpy(slot->data, buf, (size_t)read);
     slot->data[read] = 0;
@@ -486,6 +520,12 @@ static void onDataRead(FsIOFile file, char* buf, int offset, int read, void* use
 static void startupDataPhase() {
   g_startupPhase = 2;
   g_startupPending = 1; // guard: the phase ends only after every read is launched
+  // The newest valid head was written after its data: its data not read is a failure to read, never an interrupted
+  // write (that leaves an older head over newer data), so the start does not end without it.
+  Slot* newest = nullptr;
+  for (int i = 0; i < 2; i++) {
+    if (g_slots[i].headValid && (newest == nullptr || g_slots[i].seq > newest->seq)) newest = &g_slots[i];
+  }
   for (int i = 0; i < 2; i++) {
     Slot* slot = &g_slots[i];
     if (!slot->headValid) continue;
@@ -496,7 +536,7 @@ static void startupDataPhase() {
       slot->dataValid = slot->hash == fnv1a("", 0);
       continue;
     }
-    launchRead(slot, DATA_PATH[i], slot->length, onDataRead, &g_dataSeen[i]);
+    launchRead(slot, DATA_PATH[i], slot->length, onDataRead, &g_dataSeen[i], slot == newest);
   }
   endStartupOperation();
 }
@@ -506,7 +546,7 @@ static void startupHeadPhase() {
   g_loadsWhileStarting = 0;
   g_startupPhase = 1;
   g_startupPending = 1;
-  for (int i = 0; i < 2; i++) launchRead(&g_slots[i], HEAD_PATH[i], HEAD_SIZE, onHeadRead, &g_headSeen[i]);
+  for (int i = 0; i < 2; i++) launchRead(&g_slots[i], HEAD_PATH[i], HEAD_SIZE, onHeadRead, &g_headSeen[i], false);
   endStartupOperation();
 }
 

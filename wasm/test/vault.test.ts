@@ -16,19 +16,45 @@ const headOf = (disk: Map<string, Uint8Array>, slot: string) => {
 };
 const answers = (vault: Harness, event: string) => vault.sent.filter((message) => message.event === event).map((message) => message.text);
 
-/** Starts a module on the disk, lets its start-up read end, and asks for the stored text. */
-async function loadedText(disk: Map<string, Uint8Array>): Promise<string> {
-  const vault = await loadVault(disk);
-  await vault.settle();
-  vault.send('MSFS_UI_VAULT_LOAD', 'q');
-  return answers(vault, 'MSFS_UI_VAULT_LOADED')[0];
+/**
+ * Asks for the stored text as the menu does: the same LOAD every 500 ms until the module answers (a missing file is
+ * confirmed at the second attempt of the start-up read, which the second LOAD starts). Undefined after `max` LOADs.
+ */
+async function askUntilAnswered(vault: Harness, max = 2): Promise<string | undefined> {
+  for (let asked = 0; asked < max; asked++) {
+    vault.send('MSFS_UI_VAULT_LOAD', 'q');
+    await vault.settle();
+    const loaded = answers(vault, 'MSFS_UI_VAULT_LOADED');
+    if (loaded.length > 0) return loaded[0];
+  }
+  return undefined;
 }
 
-test('answers an empty vault', { skip }, async () => {
+/** A module on the disk whose start-up read has ended, as the menu leaves it; what it sent until then is cleared. */
+async function readyVault(disk: Map<string, Uint8Array>, options?: Parameters<typeof loadVault>[1]): Promise<Harness> {
+  const vault = await loadVault(disk, options);
+  await vault.settle();
+  assert.notEqual(await askUntilAnswered(vault), undefined, 'the start-up read ended');
+  vault.sent.length = 0;
+  return vault;
+}
+
+/** Starts a module on the disk, lets its start-up read end, and asks for the stored text. */
+async function loadedText(disk: Map<string, Uint8Array>): Promise<string | undefined> {
+  const vault = await loadVault(disk);
+  await vault.settle();
+  return askUntilAnswered(vault);
+}
+
+test('answers an empty vault once the missing files are confirmed by a second attempt', { skip }, async () => {
   const vault = await loadVault(newDisk());
   await vault.settle();
   vault.send('MSFS_UI_VAULT_LOAD', '7');
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['7\n0\n']);
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), [], 'one failed open is not an empty vault');
+  vault.send('MSFS_UI_VAULT_LOAD', '7');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['7\n0\n'], 'the same request answered once');
+  vault.send('MSFS_UI_VAULT_STATUS', 's');
+  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0]!, /^s\nready 1 phase 2 pending 0 deferred 0 attempts 2\n/);
 });
 
 test('starts on missing files when the sim still calls back their failed opens', { skip }, async () => {
@@ -37,27 +63,24 @@ test('starts on missing files when the sim still calls back their failed opens',
   const disk = newDisk();
   const vault = await loadVault(disk, { callbackFailedOpens: true });
   await vault.settle();
-  vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  assert.equal(await askUntilAnswered(vault), 'q\n0\n');
   vault.send('MSFS_UI_VAULT_STATUS', 's');
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n0\n']);
   assert.ok(answers(vault, 'MSFS_UI_VAULT_STATE')[0]!.includes('\nreads 0 0\n'), 'a failed open is no read');
   vault.send('MSFS_UI_VAULT_SAVE', '1\n{"a":"1"}');
   await vault.settle();
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['1\nok']);
 
-  // Slot a written, slot b still missing: its failed opens call back again at the next start.
+  // Slot a written, slot b still missing: its failed opens call back again at the next start, at both attempts.
   const again = await loadVault(disk, { callbackFailedOpens: true });
   await again.settle();
-  again.send('MSFS_UI_VAULT_LOAD', 'q');
+  assert.equal(await askUntilAnswered(again), 'q\n1\n{"a":"1"}');
   again.send('MSFS_UI_VAULT_STATUS', 's');
-  assert.deepEqual(answers(again, 'MSFS_UI_VAULT_LOADED'), ['q\n1\n{"a":"1"}']);
-  assert.ok(answers(again, 'MSFS_UI_VAULT_STATE')[0]!.includes('\nreads 2 2\n'), answers(again, 'MSFS_UI_VAULT_STATE')[0]);
+  assert.ok(answers(again, 'MSFS_UI_VAULT_STATE')[0]!.includes('\nreads 3 3\n'), answers(again, 'MSFS_UI_VAULT_STATE')[0]);
 });
 
 test('saves, then loads after a restart', { skip }, async () => {
   const disk = newDisk();
-  const vault = await loadVault(disk);
-  await vault.settle();
+  const vault = await readyVault(disk);
   vault.send('MSFS_UI_VAULT_SAVE', '1\n{"a":"1"}');
   await vault.settle();
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['1\nok']);
@@ -69,36 +92,122 @@ test('saves, then loads after a restart', { skip }, async () => {
   assert.equal(await loadedText(disk), 'q\n1\n{"a":"1"}');
 });
 
-test('answers STATUS at once, before and after the start-up read', { skip }, async () => {
-  const disk = newDisk();
-  const first = await loadVault(disk);
-  await first.settle();
-  first.send('MSFS_UI_VAULT_SAVE', '1\n{"a":"1"}');
-  await first.settle();
-  const vault = await loadVault(disk);
-  vault.send('MSFS_UI_VAULT_LOAD', 'q');
-  vault.send('MSFS_UI_VAULT_STATUS', 's1');
-  await vault.settle();
-  vault.send('MSFS_UI_VAULT_STATUS', 's2');
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_STATE'), [
-    // Only slot a was written: one head read waits (pending 1), the LOAD is deferred.
-    's1\nready 0 phase 1 pending 1 deferred 1 attempts 1\nregistered 1 1 1\nreads 1 0\nheads 0 0 data 0 0\nreceived 1 0\naccepted 0',
-    's2\nready 1 phase 2 pending 0 deferred 0 attempts 1\nregistered 1 1 1\nreads 2 2\nheads 1 0 data 1 0\nreceived 1 0\naccepted 1',
-  ]);
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n1\n{"a":"1"}']);
-});
-
 /** A disk with two snapshots: seq 1 in slot a, seq 2 (the newest) in slot b. */
 async function twoSnapshots(): Promise<Map<string, Uint8Array>> {
   const disk = newDisk();
   const vault = await loadVault(disk);
   await vault.settle();
+  await askUntilAnswered(vault);
   vault.send('MSFS_UI_VAULT_SAVE', '1\nolder');
   await vault.settle();
   vault.send('MSFS_UI_VAULT_SAVE', '2\nnewest');
   await vault.settle();
   return disk;
 }
+
+test('answers STATUS at once, before and after the start-up read', { skip }, async () => {
+  const vault = await loadVault(await twoSnapshots());
+  vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  vault.send('MSFS_UI_VAULT_STATUS', 's1');
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_STATUS', 's2');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_STATE'), [
+    // Both head reads wait (pending 2), the LOAD is deferred.
+    's1\nready 0 phase 1 pending 2 deferred 1 attempts 1\nregistered 1 1 1\nreads 2 0\nheads 0 0 data 0 0\nreceived 1 0\naccepted 0',
+    's2\nready 1 phase 2 pending 0 deferred 0 attempts 1\nregistered 1 1 1\nreads 4 4\nheads 1 1 data 1 1\nreceived 1 0\naccepted 2',
+  ]);
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n2\nnewest']);
+});
+
+// The sim gives the same answer for a missing file and a file it failed to open: one failure must never pass for an
+// empty vault, whose first saves would then write over both slots (2.1.0 and before).
+test('does not answer an empty vault when both heads fail to open once', { skip }, async () => {
+  const disk = await twoSnapshots();
+  const vault = await loadVault(disk, { refuseOpens: ['/work/vault-a.head', '/work/vault-b.head'] });
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), []);
+  vault.refuseOpens.clear();
+  assert.equal(await askUntilAnswered(vault), 'q\n2\nnewest');
+  vault.send('MSFS_UI_VAULT_SAVE', '3\nafter');
+  await vault.settle();
+  assert.equal(dataOf(disk, 'a'), 'after');
+  assert.equal(dataOf(disk, 'b'), 'newest', 'the loaded snapshot is untouched');
+});
+
+test('does not answer an empty vault when both heads read short once', { skip }, async () => {
+  const vault = await loadVault(await twoSnapshots());
+  vault.failReads.add('/work/vault-a.head');
+  vault.failReads.add('/work/vault-b.head');
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  await vault.settle();
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), []);
+  vault.failReads.clear();
+  assert.equal(await askUntilAnswered(vault, 3), 'q\n2\nnewest');
+});
+
+test('takes a file that cannot be opened twice as absent', { skip }, async () => {
+  // Slot b never written: confirmed missing at the second attempt, slot a loaded.
+  const disk = newDisk();
+  const first = await loadVault(disk);
+  await first.settle();
+  await askUntilAnswered(first);
+  first.send('MSFS_UI_VAULT_SAVE', '1\none');
+  await first.settle();
+  assert.equal(await loadedText(disk), 'q\n1\none');
+});
+
+test('waits for the newest snapshot when its data cannot be read, rather than answering an older one', { skip }, async () => {
+  for (const failure of ['short read', 'refused open'] as const) {
+    const disk = await twoSnapshots();
+    const vault = await loadVault(disk);
+    if (failure === 'short read') vault.failReads.add('/work/vault-b.data');
+    else vault.refuseOpens.add('/work/vault-b.data');
+    await vault.settle();
+    assert.equal(await askUntilAnswered(vault, 4), undefined, `${failure}: no answer while the newest data cannot be read`);
+    vault.failReads.clear();
+    vault.refuseOpens.clear();
+    assert.equal(await askUntilAnswered(vault, 3), 'q\n2\nnewest', failure);
+  }
+});
+
+test('ends the start-up read with what it could read after 5 attempts', { skip }, async () => {
+  const disk = newDisk();
+  const first = await loadVault(disk);
+  await first.settle();
+  await askUntilAnswered(first);
+  first.send('MSFS_UI_VAULT_SAVE', '4\nfour');
+  await first.settle();
+  first.send('MSFS_UI_VAULT_SAVE', '5\nfive');
+  await first.settle();
+  const vault = await loadVault(disk);
+  vault.failReads.add('/work/vault-b.data');
+  await vault.settle();
+  assert.equal(await askUntilAnswered(vault, 20), 'q\n4\nfour');
+  vault.send('MSFS_UI_VAULT_STATUS', 's');
+  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0]!, /^s\nready 1 phase 2 pending 0 deferred 0 attempts 5\n/);
+  // As in 2.1.0 then: the first write goes to the slot other than the loaded one.
+  vault.send('MSFS_UI_VAULT_SAVE', '5\nnew five');
+  await vault.settle();
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['5\nok']);
+  assert.equal(dataOf(disk, 'a'), 'four', 'the loaded snapshot is untouched');
+  assert.equal(await loadedText(disk), 'q\n5\nnew five');
+});
+
+test('keeps one deferred LOAD per request while the start-up read waits', { skip }, async () => {
+  const disk = await twoSnapshots();
+  const vault = await loadVault(disk, { loseReads: ['/work/vault-b.head'] });
+  await vault.settle();
+  vault.refuseOpens.add('/work/vault-b.head');
+  for (let asked = 0; asked < 6; asked++) vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  await vault.settle();
+  vault.send('MSFS_UI_VAULT_STATUS', 's');
+  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0]!, /^s\nready 0 phase 1 pending \d+ deferred 1 /);
+  vault.refuseOpens.clear();
+  assert.equal(await askUntilAnswered(vault, 3), 'q\n2\nnewest');
+  assert.equal(answers(vault, 'MSFS_UI_VAULT_LOADED').length, 1);
+});
 
 test('starts the read again when a start-up read never calls back', { skip }, async () => {
   // Measured in the sim on 2026-10-30: one of the two head reads launched by module_init never called back.
@@ -188,8 +297,7 @@ test('ignores the callback of a read dropped by a restart', { skip }, async () =
 
 test('alternates the slots', { skip }, async () => {
   const disk = newDisk();
-  const vault = await loadVault(disk);
-  await vault.settle();
+  const vault = await readyVault(disk);
   const slotsAfter: (string | undefined)[][] = [];
   for (const seq of [1, 2, 3]) {
     vault.send('MSFS_UI_VAULT_SAVE', `${seq}\ntext ${seq}`);
@@ -207,8 +315,7 @@ test('alternates the slots', { skip }, async () => {
 test('keeps the previous snapshot when the head was not written', { skip }, async () => {
   const disk = newDisk();
   // Callbacks of save 1: open data, write data, open head, write head (4); of save 2, the data's open and write (6).
-  const vault = await loadVault(disk, { stopAfter: 6 });
-  await vault.settle();
+  const vault = await readyVault(disk, { stopAfter: 6 });
   vault.send('MSFS_UI_VAULT_SAVE', '1\nfirst');
   await vault.settle();
   vault.send('MSFS_UI_VAULT_SAVE', '2\nsecond');
@@ -221,8 +328,7 @@ test('keeps the previous snapshot when the head was not written', { skip }, asyn
 
 test('ignores a slot whose data does not match its checksum', { skip }, async () => {
   const disk = newDisk();
-  const vault = await loadVault(disk);
-  await vault.settle();
+  const vault = await readyVault(disk);
   vault.send('MSFS_UI_VAULT_SAVE', '1\nfirst');
   await vault.settle();
   vault.send('MSFS_UI_VAULT_SAVE', '2\nsecond');
@@ -234,8 +340,7 @@ test('ignores a slot whose data does not match its checksum', { skip }, async ()
 
 test('coalesces saves during a write', { skip }, async () => {
   const disk = newDisk();
-  const vault = await loadVault(disk);
-  await vault.settle();
+  const vault = await readyVault(disk);
   vault.send('MSFS_UI_VAULT_SAVE', '1\none');
   vault.send('MSFS_UI_VAULT_SAVE', '2\ntwo');
   vault.send('MSFS_UI_VAULT_SAVE', '3\nthree');
@@ -247,8 +352,7 @@ test('coalesces saves during a write', { skip }, async () => {
 });
 
 test('answers LOAD after a SAVE with the saved text', { skip }, async () => {
-  const vault = await loadVault(newDisk());
-  await vault.settle();
+  const vault = await readyVault(newDisk());
   vault.send('MSFS_UI_VAULT_SAVE', '4\nhot');
   vault.send('MSFS_UI_VAULT_LOAD', '9');
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['9\n4\nhot']);
@@ -256,8 +360,7 @@ test('answers LOAD after a SAVE with the saved text', { skip }, async () => {
 
 test('refuses stale and oversize saves', { skip }, async () => {
   const disk = newDisk();
-  const vault = await loadVault(disk);
-  await vault.settle();
+  const vault = await readyVault(disk);
   vault.send('MSFS_UI_VAULT_SAVE', '1\none');
   vault.send('MSFS_UI_VAULT_SAVE', '1\nagain');
   await vault.settle();
@@ -274,8 +377,7 @@ test('refuses stale and oversize saves', { skip }, async () => {
 
 test('frees the seq of a failed write', { skip }, async () => {
   const disk = newDisk();
-  const vault = await loadVault(disk);
-  await vault.settle();
+  const vault = await readyVault(disk);
   vault.send('MSFS_UI_VAULT_SAVE', '4\nfour');
   await vault.settle();
   vault.failWrites = true;
@@ -292,23 +394,17 @@ test('frees the seq of a failed write', { skip }, async () => {
 });
 
 test('answers a LOAD that arrives before the start-up read ends', { skip }, async () => {
-  const disk = newDisk();
-  const first = await loadVault(disk);
-  await first.settle();
-  first.send('MSFS_UI_VAULT_SAVE', '5\nstored');
-  await first.settle();
-  const vault = await loadVault(disk);
+  const vault = await loadVault(await twoSnapshots());
   vault.send('MSFS_UI_VAULT_LOAD', '3');
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), []);
   await vault.settle();
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['3\n5\nstored']);
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['3\n2\nnewest']);
 });
 
 test('keeps the last settled snapshot when the third save stops after its data and before its head', { skip }, async () => {
   const disk = newDisk();
   // Saves 1 and 2 take 4 callbacks each; save 3 writes slot a's data (open, write) and the sim stops before its head.
-  const vault = await loadVault(disk, { stopAfter: 10 });
-  await vault.settle();
+  const vault = await readyVault(disk, { stopAfter: 10 });
   vault.send('MSFS_UI_VAULT_SAVE', '1\none');
   await vault.settle();
   vault.send('MSFS_UI_VAULT_SAVE', '2\ntwo');
@@ -321,39 +417,18 @@ test('keeps the last settled snapshot when the third save stops after its data a
   assert.equal(await loadedText(disk), 'q\n2\ntwo');
 });
 
-// A read that fails at start-up must not lose a snapshot that was readable: the module writes the slot it did not
-// load from, or, with nothing loaded, the slot other than the one with the newest valid head.
-test('does not write over the loaded snapshot when the newer slot cannot be read', { skip }, async () => {
-  const disk = newDisk();
-  const first = await loadVault(disk);
-  await first.settle();
-  first.send('MSFS_UI_VAULT_SAVE', '4\nfour');
-  await first.settle();
-  first.send('MSFS_UI_VAULT_SAVE', '5\nfive');
-  await first.settle();
-  const vault = await loadVault(disk);
-  vault.failReads.add('/work/vault-b.data');
-  await vault.settle();
-  vault.send('MSFS_UI_VAULT_LOAD', 'q');
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n4\nfour']);
-  vault.send('MSFS_UI_VAULT_SAVE', '5\nnew five');
-  await vault.settle();
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['5\nok']);
-  assert.equal(dataOf(disk, 'a'), 'four', 'the loaded snapshot is untouched');
-  assert.equal(await loadedText(disk), 'q\n5\nnew five');
-});
-
+// Once the attempts are used up, a read that failed must still not lose a snapshot that was readable: the module writes
+// the slot it did not load from (the test of 5 attempts above), or, with nothing loaded, the slot other than the one
+// with the newest valid head.
 test('does not write first onto the slot with the newest valid head when nothing could be read', { skip }, async () => {
   const disk = newDisk();
-  const first = await loadVault(disk);
-  await first.settle();
+  const first = await readyVault(disk);
   first.send('MSFS_UI_VAULT_SAVE', '1\none');
   await first.settle();
   const vault = await loadVault(disk);
   vault.failReads.add('/work/vault-a.data');
   await vault.settle();
-  vault.send('MSFS_UI_VAULT_LOAD', 'q');
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n0\n']);
+  assert.equal(await askUntilAnswered(vault, 20), 'q\n0\n');
   vault.send('MSFS_UI_VAULT_SAVE', '2\ntwo');
   await vault.settle();
   assert.equal(dataOf(disk, 'a'), 'one', 'slot a, possibly valid, is spared');

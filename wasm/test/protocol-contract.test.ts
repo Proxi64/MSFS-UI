@@ -10,10 +10,19 @@ const skip = wasmBuilt ? false : 'wasm/dist/msfs-ui.wasm is missing: run wasm/bu
 
 const answers = (vault: Harness, event: string) => vault.sent.filter((message) => message.event === event).map((message) => message.text);
 
-/** A module started on `disk`, its start-up read ended. */
+/**
+ * A module started on `disk`, its start-up read ended: asked as the mod asks (the same LOAD again while it waits; a
+ * missing file is confirmed at the second attempt), what it sent until then cleared.
+ */
 async function started(disk: Map<string, Uint8Array>): Promise<Harness> {
   const vault = await loadVault(disk);
   await vault.settle();
+  for (let asked = 0; asked < 2 && answers(vault, VAULT_EVENTS.loaded).length === 0; asked++) {
+    vault.send(VAULT_EVENTS.load, '1');
+    await vault.settle();
+  }
+  assert.equal(answers(vault, VAULT_EVENTS.loaded).length, 1, 'the start-up read ended');
+  vault.sent.length = 0;
   return vault;
 }
 

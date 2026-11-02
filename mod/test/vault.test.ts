@@ -208,7 +208,7 @@ describe('vault', () => {
     scope.dispose();
   });
 
-  it('leaves no listener after the scope ends, even while watching for a late module', async () => {
+  it('leaves no listener and no request after the scope ends, even while watching for a late module', async () => {
     fake.answers = false;
     const scope = new Scope();
     const pending = openVault(scope);
@@ -217,6 +217,35 @@ describe('vault', () => {
     assert.equal(fake.listenerCount(), 1);
     scope.dispose();
     assert.equal(fake.listenerCount(), 0);
+    const before = fake.sent.length;
+    mock.timers.tick(10000);
+    assert.equal(fake.sent.length, before, 'no LOAD after the scope ended');
+  });
+
+  it('keeps asking every 2 s after the time-out, so that a module still reading its files answers', async () => {
+    // The module reads its files again only when it is asked (a lost start-up read, a file it failed to open).
+    fake.answers = false;
+    const scope = new Scope();
+    const late: unknown[] = [];
+    const pending = openVault(scope, { onLate: (vault) => late.push(vault) });
+    const loads = () => fake.sent.filter((message) => message.event === VAULT_EVENTS.load).length;
+    mock.timers.tick(3000);
+    await pending;
+    const atTimeOut = loads();
+    mock.timers.tick(1999);
+    assert.equal(loads(), atTimeOut);
+    mock.timers.tick(1);
+    assert.equal(loads(), atTimeOut + 1);
+    mock.timers.tick(4000);
+    assert.equal(loads(), atTimeOut + 3);
+    fake.answers = true;
+    mock.timers.tick(2000);
+    await tick();
+    assert.equal(late.length, 1, 'the late answer adopted');
+    const answered = loads();
+    mock.timers.tick(10000);
+    assert.equal(loads(), answered, 'no LOAD once answered');
+    scope.dispose();
   });
 
   it('asks again every 500 ms until the module answers', async () => {

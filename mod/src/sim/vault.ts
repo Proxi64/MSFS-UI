@@ -18,6 +18,11 @@ const SAVE_DELAY_MS = 300;
 const CONFIRM_TIMEOUT_MS = 5000;
 /** The first LOAD may reach the bus before the module listens: ask again until it answers. */
 const LOAD_RETRY_MS = 500;
+/**
+ * After the time-out, while a late answer is awaited: the module reads its files again only when asked (a start-up read
+ * lost, or a file it failed to open), so it is still asked, less often, until it answers or the scope ends.
+ */
+const LATE_LOAD_RETRY_MS = 2000;
 
 export interface Vault {
   /** The sequence number of the latest snapshot sent (or loaded). */
@@ -80,6 +85,7 @@ class VaultOpening {
   private watchingLate = false;
   private retryTimer: ReturnType<typeof setInterval> | undefined;
   private giveUpTimer: ReturnType<typeof setTimeout> | undefined;
+  private lateRetryTimer: ReturnType<typeof setInterval> | undefined;
   private vault: VaultImpl | undefined;
 
   constructor(scope: Scope, options: OpenOptions, resolve: (result: OpenResult) => void) {
@@ -97,20 +103,22 @@ class VaultOpening {
       // On an already disposed scope, this runs at once and settles the promise.
       this.scope.add(() => {
         if (this.vault) this.vault.dispose();
+        this.stopAskingLate();
         this.unregister();
         this.finish(null, 'the mod was unloaded');
       });
       if (this.settled) return;
       engine.trigger('ADD_VIEW_LISTENER', LISTENER, window.location.pathname);
       // The timers first: an answer arriving inside the first call settles the promise and stops them.
-      const sendLoad = () => sendToModule(VAULT_EVENTS.load, String(this.requestId));
-      this.retryTimer = setInterval(sendLoad, LOAD_RETRY_MS);
+      this.retryTimer = setInterval(this.sendLoad, LOAD_RETRY_MS);
       this.giveUpTimer = setTimeout(() => this.giveUp(`the vault module did not answer within ${this.timeoutMs} ms`), this.timeoutMs);
-      sendLoad();
+      this.sendLoad();
     } catch (error) {
       this.finish(null, `the CommBus is not available: ${describeError(error)}`);
     }
   }
+
+  private readonly sendLoad = (): void => sendToModule(VAULT_EVENTS.load, String(this.requestId));
 
   private readonly onEvent: Handler = (listener, eventName, payload) => {
     // Other add-ons' events arrive many times per second: dropped first.
@@ -148,6 +156,7 @@ class VaultOpening {
   /** Late: the features already read the sim storage; `onLate` moves the session to the vault. */
   private onLateAnswer(text: string, seq: number): void {
     this.watchingLate = false;
+    this.stopAskingLate();
     const afterMs = Date.now() - this.startedAt;
     const late = this.onLate ? parseSnapshot(text) : null;
     if (!this.onLate || !late) {
@@ -162,11 +171,17 @@ class VaultOpening {
     this.onLate(this.vault, afterMs);
   }
 
-  /** The wait ended without the vault: no vault for now, the listener kept for a late answer. */
+  /** The wait ended without the vault: no vault for now, the listener kept for a late answer, still asked for. */
   private giveUp(reason: string): void {
     if (this.settled) return;
     if (this.registered) this.watchingLate = true;
     this.settle(null, reason);
+    if (this.watchingLate) this.lateRetryTimer = setInterval(this.sendLoad, LATE_LOAD_RETRY_MS);
+  }
+
+  private stopAskingLate(): void {
+    if (this.lateRetryTimer !== undefined) clearInterval(this.lateRetryTimer);
+    this.lateRetryTimer = undefined;
   }
 
   /** The wait ended with the vault, or for good without it. */
