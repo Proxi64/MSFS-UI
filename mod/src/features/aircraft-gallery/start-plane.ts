@@ -108,7 +108,8 @@ async function selectFirstPlane(screen: Scope): Promise<Outcome> {
 
 /**
  * *Remember my last plane* on: the stored aircraft comes back once per sim start, and each change of the current aircraft
- * is stored from then on, whichever screen made it. Not found again, or nothing stored: the sim's aircraft stays.
+ * is stored from then on, whichever screen made it. Nothing stored: the first aircraft of the list. Not found again: the
+ * sim's aircraft stays.
  */
 export function rememberLastPlane(scope: Scope): void {
   atFirstFreeFlight(scope, 'last aircraft', restoreLastPlane);
@@ -117,10 +118,8 @@ export function rememberLastPlane(scope: Scope): void {
 
 async function restoreLastPlane(screen: Scope): Promise<Outcome> {
   const last = loadLastPlane();
-  if (!last) {
-    log('last aircraft: nothing stored yet, the sim\'s aircraft stays');
-    return 'made';
-  }
+  // Nothing stored (a new user): the first aircraft of the list, as with the option off (the owner, 2026-11-02).
+  if (!last) return selectFirstPlane(screen);
   const hidden = loadHidden();
   return withAllAircraft<AircraftItem, Outcome>(async (items) => {
     if (screen.disposed) return 'later';
