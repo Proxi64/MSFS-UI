@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.0 (2026-11-02)
+
+- **Showcase**: the Default view is now **Showcase**, and it is the view a new user starts on. On the left, every part stays at the same place from one aircraft to the next: the title on three lines (model, manufacturer, studio), the variants in a dropdown, the current livery large with its arrows, position and heart, up to six small liveries at a time that scroll by whole rows, the tail number, Fuel and Payload, Identification and **Configure your aircraft**. The large aircraft tiles show the model, the manufacturer, the variant and, at the bottom, the studio.
+- **Gallery and List** are always side by side: the *Layout* option is gone.
+- **Sorts**: Model, Manufacturer and Studio (Max range is gone). Favourites no longer come first in the aircraft list: the **Favorites** filter shows them.
+- **Two new options** on the Features page, on by default: **Remember my layout** (the view, the sort and its direction) and **Remember my last plane** (the mod keeps the aircraft, variant and livery, which the sim does not). Off, each start of the sim opens Showcase sorted by Model, and selects the first aircraft of the list with its first livery. The Hidden and Favorites filters always start off.
+- **Weather presets of other packages**: their list starts right under its header, with no empty line, and reaches down toward the map's buttons, showing more presets, always whole.
+- **Fixed**: a Free Flight favourite clicked while another tab was left open in the aircraft selection made the current aircraft invalid (*Not found*), with no way out.
+- **Updating**: delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, then open the app and click **Generate & install**. Restart the sim once. Your settings and data are kept; a *Classic* layout setting is simply dropped.
+
 ## 2.0.8 (2026-10-31)
 
 - **No old data coming back**: earlier versions also left a copy of your data in the sim's own storage, and a new installation took it back (hidden aircraft reappeared after **Uninstall everything** and a new installation). The mod now removes that copy once the vault holds your data, at its first start with this version: after **Uninstall everything**, a new installation starts empty. **Uninstall everything** no longer says that this copy stays.
