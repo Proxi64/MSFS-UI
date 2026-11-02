@@ -13,8 +13,7 @@ import { el, setStyle, setVariable, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
-import { layoutWidth } from '../../core/virtual-list.ts';
-import { loadAircraft, withAllAircraft } from '../../sim/aircraft-loading.ts';
+import { loadAircraft } from '../../sim/aircraft-loading.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, withVariationIds, type HiddenAircraft } from '../../sim/hidden.ts';
 import { loadVariantGroups, VARIANT_GROUPS_CHANGED, type VariantGroups } from '../../sim/variant-groups.ts';
@@ -320,28 +319,15 @@ export class Gallery {
     const gap = Math.round(TILE_GAP * unit);
     const halves = splitColumns(Math.round(rect.width), gap, SCROLL_BAR_ROOM * unit, TILE_SIDE * unit);
     setStyle(this.body.style, 'width', `${halves.left}px`);
-    // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
-    // before the scroll bar, and less the bar's own width when the tiles do not fit without it (core/virtual-list.ts:
-    // decided on the full width, so the bar cannot make the tiles swing between two sizes).
-    const tileLayout = { room: SCROLL_BAR_ROOM * unit, unit, columns: AIRCRAFT_COLUMNS };
-    const tileAt = (listWidth: number) => aircraftTileSize(listWidth, tileLayout);
     // The vertical list's bar only (a horizontal one, between two views, is as wide as the grid).
     if (this.cells.axis === 'y') this.barUnits = Math.max(this.barUnits, scrollBarWidth(this.cells.list) / unit);
-    const barWidth = Math.round(this.barUnits * unit);
-    // The tiles the Gallery view shows or would show (one per row of the List view): both views keep their edges.
-    const tiles = this.cells.count;
-    const fit = layoutWidth(
-      halves.left,
-      barWidth,
-      (listWidth) => {
-        const tile = tileAt(listWidth);
-        return Math.ceil(tiles / tile.columns) * (tile.height + TILE_GAP * unit);
-      },
-      this.cells.list.getBoundingClientRect().height,
-    );
-    const tile = tileAt(fit.width);
+    const barWidth = Math.round(this.barUnits * unit) || Math.round(SCROLL_BAR_WIDTH * unit);
+    // Gallery tiles in whole pixels: --columns per row, 6 units on each side, in the list's width less the room kept
+    // before the scroll bar and the bar's own width, whether the list scrolls or not: with a few tiles and no bar, wider
+    // tiles moved Hidden and Favorites, which stand on the last column.
+    const tile = aircraftTileSize(halves.left - barWidth, { room: SCROLL_BAR_ROOM * unit, unit, columns: AIRCRAFT_COLUMNS });
     // List rows: one width whether the list scrolls or not (the bar's room kept; its width measured once it shows).
-    const rowWidth = aircraftRowWidth(halves.left, SCROLL_BAR_ROOM * unit, barWidth || Math.round(SCROLL_BAR_WIDTH * unit));
+    const rowWidth = aircraftRowWidth(halves.left, SCROLL_BAR_ROOM * unit, barWidth);
     // The rows on the tiles' edges (the bar does not move between the two views).
     const edges = aircraftEdges(tile, TILE_SIDE * unit, rowWidth);
     setVariable(style, '--aircraft-row-x', `${edges.left}px`);
@@ -514,11 +500,14 @@ export class Gallery {
     this.page.elt.dispatchEvent(new CustomEvent('tileClick', { detail: item, bubbles: true }));
   }
 
-  /** Favourite livery tile: the aircraft, its variant and this livery (same loading as Free Flight). */
+  /**
+   * Favourite livery tile: the aircraft, its variant and this livery (same loading as Free Flight). The tile's aircraft
+   * is in the list of the category tab shown: no pass through the All tab, whose list the gallery would follow.
+   */
   private selectLivery(item: AircraftItem, livery: FavoriteLivery): void {
     if (!item.isUsable || this.loading) return;
     this.loading = true;
-    withAllAircraft(() => loadAircraft(livery.variationId, { dir: livery.dir, title: livery.title, image: livery.image }))
+    loadAircraft(livery.variationId, { dir: livery.dir, title: livery.title, image: livery.image })
       .catch((error: unknown) => logError(`${item.displayName} could not be loaded`, error))
       .then(() => {
         this.loading = false;

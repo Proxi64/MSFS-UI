@@ -39,8 +39,14 @@
 .msfs-ui-gal__count { position: relative; margin: 0 calc(var(--u) * 6) 0 calc(var(--u) * 12); opacity: 0.75; flex-shrink: 0; white-space: nowrap; }
 /* Too little room for the search: the count shows the tiles shown only (its total out of the flow, hidden). */
 .msfs-ui-gal__count.is-short .msfs-ui-gal__count-total { position: absolute; left: 0; top: 0; visibility: hidden; }
-.msfs-ui-gal__hidden { width: calc(var(--u) * 114); }
-.msfs-ui-gal__favorites { width: calc(var(--u) * 130); }
+/* As wide as their icon, their text and the corner below: the sort dropdown after them takes the rest ("Manufacturer" whole, list open). */
+.msfs-ui-gal__hidden { width: calc(var(--u) * 104); }
+.msfs-ui-gal__favorites { width: calc(var(--u) * 120); }
+/*
+ * Selected, the sim's corner and tick: at half their size (40 x 30 units), as they would cover the end of the text, which
+ * the icon pushes right. By their size: the sim's own transform places them, by their size too, in the button's corner.
+ */
+.msfs-ui-gal__filter [name="CornerWhite"] { width: calc(var(--u) * 20) !important; height: calc(var(--u) * 15) !important; }
 /* The mod's icon before the text of Hidden and Favorites, in the button's content row, in the text's colour. */
 .msfs-ui-gal__label-icon {
   position: relative;
