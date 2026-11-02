@@ -57,8 +57,8 @@ function noteWrite(key: string): void {
 
 /**
  * Kept in `datastorage` by a session without the vault: the mod's keys it wrote and the id of the last such session.
- * At the next start with the vault, those keys are newer than the vault's (takeFallbackWrites); until 2.1.0 they were
- * deleted unread (clearDatastorage).
+ * At the next start with the vault, what those keys added joins the vault's data (takeFallbackWrites); until 2.1.0 they
+ * were deleted unread (clearDatastorage).
  */
 const FALLBACK_MARK = 'FALLBACK_WRITES';
 /** Kept in the vault: the id of the last mark whose keys it took, so that a mark not yet cleared is not taken twice. */
@@ -153,10 +153,57 @@ export function datastorageKeys(): string[] {
   return DATASTORAGE_KEYS.concat(OLD_DATASTORAGE_KEYS, [FALLBACK_MARK]).filter((key) => datastorageBackend.get(STORAGE_PREFIX + key) !== undefined);
 }
 
+/** What identifies an item of the mod's stored lists: a list is never replaced, its new items join the vault's. */
+const LIST_ITEM_IDS: Record<string, (item: Record<string, unknown>) => string> = {
+  FAVORITE_LIVERIES: (item) => `${String(item.variationId)}|${String(item.dir)}`,
+  HIDDEN_AIRCRAFT: (item) => `${String(item.displayName)}|${String(item.creator)}`,
+};
+/** Stored objects whose entries join the vault's, the session's value winning for the same entry. */
+const MERGED_OBJECTS = ['LIVERY_TAILS'];
+
+function parsed(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    logError('a value written without the vault is unreadable, ignored', error);
+    return undefined;
+  }
+}
+
 /**
- * Takes into `target` (the vault) the keys that sessions without the vault wrote to `datastorage` since the vault last
- * took them (their mark): they are newer than the vault's. The keys this session wrote are left to moveSessionWrites,
- * which keeps a newer vault value. Returns the keys changed (without the prefix); the mark is recorded as taken.
+ * What the vault holds once `value`, written by a session without it, has joined `current`; null to leave the vault as
+ * it is. That session never saw the vault's data (`datastorage` is emptied once the vault holds them, since 2.0.8), and a
+ * key is written whole: its value says what it added, not what the vault should lose. So a list keeps the vault's items
+ * and takes the new ones, an object its entries with the session's, and any other key (a setting, or `BASE_TAIL`, which
+ * is recorded with no click when empty) keeps the vault's value when it has one. A value that cannot be read changes nothing.
+ */
+function joinedValue(key: string, current: string | undefined, value: string): string | null {
+  if (current === undefined) return value;
+  const itemId = LIST_ITEM_IDS[key];
+  if (!itemId && MERGED_OBJECTS.indexOf(key) < 0) return null;
+  const kept = parsed(current);
+  const added = parsed(value);
+  if (itemId) {
+    if (!Array.isArray(kept) || !Array.isArray(added)) return null;
+    const known = (kept as unknown[]).map((item) => storedObject(item)).filter((item) => !!item).map((item) => itemId(item as Record<string, unknown>));
+    const fresh = (added as unknown[]).filter((item) => {
+      const entry = storedObject(item);
+      return !!entry && known.indexOf(itemId(entry)) < 0;
+    });
+    return fresh.length > 0 ? JSON.stringify((kept as unknown[]).concat(fresh)) : null;
+  }
+  const keptEntries = storedObject(kept);
+  const addedEntries = storedObject(added);
+  if (!keptEntries || !addedEntries) return null;
+  const joined = JSON.stringify(Object.assign({}, keptEntries, addedEntries));
+  return joined === JSON.stringify(keptEntries) ? null : joined;
+}
+
+/**
+ * Joins into `target` (the vault) the keys that sessions without the vault wrote to `datastorage` since the vault last
+ * took them (their mark; joinedValue: nothing the vault holds is lost). The keys this session wrote are left to
+ * moveSessionWrites, which keeps a newer vault value. Returns the keys changed (without the prefix); the mark is recorded
+ * as taken.
  */
 export function takeFallbackWrites(target: StorageBackend): string[] {
   const mark = readMark();
@@ -167,8 +214,11 @@ export function takeFallbackWrites(target: StorageBackend): string[] {
   for (const key of mark.keys) {
     if (DATASTORAGE_KEYS.indexOf(key) < 0 || written.has(STORAGE_PREFIX + key)) continue;
     const value = datastorageBackend.get(STORAGE_PREFIX + key);
-    if (value === undefined || target.get(STORAGE_PREFIX + key) === value) continue;
-    target.set(STORAGE_PREFIX + key, value);
+    if (value === undefined) continue;
+    const current = target.get(STORAGE_PREFIX + key);
+    const joined = current === value ? null : joinedValue(key, current, value);
+    if (joined === null) continue;
+    target.set(STORAGE_PREFIX + key, joined);
     changed.push(key);
   }
   target.set(STORAGE_PREFIX + TAKEN_MARK, taken);

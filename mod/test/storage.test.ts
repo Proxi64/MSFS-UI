@@ -276,23 +276,80 @@ describe('storage', () => {
     assert.ok(datastorageKeys().indexOf('FALLBACK_WRITES') >= 0, 'cleared with the data');
   });
 
-  it('takes into the vault the keys sessions without it wrote, once, after they were left in datastorage', () => {
+  /** An earlier session without the vault: its writes and its mark in datastorage. */
+  function earlierSession(data: Map<string, string>, values: Record<string, string>): void {
+    for (const key of Object.keys(values)) data.set(`MSFS_UI_${key}`, values[key]!);
+    data.set('MSFS_UI_FALLBACK_WRITES', JSON.stringify({ id: 'earlier', keys: Object.keys(values) }));
+  }
+
+  it('joins a hidden aircraft of a session without the vault to those of the vault: 50 and 1 give 51', () => {
     const data = fakePage();
-    // An earlier session without the vault: its writes and its mark are in datastorage.
-    data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"clicked"}]');
-    data.set('MSFS_UI_LIVERY_TAILS', '{"a":"STALE"}');
-    data.set('MSFS_UI_FALLBACK_WRITES', JSON.stringify({ id: 'earlier', keys: ['FAVORITE_LIVERIES', 'NOT_DATA'] }));
-    const copy = new Map<string, string>([
-      ['MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]'],
-      ['MSFS_UI_LIVERY_TAILS', '{"a":"NEWER"}'],
-    ]);
+    const hidden = Array.from({ length: 50 }, (_, at) => ({ displayName: `Aircraft ${at}`, creator: 'Studio' }));
+    // datastorage is empty once the vault holds the data: that session saw no hidden aircraft, and wrote its one.
+    earlierSession(data, { HIDDEN_AIRCRAFT: JSON.stringify([{ displayName: 'New', creator: 'Studio', variationId: 'n' }]) });
+    const copy = new Map<string, string>([['MSFS_UI_HIDDEN_AIRCRAFT', JSON.stringify(hidden)]]);
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), ['HIDDEN_AIRCRAFT']);
+    const joined = JSON.parse(copy.get('MSFS_UI_HIDDEN_AIRCRAFT')!) as { displayName: string }[];
+    assert.equal(joined.length, 51);
+    assert.equal(joined[50]!.displayName, 'New');
+  });
+
+  it('joins favourite liveries without a double, the vault keeping its own of the same livery', () => {
+    const data = fakePage();
+    const same = { variationId: 'v', dir: 'a', usedAt: 1 };
+    earlierSession(data, { FAVORITE_LIVERIES: JSON.stringify([{ ...same, usedAt: 2 }, { variationId: 'v', dir: 'b' }, 3, null]) });
+    const copy = new Map<string, string>([['MSFS_UI_FAVORITE_LIVERIES', JSON.stringify([same])]]);
     assert.deepEqual(takeFallbackWrites(vaultOf(copy)), ['FAVORITE_LIVERIES']);
-    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"clicked"}]', 'newer than the vault');
-    assert.equal(copy.get('MSFS_UI_LIVERY_TAILS'), '{"a":"NEWER"}', 'not written without the vault: a stale leftover');
+    assert.deepEqual(JSON.parse(copy.get('MSFS_UI_FAVORITE_LIVERIES')!), [same, { variationId: 'v', dir: 'b' }]);
+  });
+
+  it("joins tail numbers, the session's winning for the same livery", () => {
+    const data = fakePage();
+    earlierSession(data, { LIVERY_TAILS: '{"a":"F-NEW","b":"F-BBBB"}' });
+    const copy = new Map<string, string>([['MSFS_UI_LIVERY_TAILS', '{"a":"F-OLD","c":"F-CCCC"}']]);
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), ['LIVERY_TAILS']);
+    assert.deepEqual(JSON.parse(copy.get('MSFS_UI_LIVERY_TAILS')!), { a: 'F-NEW', c: 'F-CCCC', b: 'F-BBBB' });
+  });
+
+  it('keeps the value of the vault for any other key, a BASE_TAIL recorded with no click among them, and takes it when the vault has none', () => {
+    const data = fakePage();
+    earlierSession(data, { BASE_TAIL: '"FROM-THE-SIM"', WEATHER_BAR: '{"weather":1}', AIRCRAFT_GALLERY: '{"view":"list"}' });
+    const copy = new Map<string, string>([
+      ['MSFS_UI_BASE_TAIL', '"MINE"'],
+      ['MSFS_UI_WEATHER_BAR', '{"weather":4}'],
+    ]);
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), ['AIRCRAFT_GALLERY']);
+    assert.equal(copy.get('MSFS_UI_BASE_TAIL'), '"MINE"');
+    assert.equal(copy.get('MSFS_UI_WEATHER_BAR'), '{"weather":4}');
+    assert.equal(copy.get('MSFS_UI_AIRCRAFT_GALLERY'), '{"view":"list"}');
+  });
+
+  it('changes nothing with a value that cannot be read, a key not of the data, or a key not in the mark', () => {
+    const data = fakePage();
+    earlierSession(data, { HIDDEN_AIRCRAFT: 'not json', LIVERY_TAILS: '[]', NOT_DATA: '1' });
+    data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"variationId":"stale","dir":"x"}]');
+    const copy = new Map<string, string>([
+      ['MSFS_UI_HIDDEN_AIRCRAFT', '[{"displayName":"a","creator":"b"}]'],
+      ['MSFS_UI_LIVERY_TAILS', '{"a":"F-AAAA"}'],
+      ['MSFS_UI_FAVORITE_LIVERIES', '[]'],
+    ]);
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), []);
+    assert.equal(copy.get('MSFS_UI_HIDDEN_AIRCRAFT'), '[{"displayName":"a","creator":"b"}]');
+    assert.equal(copy.get('MSFS_UI_LIVERY_TAILS'), '{"a":"F-AAAA"}');
+    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[]', 'a stale leftover, not written without the vault');
+    assert.equal(copy.has('MSFS_UI_NOT_DATA'), false);
+  });
+
+  it('takes a mark once, while it is not cleared yet', () => {
+    const data = fakePage();
+    earlierSession(data, { HIDDEN_AIRCRAFT: '[{"displayName":"New","creator":"S"}]' });
+    const copy = new Map<string, string>([['MSFS_UI_HIDDEN_AIRCRAFT', '[]']]);
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), ['HIDDEN_AIRCRAFT']);
     assert.equal(copy.get('MSFS_UI_FALLBACK_TAKEN'), '"earlier"');
-    copy.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"later"}]');
-    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), [], 'a mark not cleared yet is not taken twice');
-    assert.equal(copy.get('MSFS_UI_FAVORITE_LIVERIES'), '[{"dir":"later"}]');
+    // Shown again and hidden no more, in a session with the vault: the mark left in datastorage does not bring it back.
+    copy.set('MSFS_UI_HIDDEN_AIRCRAFT', '[]');
+    assert.deepEqual(takeFallbackWrites(vaultOf(copy)), []);
+    assert.equal(copy.get('MSFS_UI_HIDDEN_AIRCRAFT'), '[]');
   });
 
   it("leaves this session's writes to moveSessionWrites, which keeps a newer vault value", () => {

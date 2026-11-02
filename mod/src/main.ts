@@ -89,9 +89,9 @@ function useVault(vault: Vault, lateMs?: number): string[] {
     const copied = copyFromDatastorage(backend);
     if (copied.length > 0) log(`data of an earlier version copied into the vault: ${copied.join(', ')}`);
   }
-  // A session without the vault since it last saved: its changes are newer, and would otherwise be cleared unread.
+  // A session without the vault since it last saved: what it added joins the vault's data, and would otherwise be cleared unread.
   const taken = takeFallbackWrites(backend);
-  if (taken.length > 0) log(`changes of a session without the vault taken into it: ${taken.join(', ')}`);
+  if (taken.length > 0) log(`additions of a session without the vault joined to it: ${taken.join(', ')}`);
   const { moved, kept } = moveSessionWrites(backend);
   if (kept.length > 0) log(`the vault's newer values kept over this session's changes made on the sim storage: ${kept.join(', ')}`);
   setStorageBackend(backend);
