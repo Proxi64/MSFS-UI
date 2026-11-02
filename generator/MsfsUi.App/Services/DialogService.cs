@@ -25,32 +25,33 @@ public sealed class DialogService : IDialogService
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirm)
     {
-        var root = Window?.Content?.XamlRoot ?? throw new InvalidOperationException("The main window is not shown yet.");
-        var dialog = new ContentDialog
-        {
-            XamlRoot = root,
-            Title = title,
-            Content = message,
-            PrimaryButtonText = confirm,
-            CloseButtonText = Strings.Get("DialogCancel"),
-            // A destructive action is never the default: Enter cancels.
-            DefaultButton = ContentDialogButton.Close,
-        };
+        var dialog = NewDialog(title, message);
+        dialog.PrimaryButtonText = confirm;
+        dialog.CloseButtonText = Strings.Get("DialogCancel");
+        // A destructive action is never the default: Enter cancels.
+        dialog.DefaultButton = ContentDialogButton.Close;
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
     public async Task InformAsync(string title, string message)
     {
-        var root = Window?.Content?.XamlRoot ?? throw new InvalidOperationException("The main window is not shown yet.");
-        var dialog = new ContentDialog
+        var dialog = NewDialog(title, message);
+        dialog.CloseButtonText = Strings.Get("DialogClose");
+        dialog.DefaultButton = ContentDialogButton.Close;
+        await dialog.ShowAsync();
+    }
+
+    /// <summary>A dialog over the window, in the app's theme: a dialog is a popup, which does not inherit it from the page.</summary>
+    private ContentDialog NewDialog(string title, string message)
+    {
+        var content = Window?.Content as FrameworkElement ?? throw new InvalidOperationException("The main window is not shown yet.");
+        return new ContentDialog
         {
-            XamlRoot = root,
+            XamlRoot = content.XamlRoot,
+            RequestedTheme = content.ActualTheme,
             Title = title,
             Content = message,
-            CloseButtonText = Strings.Get("DialogClose"),
-            DefaultButton = ContentDialogButton.Close,
         };
-        await dialog.ShowAsync();
     }
 
     public async Task<string?> PickFolderAsync(string commitText)

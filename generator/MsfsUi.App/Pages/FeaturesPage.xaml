@@ -21,7 +21,7 @@
                         TextWrapping="Wrap" />
                     <!--  A choice: the explanation of the selected one.  -->
                     <TextBlock
-                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Text="{x:Bind ChoiceDescription, Mode=OneWay}"
                         TextWrapping="Wrap"
@@ -60,6 +60,7 @@
                         AutomationProperties.AutomationId="{x:Bind AutomationId, Mode=OneTime}"
                         AutomationProperties.Name="{x:Bind Title, Mode=OneTime}"
                         LargeChange="{x:Bind Step, Mode=OneTime}"
+                        Loaded="NumberBox_Loaded"
                         Maximum="{x:Bind Maximum, Mode=OneTime}"
                         Minimum="{x:Bind Minimum, Mode=OneTime}"
                         SmallChange="{x:Bind Step, Mode=OneTime}"
@@ -123,7 +124,7 @@
                                                         Text="{x:Bind Description, Mode=OneTime}"
                                                         TextWrapping="Wrap" />
                                                     <TextBlock
-                                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                         Style="{StaticResource CaptionTextBlockStyle}"
                                                         Text="{x:Bind Screen, Mode=OneTime}" />
                                                 </StackPanel>
@@ -163,7 +164,7 @@
                                                     Text="{x:Bind Description, Mode=OneTime}"
                                                     TextWrapping="Wrap" />
                                                 <TextBlock
-                                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                     Style="{StaticResource CaptionTextBlockStyle}"
                                                     Text="{x:Bind Screen, Mode=OneTime}" />
                                             </StackPanel>

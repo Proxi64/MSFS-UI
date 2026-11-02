@@ -16,6 +16,7 @@ namespace MsfsUi.App;
 public sealed partial class MainWindow : Window
 {
     private static readonly SizeInt32 InitialSize = new(1100, 760);
+    private static readonly SizeInt32 MinimumSize = new(720, 520);
 
     private static readonly Dictionary<string, Type> Pages = new(StringComparer.Ordinal)
     {
@@ -43,6 +44,12 @@ public sealed partial class MainWindow : Window
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
         AppWindow.SetIcon("Assets/AppIcon.ico");
         AppWindow.Resize(InitialSize);
+        // Under this the pages no longer lay out (values wrapped a letter per line, the title under the caption buttons).
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.PreferredMinimumWidth = MinimumSize.Width;
+            presenter.PreferredMinimumHeight = MinimumSize.Height;
+        }
 
         NavView.SelectedItem = HomeItem;
     }

@@ -107,7 +107,8 @@ public sealed partial class FeaturesViewModel : ObservableObject
 
         var normalized = SettingsNormalizer.Normalize(_mod.Catalog, load.Settings);
         Show(normalized.Selection);
-        _savedJson = Json(normalized.Selection);
+        // A file that cannot be read differs from anything shown: Apply stays available to write it again.
+        _savedJson = load.Problem is null ? Json(normalized.Selection) : string.Empty;
         _savedByNewerVersion = normalized.FromNewerVersion;
         Refresh();
         if (load.Problem is not null)
@@ -121,6 +122,27 @@ public sealed partial class FeaturesViewModel : ObservableObject
         else if (normalized.Adjustments.Count > 0)
         {
             ShowMessage(InfoBarSeverity.Informational, Strings.Get("FeaturesSettingsAdjusted"), string.Join(Environment.NewLine, normalized.Adjustments));
+        }
+    }
+
+    /// <summary>
+    /// The text of a number box changed, before the box takes it (when it loses the focus): a change as soon as it
+    /// <paramref name="differs"/> from the box's value, else the choices decide.
+    /// </summary>
+    public void NumberTyped(bool differs)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        if (differs)
+        {
+            HasChanges = true;
+        }
+        else
+        {
+            Refresh();
         }
     }
 

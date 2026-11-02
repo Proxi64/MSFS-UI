@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml.Controls;
 using MsfsUi.Core;
 using MsfsUi.Core.Features;
 using MsfsUi.Core.Packaging;
@@ -7,6 +8,9 @@ using MsfsUi.Core.Settings;
 using MsfsUi.Core.Sim;
 
 namespace MsfsUi.App.Services;
+
+/// <summary>How an action of Home ended, as its message bar says it.</summary>
+public sealed record ActionOutcome(InfoBarSeverity Severity, string Title, string Text);
 
 /// <summary>
 /// What every page needs to know, kept up to date: the sim found (or why not), whether it runs, the package in
@@ -64,6 +68,13 @@ public sealed partial class SimSession : ObservableObject, IDisposable
     /// <summary>Why the user's settings could not be read (the defaults apply), or null.</summary>
     [ObservableProperty]
     public partial string? SettingsProblem { get; private set; }
+
+    /// <summary>
+    /// The outcome of Home's last action, until it is closed or another starts. Here because Home's view model goes with
+    /// its page: an action may end while another page shows, and the user comes back to read how it went.
+    /// </summary>
+    [ObservableProperty]
+    public partial ActionOutcome? LastOutcome { get; set; }
 
     /// <summary>What a generation would install now: the embedded mod with the user's settings.</summary>
     public PackageInputs? Inputs { get; private set; }

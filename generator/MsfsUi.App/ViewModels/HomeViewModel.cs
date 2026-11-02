@@ -51,6 +51,7 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
         _logger = logger;
         _session.PropertyChanged += OnSessionChanged;
         Update();
+        ShowOutcome();
     }
 
     // ----- The sim -----
@@ -350,15 +351,40 @@ public sealed partial class HomeViewModel : ObservableObject, IDisposable
             : (Strings.Format("HomeNextReloadFailed", error), InfoBarSeverity.Warning);
     }
 
-    private void ShowMessage(InfoBarSeverity severity, string title, string text)
+    private void ShowMessage(InfoBarSeverity severity, string title, string text) => _session.LastOutcome = new ActionOutcome(severity, title, text);
+
+    /// <summary>The bar shows the session's last outcome, whichever instance of the page's view model the action began on.</summary>
+    private void ShowOutcome()
     {
-        MessageSeverity = severity;
-        MessageTitle = title;
-        MessageText = text;
-        IsMessageOpen = true;
+        if (_session.LastOutcome is { } outcome)
+        {
+            MessageSeverity = outcome.Severity;
+            MessageTitle = outcome.Title;
+            MessageText = outcome.Text;
+        }
+
+        IsMessageOpen = _session.LastOutcome is not null;
     }
 
-    private void OnSessionChanged(object? sender, PropertyChangedEventArgs e) => Update();
+    /// <summary>The bar closed, by its button or for a new action: the outcome is over.</summary>
+    partial void OnIsMessageOpenChanged(bool value)
+    {
+        if (!value)
+        {
+            _session.LastOutcome = null;
+        }
+    }
+
+    private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SimSession.LastOutcome))
+        {
+            ShowOutcome();
+            return;
+        }
+
+        Update();
+    }
 
     private void Update()
     {

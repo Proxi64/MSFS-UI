@@ -33,6 +33,7 @@
 
                 <InfoBar
                     x:Uid="HomeSettingsProblem"
+                    AutomationProperties.AutomationId="HomeSettingsProblem"
                     IsClosable="False"
                     IsOpen="{x:Bind ViewModel.HasSettingsProblem, Mode=OneWay}"
                     Message="{x:Bind ViewModel.SettingsProblem, Mode=OneWay}"

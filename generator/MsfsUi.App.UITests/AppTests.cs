@@ -216,6 +216,68 @@ public sealed class AppTests
     }
 
     [TestMethod]
+    public void ANumberBeingTypedEnablesApplyBeforeTheBoxLosesTheFocus()
+    {
+        using var app = AppSession.Start();
+        app.WaitForText("HomePackageStatus", "Not installed");
+        app.Navigate("NavFeatures");
+        AppSession.Expand(app.FindByName("Fast menus", "Expander"));
+        var input = app.Find("Option_fastMenus_speed").FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
+        Assert.IsNotNull(input, "the number box's text");
+        var apply = app.Find("FeaturesApply");
+        Assert.IsFalse(apply.Current.IsEnabled, "nothing to apply yet");
+
+        input.SetFocus();
+        ((ValuePattern)input.GetCurrentPattern(ValuePattern.Pattern)).SetValue("3");
+        AppSession.WaitUntil(() => apply.Current.IsEnabled, "Apply enabled while the box has the focus");
+        Assert.IsTrue(input.Current.HasKeyboardFocus, "still in the box");
+
+        // Typing the value back: no change any more.
+        ((ValuePattern)input.GetCurrentPattern(ValuePattern.Pattern)).SetValue("2");
+        AppSession.WaitUntil(() => !apply.Current.IsEnabled, "Apply disabled again");
+
+        // A click takes the focus (on the press), which gives the box its value before the command runs (on the release).
+        ((ValuePattern)input.GetCurrentPattern(ValuePattern.Pattern)).SetValue("3");
+        AppSession.WaitUntil(() => apply.Current.IsEnabled, "Apply enabled again");
+        apply.SetFocus();
+        var box = (RangeValuePattern)app.Find("Option_fastMenus_speed").GetCurrentPattern(RangeValuePattern.Pattern);
+        AppSession.WaitUntil(() => box.Current.Value.Equals(3d), "the box's value once it lost the focus");
+        AppSession.Invoke(apply);
+        app.WaitForText("FeaturesMessage", "Settings saved");
+        var saved = File.ReadAllText(Path.Combine(app.DataRoot, "settings.json"));
+        Assert.IsTrue(saved.Contains("\"speed\": 3", StringComparison.Ordinal), saved);
+    }
+
+    [TestMethod]
+    public void AnUnreadableSettingsFileCanBeWrittenAgain()
+    {
+        using var app = AppSession.Start("not json");
+        var settingsFile = Path.Combine(app.DataRoot, "settings.json");
+
+        app.Find("HomeSettingsProblem");
+        app.Navigate("NavFeatures");
+        app.WaitForText("FeaturesMessage", "Settings not read");
+        app.Invoke("FeaturesApply");
+
+        AppSession.WaitUntil(() => File.ReadAllText(settingsFile).Contains("schemaVersion", StringComparison.Ordinal), "the file written again");
+    }
+
+    [TestMethod]
+    public void HomeKeepsTheOutcomeOfItsActionAcrossAVisitToAnotherPage()
+    {
+        using var app = AppSession.Start();
+        app.WaitForText("HomePackageStatus", "Not installed");
+        app.Invoke("HomeInstall");
+        app.WaitForText("HomeMessage", "installed");
+
+        app.Navigate("NavLog");
+        app.Find("LogCopy");
+        app.Navigate("NavHome");
+
+        app.WaitForText("HomeMessage", "installed");
+    }
+
+    [TestMethod]
     public void CompatibilityChecksTheSimFilesAndSkipsTheLiveChecks()
     {
         using var app = AppSession.Start();
@@ -246,5 +308,6 @@ public sealed class AppTests
         AppSession.WaitUntil(
             () => AppSession.Texts(app.Find("LogAppLines")).Contains("MSFS-UI", StringComparison.Ordinal),
             "the start-up line in the app log");
+        Assert.IsFalse(AppSession.Texts(app.Find("LogAppLines")).Contains("IsProblem", StringComparison.Ordinal), "each line named by its text, not by its record");
     }
 }

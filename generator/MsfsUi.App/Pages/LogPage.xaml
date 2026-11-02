@@ -73,38 +73,44 @@
                 AutomationProperties.AutomationId="LogModTab" />
         </SelectorBar>
 
-        <StackPanel
-            Grid.Row="2"
-            Orientation="Horizontal"
-            Spacing="8">
-            <Button
-                x:Uid="LogReadMod"
-                AutomationProperties.AutomationId="LogReadMod"
-                Command="{x:Bind ViewModel.ReadModCommand}"
-                Style="{StaticResource AccentButtonStyle}"
-                Visibility="{x:Bind ViewModel.ShowsMod, Mode=OneWay}" />
-            <Button
-                x:Uid="LogCopy"
-                AutomationProperties.AutomationId="LogCopy"
-                Command="{x:Bind ViewModel.CopyCommand}" />
-            <Button
-                x:Uid="LogOpenFolder"
-                AutomationProperties.AutomationId="LogOpenFolder"
-                Command="{x:Bind ViewModel.OpenFolderCommand}" />
-            <ProgressRing
-                Width="20"
-                Height="20"
-                Margin="8,0,0,0"
-                IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+        <Grid Grid.Row="2" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                    x:Uid="LogReadMod"
+                    AutomationProperties.AutomationId="LogReadMod"
+                    Command="{x:Bind ViewModel.ReadModCommand}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Visibility="{x:Bind ViewModel.ShowsMod, Mode=OneWay}" />
+                <Button
+                    x:Uid="LogCopy"
+                    AutomationProperties.AutomationId="LogCopy"
+                    Command="{x:Bind ViewModel.CopyCommand}" />
+                <Button
+                    x:Uid="LogOpenFolder"
+                    AutomationProperties.AutomationId="LogOpenFolder"
+                    Command="{x:Bind ViewModel.OpenFolderCommand}" />
+                <ProgressRing
+                    Width="20"
+                    Height="20"
+                    Margin="8,0,0,0"
+                    IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+            </StackPanel>
+            <!--  In the room the buttons leave, on several lines: an error of the inspector is long.  -->
             <TextBlock
+                Grid.Column="1"
                 VerticalAlignment="Center"
                 AutomationProperties.AutomationId="LogModStatus"
                 AutomationProperties.LiveSetting="Polite"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Style="{StaticResource BodyTextBlockStyle}"
                 Text="{x:Bind ViewModel.ModStatus, Mode=OneWay}"
+                TextWrapping="Wrap"
                 Visibility="{x:Bind ViewModel.ShowsMod, Mode=OneWay}" />
-        </StackPanel>
+        </Grid>
 
         <!--  The log shown, on a card; oldest first, the view follows the newest line.  -->
         <Border

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -93,14 +94,27 @@ public sealed partial class LogViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Copies the log shown, as text.</summary>
+    /// <summary>Copies the log shown, as text; nothing without a line, so that the clipboard keeps what it holds.</summary>
     [RelayCommand]
     private void Copy()
     {
         var lines = ShowsMod ? ModLines : AppLines;
+        if (lines.Count == 0)
+        {
+            return;
+        }
+
         var package = new DataPackage();
         package.SetText(string.Join(Environment.NewLine, lines.Select(line => line.Text)));
-        Clipboard.SetContent(package);
+        try
+        {
+            Clipboard.SetContent(package);
+        }
+        catch (COMException ex)
+        {
+            // Another application may hold the clipboard: not a reason to close the app.
+            LogCopyFailed(ex);
+        }
     }
 
     /// <summary>Opens the folder of the log files in File Explorer.</summary>
@@ -132,12 +146,18 @@ public sealed partial class LogViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The log folder could not be opened")]
     private partial void LogOpenFolderFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The log could not be copied")]
+    private partial void LogCopyFailed(Exception exception);
 }
 
 /// <summary>A log line as shown: its text, and whether it reports a problem.</summary>
 public sealed record LogLine(string Text, bool IsProblem)
 {
     public bool IsNormal => !IsProblem;
+
+    /// <summary>The line itself: what UI Automation, so a screen reader, gives as the name of its list item.</summary>
+    public override string ToString() => Text;
 
     public static LogLine From(LogEntry entry) => new(
         string.Create(CultureInfo.CurrentCulture, $"{entry.Time.ToLocalTime():T}  {entry.Level,-11}  {entry.Category}: {entry.Message}"),
