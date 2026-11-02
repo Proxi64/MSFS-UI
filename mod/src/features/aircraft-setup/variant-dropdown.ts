@@ -146,9 +146,8 @@ export class VariantDropdown {
           title: translate(this.labels[at] || variant.title),
           subtitle: '',
           coma: '',
-          selectedCallback: () => {
-            if (!variant.isSelected) this.choose(variant.id);
-          },
+          // The configurator decides whether it is a change: the list may still show the variant the sim is leaving.
+          selectedCallback: () => this.choose(variant.id),
         }),
       );
       manipulator.setData(items, items[this.selectedIndex()]);

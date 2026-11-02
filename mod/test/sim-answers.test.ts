@@ -58,7 +58,7 @@ const model = {
 (globalThis as { __msfsUiFakeModel?: unknown }).__msfsUiFakeModel = model;
 
 const { ANSWER_TIMEOUT_MS, readArray } = await import('../src/sim/store.ts');
-const { chooseVariant, readConfigurator } = await import('../src/sim/configurator.ts');
+const { chooseLivery, chooseVariant, readConfigurator } = await import('../src/sim/configurator.ts');
 const configurator = model.Game.Aircraft.Configurator;
 
 /** Lets the pending promises run, the fake timers moved `ms` on. */
@@ -133,5 +133,68 @@ describe('waits on the sim', () => {
     const choice = assert.rejects(chooseVariant(state, 'v2'), { message: `the change of variant: no answer after ${ANSWER_TIMEOUT_MS} ms` });
     await elapse(ANSWER_TIMEOUT_MS);
     await choice;
+  });
+});
+
+// The sim reports a change 0.5 to 1.2 s after it (measured on 1.9.21, 2026-11-02): a click back on the livery or the
+// variant it is leaving came while the state still showed that one selected, and was dropped (the sim stayed on the other).
+describe('a click back before the sim reports the change', () => {
+  const twoLiveries = [
+    { id: 'v1:0', title: 'Livery 01', imageUrl: 'a.png', directoryPath: 'SimObjects/a', isSelected: true },
+    { id: 'v1:1', title: 'Livery 02', imageUrl: 'b.png', directoryPath: 'SimObjects/b', isSelected: false },
+  ];
+  const current = model.Game.Aircraft.CurrentAircraft;
+  afterEach(async () => {
+    configurator.Liveries.getElement = (index: number) => Promise.resolve(liveries[index]);
+    configurator.Liveries.requestRange = () => Promise.resolve(liveries.length);
+    configurator.Items.getElement = (index: number) => Promise.resolve(variants[index]);
+    configurator.Details.read = () => Promise.resolve({ variationId: 'v1' });
+    current.read = () => Promise.resolve({ variationId: 'v1', isValid: true, thumbnailPath: '' });
+    configurator.SaveVariationId.request = () => Promise.resolve(undefined);
+    configurator.SelectItem.request = () => Promise.resolve(undefined);
+    // What was sent and not reported is forgotten by a read that shows the state again.
+    await readConfigurator();
+  });
+
+  it('sends the livery the sim is leaving, after the other, one at a time', async () => {
+    configurator.Liveries.getElement = (index: number) => Promise.resolve(twoLiveries[index]);
+    configurator.Liveries.requestRange = () => Promise.resolve(twoLiveries.length);
+    const state = await readConfigurator();
+    const sent: string[] = [];
+    let first: () => void = () => undefined;
+    configurator.SaveVariationId.request = (id?: string) => {
+      sent.push(`${id} start`);
+      return new Promise<undefined>((resolve) => {
+        const end = () => {
+          sent.push(`${id} end`);
+          resolve(undefined);
+        };
+        if (sent.length === 1) first = end;
+        else end();
+      });
+    };
+    const toTwo = chooseLivery(state, 'v1:1');
+    const back = chooseLivery(state, 'v1:0');
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    assert.deepEqual(sent, ['v1:1 start'], 'the second waits for the first');
+    first();
+    assert.deepEqual(await Promise.all([toTwo, back]), [true, true]);
+    assert.deepEqual(sent, ['v1:1 start', 'v1:1 end', 'v1:0 start', 'v1:0 end']);
+    assert.equal(await chooseLivery(state, 'v1:0'), false, 'the one just chosen again: nothing sent');
+  });
+
+  it('sends the variant the sim is leaving, checked against the variant it took', async () => {
+    const state = await readConfigurator();
+    const sent: string[] = [];
+    configurator.SelectItem.request = (id?: string) => {
+      sent.push(String(id));
+      // The sim takes it at once, and reports it to the configurator's list later.
+      configurator.Details.read = () => Promise.resolve({ variationId: String(id) });
+      current.read = () => Promise.resolve({ variationId: String(id), isValid: true, thumbnailPath: '' });
+      return Promise.resolve(undefined);
+    };
+    assert.equal(await chooseVariant(state, 'v2'), true);
+    assert.equal(await chooseVariant(state, 'v1'), true, 'the state still shows v1 selected');
+    assert.deepEqual(sent, ['v2', 'v1']);
   });
 });

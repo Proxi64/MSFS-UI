@@ -35,6 +35,47 @@ export interface ConfiguratorState {
 
 const configurator = store.Game.Aircraft.Configurator;
 
+/**
+ * The variant and the livery last sent, until a read of the configurator shows them selected: the sim reports a change
+ * 0.5 to 1.2 s after it (measured on 1.9.21, 2026-11-02), and a state read meanwhile still shows the one it is leaving as
+ * selected, so that a click back on it within that time was taken for a click on the selected one and dropped.
+ */
+interface Asked {
+  id: string;
+  at: number;
+}
+const asked: { variant: Asked | null; livery: Asked | null } = { variant: null, livery: null };
+/** An answer of the sim that never comes does not hold a choice for good. */
+const ASKED_MS = 5000;
+
+/** The selected one of `items` as the user last chose it: the one sent and not reported yet, else the state's. */
+function chosenId(kind: 'variant' | 'livery', items: readonly { id: string; isSelected: boolean }[]): string {
+  const sent = asked[kind];
+  if (sent && Date.now() - sent.at < ASKED_MS) return sent.id;
+  asked[kind] = null;
+  const selected = items.filter((item) => item.isSelected)[0];
+  return selected ? selected.id : '';
+}
+
+/** A read shows the sent one selected (reported), or no longer lists it (another aircraft): it is the state's again. */
+function forgetReported(kind: 'variant' | 'livery', items: readonly { id: string; isSelected: boolean }[]): void {
+  const sent = asked[kind];
+  if (!sent) return;
+  const item = items.filter((candidate) => candidate.id === sent.id)[0];
+  if (!item || item.isSelected) asked[kind] = null;
+}
+
+/** The choices go to the configurator one at a time: two in flight could be saved out of order (the sim keeping the older). */
+let turn: Promise<unknown> = Promise.resolve();
+function inTurn<T>(send: () => Promise<T>): Promise<T> {
+  const run = turn.then(send);
+  turn = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 /** Reads the configurator's variants, liveries and details. */
 export async function readConfigurator(): Promise<ConfiguratorState> {
   const [variants, liveries, details] = await Promise.all([
@@ -44,6 +85,8 @@ export async function readConfigurator(): Promise<ConfiguratorState> {
   ]);
   const items = variants.filter((item) => !!item);
   const selected = items.filter((item) => item.isSelected)[0];
+  forgetReported('variant', items);
+  forgetReported('livery', liveries.filter((livery) => !!livery));
   return {
     variants: items,
     liveries: liveries.filter((livery) => !!livery),
@@ -113,24 +156,46 @@ async function canApply(itemVariationId: string): Promise<boolean> {
 }
 
 /**
- * Selects a variant of `state`. False when ignored (already selected, unknown, or the configurator is not on the
- * current aircraft: the caller reads the configurator again).
+ * Selects a variant of `state`. False when ignored (already chosen, unknown, or the configurator is not on the current
+ * aircraft: the caller reads the configurator again).
  */
 export async function chooseVariant(state: ConfiguratorState, id: string): Promise<boolean> {
   const item = state.variants.filter((candidate) => candidate.id === id)[0];
-  if (!item || item.isSelected) return false;
-  // The variants listed belong to the configurator's aircraft: check that it is the current aircraft.
-  const selected = state.variants.filter((candidate) => candidate.isSelected)[0];
-  const ready = await canApply(selected ? selected.id : '');
-  if (!ready) return false;
-  await answerWithin(configurator.SelectItem.request(id), ANSWER_TIMEOUT_MS, 'the change of variant');
-  return true;
+  const selected = chosenId('variant', state.variants);
+  if (!item || id === selected) return false;
+  return sendChoice('variant', id, async () => {
+    // The variants listed belong to the configurator's aircraft: check that it is the current aircraft, on the variant
+    // last chosen (the sim may have taken a variant sent before and not reported it yet).
+    const ready = await canApply(selected);
+    if (!ready) return false;
+    await answerWithin(configurator.SelectItem.request(id), ANSWER_TIMEOUT_MS, 'the change of variant');
+    return true;
+  });
 }
 
-/** Selects a livery of `state`. False when ignored (already selected, unavailable, unknown, or the guard failed). */
+/** A choice marked as sent, then sent in turn; the mark goes when it is ignored or fails. */
+function sendChoice(kind: 'variant' | 'livery', id: string, send: () => Promise<boolean>): Promise<boolean> {
+  asked[kind] = { id, at: Date.now() };
+  const forget = () => {
+    const sent = asked[kind];
+    if (sent && sent.id === id) asked[kind] = null;
+  };
+  return inTurn(send).then(
+    (done) => {
+      if (!done) forget();
+      return done;
+    },
+    (error: unknown) => {
+      forget();
+      throw error;
+    },
+  );
+}
+
+/** Selects a livery of `state`. False when ignored (already chosen, unavailable, unknown, or the guard failed). */
 export async function chooseLivery(state: ConfiguratorState, id: string): Promise<boolean> {
   const livery = state.liveries.filter((candidate) => candidate.id === id)[0];
-  if (!livery || livery.isSelected) return false;
+  if (!livery || id === chosenId('livery', state.liveries)) return false;
   return sendLivery(livery);
 }
 
@@ -148,10 +213,12 @@ export async function chooseLiveryWhileSending(state: ConfiguratorState, id: str
 async function sendLivery(livery: ConfiguratorLivery): Promise<boolean> {
   const id = livery.id;
   if (livery.isDisabled) return false;
-  const ready = await canApply(variationOf(id));
-  if (!ready) return false;
-  await answerWithin(configurator.SaveVariationId.request(id), ANSWER_TIMEOUT_MS, 'the change of livery');
-  return true;
+  return sendChoice('livery', id, async () => {
+    const ready = await canApply(variationOf(id));
+    if (!ready) return false;
+    await answerWithin(configurator.SaveVariationId.request(id), ANSWER_TIMEOUT_MS, 'the change of livery');
+    return true;
+  });
 }
 
 /** Adds or removes a favourite livery of `state`; the change event redraws the panels that show them. */

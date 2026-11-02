@@ -158,9 +158,8 @@ export class VariantsList {
     }
   }
 
+  /** The configurator decides whether it is a change: the tiles' selection may still show the variant the sim is leaving. */
   private choose(id: string): void {
-    const item = this.items.filter((candidate) => candidate.id === id)[0];
-    if (!item || item.isSelected) return;
-    this.events.choose(id);
+    if (this.items.some((candidate) => candidate.id === id)) this.events.choose(id);
   }
 }
