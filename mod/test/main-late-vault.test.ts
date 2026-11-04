@@ -107,22 +107,28 @@ describe('main.ts, a vault module that answers late', () => {
     // The fallback window: a heart clicked on the stale list, a key the vault does not have.
     saveData('FAVORITE_LIVERIES', [{ dir: 'old' }, { dir: 'clicked' }]);
     saveData('BASE_TAIL', 'ASXGS');
+    saveData('WEATHER_BAR_TAB', 'session');
 
-    const snapshot = { [`${STORAGE_PREFIX}FAVORITE_LIVERIES`]: '[{"dir":"newer"}]', [`${STORAGE_PREFIX}LIVERY_TAILS`]: '{"x":"F-NEW"}' };
+    const snapshot = {
+      [`${STORAGE_PREFIX}FAVORITE_LIVERIES`]: '[{"dir":"newer"}]',
+      [`${STORAGE_PREFIX}LIVERY_TAILS`]: '{"x":"F-NEW"}',
+      [`${STORAGE_PREFIX}WEATHER_BAR_TAB`]: '"newer"',
+    };
     engine.emit(VAULT_EVENTS.loaded, `${load.text}\n7\n${JSON.stringify(snapshot)}`);
 
     assert.equal(runtime()?.storage?.kind, 'vault');
-    assert.deepEqual(loadData('FAVORITE_LIVERIES', null), [{ dir: 'newer' }], "the vault's newer list kept");
+    assert.deepEqual(loadData('FAVORITE_LIVERIES', null), [{ dir: 'newer' }, { dir: 'old' }, { dir: 'clicked' }], "the session's heart joined to the vault's newer list");
+    assert.equal(loadData('WEATHER_BAR_TAB', ''), 'newer', "the vault's newer value kept");
     assert.equal(loadData('BASE_TAIL', ''), 'ASXGS', "the session's new key moved");
     assert.deepEqual(loadData('LIVERY_TAILS', null), { x: 'F-NEW' });
-    assert.ok(logs.some((line) => line.indexOf('newer values kept') >= 0 && line.indexOf('FAVORITE_LIVERIES') >= 0), 'the kept key logged');
-    assert.ok(logs.some((line) => line.indexOf('data moved to the vault module') >= 0 && line.indexOf('BASE_TAIL') >= 0), 'the moved key logged');
+    assert.ok(logs.some((line) => line.indexOf('newer values kept') >= 0 && line.indexOf('WEATHER_BAR_TAB') >= 0), 'the kept key logged');
+    assert.ok(logs.some((line) => line.indexOf('data moved to the vault module') >= 0 && line.indexOf('BASE_TAIL') >= 0 && line.indexOf('FAVORITE_LIVERIES') >= 0), 'the moved keys logged');
 
     mock.timers.tick(300);
     const save = engine.sent.filter((message) => message.event === VAULT_EVENTS.save).pop();
     assert.ok(save, 'the merged snapshot saved');
     const saved = JSON.parse(save.text.slice(save.text.indexOf('\n') + 1)) as Record<string, string>;
-    assert.equal(saved[`${STORAGE_PREFIX}FAVORITE_LIVERIES`], '[{"dir":"newer"}]');
+    assert.equal(saved[`${STORAGE_PREFIX}FAVORITE_LIVERIES`], '[{"dir":"newer"},{"dir":"old"},{"dir":"clicked"}]');
     assert.equal(saved[`${STORAGE_PREFIX}BASE_TAIL`], '"ASXGS"');
 
     // The sim storage keeps the mod's data until the vault confirms it holds it, then loses it for good: a new vault

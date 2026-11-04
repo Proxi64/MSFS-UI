@@ -76,8 +76,9 @@ function moduleNote(): string {
 
 /**
  * The data in the vault from now on: into a vault that never saved anything the mod's data comes over from the sim storage
- * (1.x's, or a session's without a working vault), then the changes this session made there before a late answer, except
- * where the vault's value is newer than the one they were made from (logged). Returns the keys moved.
+ * (1.x's, or a session's without a working vault), then the changes this session made there before a late answer: where
+ * the vault's value is newer than the one they were made from, what they added to a list or an object joins it, and any
+ * other key keeps the vault's (logged). Returns the keys moved.
  */
 function useVault(vault: Vault, lateMs?: number): string[] {
   const backend = vault.backend();
@@ -106,8 +107,8 @@ function useVault(vault: Vault, lateMs?: number): string[] {
  * The sim storage's copy of the mod's data goes once the vault holds the data on the disk: a new vault (after Uninstall
  * everything, or its files deleted) would otherwise take it back (the owner, 2026-10-31: 50 hidden aircraft came back).
  * Kept when the vault does not confirm its save. A later session without the vault then starts from an empty sim storage,
- * and its changes give way to the vault's values (moveSessionWrites). No profile save is asked (core/storage.ts): the
- * removal reaches the disk when the sim saves its profile by itself.
+ * and what it adds joins the vault's values at the next start (takeFallbackWrites). No profile save is asked
+ * (core/storage.ts): the removal reaches the disk when the sim saves its profile by itself.
  */
 function clearDatastorageOnceSaved(vault: Vault): void {
   const leftovers = datastorageKeys();

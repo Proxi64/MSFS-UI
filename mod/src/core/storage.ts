@@ -1,5 +1,5 @@
 // The mod's memory. In the vault module when it answers (sim/vault.ts, setStorageBackend), with the changes made on
-// `datastorage` before a late answer, unless the vault's values are newer (moveSessionWrites). Else in the sim's persistent
+// `datastorage` before a late answer, joined to the vault's newer values (moveSessionWrites). Else in the sim's persistent
 // storage (`datastorage`, where the menu keeps its `LAYOUT_*` keys): the sim keeps it in memory and writes it to the disk
 // only when it saves its profile. The mod never asks for that save: asked through a validated option, it reset the sim's
 // graphics settings (measured on 1.9.21, 2026-11-02; docs/next-steps.md). So a change made without the vault is lost if
@@ -168,8 +168,11 @@ function parsed(text: string): unknown {
  * key is written whole: its value says what it added, not what the vault should lose. So a list keeps the vault's items
  * and takes the new ones, an object its entries with the session's, and any other key (a setting, or `BASE_TAIL`, which
  * is recorded with no click when empty) keeps the vault's value when it has one. A value that cannot be read changes nothing.
+ * `base`: the value the session started from, when known: an entry it merely carried from there does not replace the
+ * vault's. A stale list item may come back (an aircraft shown again in the vault, still in a `datastorage` not cleared):
+ * a click repairs it, a lost one does not come back.
  */
-function joinedValue(key: string, current: string | undefined, value: string): string | null {
+function joinedValue(key: string, current: string | undefined, value: string, base?: string): string | null {
   if (current === undefined) return value;
   const itemId = LIST_ITEM_IDS[key];
   if (!itemId && MERGED_OBJECTS.indexOf(key) < 0) return null;
@@ -187,15 +190,20 @@ function joinedValue(key: string, current: string | undefined, value: string): s
   const keptEntries = storedObject(kept);
   const addedEntries = storedObject(added);
   if (!keptEntries || !addedEntries) return null;
-  const joined = JSON.stringify(Object.assign({}, keptEntries, addedEntries));
+  const baseEntries = base === undefined ? null : storedObject(parsed(base));
+  const entries = Object.assign({}, keptEntries);
+  for (const name of Object.keys(addedEntries)) {
+    const carried = !!baseEntries && name in entries && baseEntries[name] === addedEntries[name];
+    if (!carried) entries[name] = addedEntries[name];
+  }
+  const joined = JSON.stringify(entries);
   return joined === JSON.stringify(keptEntries) ? null : joined;
 }
 
 /**
  * Joins into `target` (the vault) the keys that sessions without the vault wrote to `datastorage` since the vault last
- * took them (their mark; joinedValue: nothing the vault holds is lost). The keys this session wrote are left to
- * moveSessionWrites, which keeps a newer vault value. Returns the keys changed (without the prefix); the mark is recorded
- * as taken.
+ * took them (their mark; joinedValue). The keys this session wrote are left to moveSessionWrites, which joins them too.
+ * Returns the keys changed (without the prefix); the mark is recorded as taken.
  */
 export function takeFallbackWrites(target: StorageBackend): string[] {
   const mark = readMark();
@@ -252,7 +260,7 @@ export function copyFromDatastorage(target: StorageBackend): string[] {
 export interface SessionMove {
   /** The session's value (or removal) written into the target. */
   moved: string[];
-  /** The target's value kept: it changed since the value the session started from. */
+  /** The target's value kept: it changed since the value the session started from, and nothing of the session joins it. */
   kept: string[];
 }
 
@@ -261,7 +269,8 @@ export interface SessionMove {
  * on `datastorage` before the vault answered. Since 2.0 `datastorage` may hold stale data (that of 1.x, or of an
  * earlier session that fell back), and the session computed its values from it: a key's value (or its removal) goes
  * into `target` only when `target` still holds what `datastorage` had before the session's first write to that key
- * (or already holds the session's value); otherwise `target`'s newer value is kept.
+ * (or already holds the session's value). Otherwise `target`'s newer value stays, with what the session added to a list
+ * or an object joined to it (joinedValue: a heart clicked meanwhile is not lost); any other key keeps `target`'s.
  */
 export function moveSessionWrites(target: StorageBackend): SessionMove {
   const result: SessionMove = { moved: [], kept: [] };
@@ -270,7 +279,13 @@ export function moveSessionWrites(target: StorageBackend): SessionMove {
     const current = target.get(key);
     const name = key.indexOf(STORAGE_PREFIX) === 0 ? key.slice(STORAGE_PREFIX.length) : key;
     if (current !== base && current !== value) {
-      result.kept.push(name);
+      const joined = current !== undefined && value !== undefined ? joinedValue(name, current, value, base) : null;
+      if (joined === null) {
+        result.kept.push(name);
+      } else {
+        target.set(key, joined);
+        result.moved.push(name);
+      }
       return;
     }
     if (value === undefined) target.remove(key);
