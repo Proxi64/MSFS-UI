@@ -56,6 +56,12 @@ public sealed partial class CompatibilityViewModel : ObservableObject
         IsBusy = true;
         try
         {
+            // The page opened before the session's first search ended, or the sim was not found: looked for now, not reported as missing.
+            if (_session.Sim is null)
+            {
+                await _session.RefreshAsync(locate: true);
+            }
+
             var sim = _session.Sim;
             if (sim is null)
             {
