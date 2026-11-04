@@ -13,7 +13,7 @@ import { el, setStyle, setVariable, uiUnit } from '../../core/dom.ts';
 import { logError } from '../../core/log.ts';
 import type { Scope } from '../../core/scope.ts';
 import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
-import { loadAircraft } from '../../sim/aircraft-loading.ts';
+import { loadAircraft, syncConfiguratorToCurrent, withAllAircraft } from '../../sim/aircraft-loading.ts';
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries, type FavoriteLivery } from '../../sim/favorites.ts';
 import { HIDDEN_AIRCRAFT_CHANGED, isHidden, loadHidden, saveHidden, withHidden, withVariationIds, type HiddenAircraft } from '../../sim/hidden.ts';
 import { loadVariantGroups, VARIANT_GROUPS_CHANGED, type VariantGroups } from '../../sim/variant-groups.ts';
@@ -502,12 +502,15 @@ export class Gallery {
 
   /**
    * Favourite livery tile: the aircraft, its variant and this livery (same loading as Free Flight). The tile's aircraft
-   * is in the list of the category tab shown: no pass through the All tab, whose list the gallery would follow.
+   * is in the list of the category tab shown, so no pass through the All tab, whose list the gallery would follow; unless
+   * the configurator cannot be set on the current aircraft from this tab (nothing sent then), which only All allows.
    */
   private selectLivery(item: AircraftItem, livery: FavoriteLivery): void {
     if (!item.isUsable || this.loading) return;
     this.loading = true;
-    loadAircraft(livery.variationId, { dir: livery.dir, title: livery.title, image: livery.image })
+    const load = () => loadAircraft(livery.variationId, { dir: livery.dir, title: livery.title, image: livery.image });
+    syncConfiguratorToCurrent()
+      .then((ready) => (ready ? load() : withAllAircraft(load)))
       .catch((error: unknown) => logError(`${item.displayName} could not be loaded`, error))
       .then(() => {
         this.loading = false;
