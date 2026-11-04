@@ -136,8 +136,15 @@ export class TimeSection {
     }
   }
 
-  private async choose(mode: TimeMode): Promise<void> {
-    await this.apply(mode);
+  /** A click: it takes the place of a mode waiting for the new departure's time, and waits for that time in turn. */
+  async choose(mode: TimeMode): Promise<void> {
+    if (this.pendingMode && mode !== 'now') {
+      this.pendingMode = mode;
+    } else {
+      this.pendingMode = null;
+      clearTimeout(this.pendingTimer);
+      await this.apply(mode);
+    }
     this.events.chosen(mode);
   }
 }

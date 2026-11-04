@@ -105,6 +105,28 @@ describe('a time of day at a change of departure', () => {
     assert.deepEqual(sent, [`time ${departureSeconds('dawn', timeAt(0), LONDON)}`]);
   });
 
+  it('gives way to a click made while it waits: another mode, with the time of the new place', async () => {
+    times.setDeparture(PARIS);
+    await times.choose('dusk');
+    assert.deepEqual(sent, [], 'it waits for the time of the new place too');
+    times.setTime(timeAt(1));
+    await settle();
+    assert.deepEqual(sent, [`time ${departureSeconds('dusk', timeAt(1), PARIS)}`]);
+    mock.timers.tick(5000);
+    await settle();
+    assert.equal(sent.length, 1, 'once');
+  });
+
+  it('gives way to a click made while it waits: Now, at once and for good', async () => {
+    times.setDeparture(PARIS);
+    await times.choose('now');
+    assert.deepEqual(sent, ['reset true']);
+    times.setTime(timeAt(1));
+    mock.timers.tick(5000);
+    await settle();
+    assert.deepEqual(sent, ['reset true'], 'Dawn not sent over it');
+  });
+
   it('is not applied when the time is Now, nor after the bar is gone', async () => {
     await times.apply('now');
     sent.length = 0;
