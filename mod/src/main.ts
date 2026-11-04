@@ -9,7 +9,6 @@ import { clearDatastorage, copyFromDatastorage, datastorageKeys, moveSessionWrit
 import { injectTheme } from './core/theme.ts';
 import { FEATURES } from './features.ts';
 import { dropAircraftUses, dropFavoriteAircraft } from './sim/favorites.ts';
-import { saveProfileOnce, startProfileSaves } from './sim/profile-save.ts';
 import { openVault, type Vault } from './sim/vault.ts';
 import { FEATURE_IDS, type FeatureId, type Settings } from './generated/catalog.ts';
 
@@ -28,14 +27,13 @@ async function start(): Promise<void> {
   const loaded = await loadSettings();
   // A newer version may have been loaded while the settings were read: it has unloaded this one.
   if (root.disposed) return;
-  // Before the features: the data lives in the vault module when it answers, else in the sim storage, whose writes are
-  // saved to the disk through a profile save (sim/profile-save.ts), until the module answers late (adoptLateVault).
-  const fallback = root.child();
+  // Before the features: the data lives in the vault module when it answers, else in the sim storage, until the module
+  // answers late (adoptLateVault).
   let lateMs: number | undefined;
   const opened = await openVault(root, {
     onLate: (vault, afterMs) => {
       lateMs = afterMs;
-      if (vault) adoptLateVault(vault, afterMs, fallback);
+      if (vault) adoptLateVault(vault, afterMs);
     },
     onState: (state) => {
       moduleState = state;
@@ -44,11 +42,9 @@ async function start(): Promise<void> {
   if (root.disposed) return;
   root.add(() => setStorageBackend(null));
   if (opened.vault) {
-    fallback.dispose();
     useVault(opened.vault);
     log(`data kept in the vault module (${opened.vault.describe()})`);
   } else {
-    startProfileSaves(fallback);
     runtime.storage = {
       kind: 'datastorage',
       get detail() {
@@ -58,7 +54,7 @@ async function start(): Promise<void> {
     };
     log(`data kept in the sim storage: ${opened.reason}`);
   }
-  // The favourites are liveries since 1.3.0: the favourite aircraft of earlier versions go (saved with the profile).
+  // The favourites are liveries since 1.3.0: the favourite aircraft of earlier versions go.
   dropFavoriteAircraft();
   // The last use of each variant, recorded until 2.0.4, was read by nobody: it goes too.
   dropAircraftUses();
@@ -107,10 +103,11 @@ function useVault(vault: Vault, lateMs?: number): string[] {
 }
 
 /**
- * The sim storage's copy of the mod's data goes once the vault holds the data on the disk, with a profile save: a new
- * vault (after Uninstall everything, or its files deleted) would otherwise take it back (the owner, 2026-10-31: 50 hidden
- * aircraft came back). Kept when the vault does not confirm its save. A later session without the vault then starts
- * from an empty sim storage, and its changes give way to the vault's values (moveSessionWrites).
+ * The sim storage's copy of the mod's data goes once the vault holds the data on the disk: a new vault (after Uninstall
+ * everything, or its files deleted) would otherwise take it back (the owner, 2026-10-31: 50 hidden aircraft came back).
+ * Kept when the vault does not confirm its save. A later session without the vault then starts from an empty sim storage,
+ * and its changes give way to the vault's values (moveSessionWrites). No profile save is asked (core/storage.ts): the
+ * removal reaches the disk when the sim saves its profile by itself.
  */
 function clearDatastorageOnceSaved(vault: Vault): void {
   const leftovers = datastorageKeys();
@@ -125,7 +122,6 @@ function clearDatastorageOnceSaved(vault: Vault): void {
       const cleared = clearDatastorage();
       if (cleared.length === 0) return;
       log(`sim storage cleared of the mod's data, which the vault keeps: ${cleared.join(', ')}`);
-      saveProfileOnce();
     },
     (error: unknown) => logError('the sim storage could not be cleared of the mod data', error),
   );
@@ -133,12 +129,11 @@ function clearDatastorageOnceSaved(vault: Vault): void {
 
 /**
  * The module answered after the time-out (the sim was slow to start it): the session moves to the vault with the
- * changes made meanwhile, the profile saves stop, and the features start again to read their data from the vault
- * (they read the sim storage at their start, and would write it back over the vault's).
+ * changes made meanwhile, and the features start again to read their data from the vault (they read the sim storage at
+ * their start, and would write it back over the vault's).
  */
-function adoptLateVault(vault: Vault, afterMs: number, fallback: Scope): void {
+function adoptLateVault(vault: Vault, afterMs: number): void {
   if (root.disposed) return;
-  fallback.dispose();
   const moved = useVault(vault, afterMs);
   log(`data moved to the vault module${moved.length > 0 ? ` with this session's changes (${moved.join(', ')})` : ''} (${vault.describe()})`);
   if (featureScopes.size > 0 && runtime.settings) {

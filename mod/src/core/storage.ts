@@ -1,21 +1,15 @@
-// The mod's memory. By default in the sim's persistent storage (`datastorage`, where the menu keeps its `LAYOUT_*` keys):
-// the sim keeps it in memory and writes it to the disk only when it saves its profile, so every write asks for that save
-// (onStorageWrite). When the vault module answers (sim/vault.ts), the data lives there instead (setStorageBackend),
-// with the changes made on `datastorage` before a late answer, unless the vault's values are newer (moveSessionWrites).
+// The mod's memory. In the vault module when it answers (sim/vault.ts, setStorageBackend), with the changes made on
+// `datastorage` before a late answer, unless the vault's values are newer (moveSessionWrites). Else in the sim's persistent
+// storage (`datastorage`, where the menu keeps its `LAYOUT_*` keys): the sim keeps it in memory and writes it to the disk
+// only when it saves its profile. The mod never asks for that save: asked through a validated option, it reset the sim's
+// graphics settings (measured on 1.9.21, 2026-11-02; docs/next-steps.md). So a change made without the vault is lost if
+// the sim quits before saving its profile by itself.
 // `localStorage` is emptied at every start of the sim: never used. Keys are those of 0.3.0, so the user's data
 // (favourites, tail numbers…) carries over; their content is documented in mod/README.md (Data stored in the sim).
 
 import { logError } from './log.ts';
 
 export const STORAGE_PREFIX = 'MSFS_UI_';
-
-/** Run after every write to `datastorage` (the profile save, sim/profile-save.ts: the sim writes its storage to the disk only then). */
-let afterWrite: (() => void) | null = null;
-
-/** Sets what runs after every write to `datastorage`; null for nothing. */
-export function onStorageWrite(listener: (() => void) | null): void {
-  afterWrite = listener;
-}
 
 /** Where the mod's data lives. Keys are the full ones (`MSFS_UI_<key>`). */
 export interface StorageBackend {
@@ -117,7 +111,6 @@ const datastorageBackend: StorageBackend = {
     }
     store.setData(key, value);
     markWrite(key, store);
-    if (afterWrite) afterWrite();
   },
   remove(key) {
     noteWrite(key);
@@ -128,7 +121,6 @@ const datastorageBackend: StorageBackend = {
     }
     store.deleteData(key);
     markWrite(key, store);
-    if (afterWrite) afterWrite();
   },
 };
 
@@ -228,8 +220,8 @@ export function takeFallbackWrites(target: StorageBackend): string[] {
 /**
  * Removes the mod's keys from `datastorage`, once the vault holds the data for good (the owner's report, 2026-10-31:
  * after Uninstall everything, a new vault took them back, 50 hidden aircraft among them). Not a write of the session
- * (moveSessionWrites ignores it); the caller asks for the profile save that takes it to the disk. Returns the keys
- * removed (without the prefix).
+ * (moveSessionWrites ignores it). It reaches the disk when the sim saves its profile by itself; until then the keys come
+ * back at each start and are removed again. Returns the keys removed (without the prefix).
  */
 export function clearDatastorage(): string[] {
   const store = storage();

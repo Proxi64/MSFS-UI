@@ -8,7 +8,6 @@ import {
   loadData,
   moveSessionWrites,
   takeFallbackWrites,
-  onStorageWrite,
   resetSessionStorage,
   saveData,
   setStorageBackend,
@@ -68,20 +67,6 @@ describe('storage', () => {
     assert.equal(data.has('MSFS_UI_X'), false);
   });
 
-  it('tells the listener after every write and delete (the profile save), and nothing once it is removed', () => {
-    fakePage();
-    let writes = 0;
-    onStorageWrite(() => writes++);
-    try {
-      saveData('X', 1);
-      deleteData('X');
-      assert.equal(writes, 2);
-    } finally {
-      onStorageWrite(null);
-    }
-    saveData('X', 2);
-    assert.equal(writes, 2);
-  });
   it('saveData then loadData through a backend', () => {
     const data = fakePage();
     const copy = new Map<string, string>();
@@ -109,25 +94,6 @@ describe('storage', () => {
     assert.equal(copy.size, 0);
   });
 
-  it('onStorageWrite fires only on datastorage', () => {
-    fakePage();
-    const copy = new Map<string, string>();
-    let writes = 0;
-    onStorageWrite(() => writes++);
-    try {
-      setStorageBackend({ kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) });
-      saveData('C', 1);
-      deleteData('C');
-      assert.equal(writes, 0);
-      setStorageBackend(null);
-      saveData('C', 1);
-      assert.equal(writes, 1);
-    } finally {
-      setStorageBackend(null);
-      onStorageWrite(null);
-    }
-  });
-
   it("copies the mod's keys from datastorage into a backend, keeping what the backend has", () => {
     const data = fakePage();
     data.set('MSFS_UI_FAVORITE_LIVERIES', '[{"dir":"a"}]');
@@ -149,14 +115,10 @@ describe('storage', () => {
     data.set('MSFS_UI_FAVORITE_AIRCRAFT', '[]');
     data.set('MSFS_UI_AIRCRAFT_USES', '{}');
     data.set('LAYOUT_SOMETHING', 'the sim');
-    let writes = 0;
-    onStorageWrite(() => writes++);
     assert.deepEqual(datastorageKeys(), ['HIDDEN_AIRCRAFT', 'FAVORITE_AIRCRAFT', 'AIRCRAFT_USES']);
     assert.deepEqual(clearDatastorage(), ['HIDDEN_AIRCRAFT', 'FAVORITE_AIRCRAFT', 'AIRCRAFT_USES']);
-    onStorageWrite(null);
     assert.deepEqual([...data.keys()], ['LAYOUT_SOMETHING']);
     assert.deepEqual(datastorageKeys(), []);
-    assert.equal(writes, 0, 'the caller asks for the profile save');
     const copy = new Map<string, string>([['MSFS_UI_HIDDEN_AIRCRAFT', '[1]']]);
     const target: StorageBackend = { kind: 'vault', get: (key) => copy.get(key), set: (key, value) => void copy.set(key, value), remove: (key) => void copy.delete(key) };
     assert.deepEqual(moveSessionWrites(target), { moved: [], kept: [] }, 'not moved into a vault as a removal');
