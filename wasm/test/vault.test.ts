@@ -18,9 +18,9 @@ const answers = (vault: Harness, event: string) => vault.sent.filter((message) =
 
 /**
  * Asks for the stored text as the menu does: the same LOAD every 500 ms until the module answers (a missing file is
- * confirmed at the second attempt of the start-up read, which the second LOAD starts). Undefined after `max` LOADs.
+ * confirmed at the fourth attempt of the start-up read, which the sixth LOAD starts). Undefined after `max` LOADs.
  */
-async function askUntilAnswered(vault: Harness, max = 2): Promise<string | undefined> {
+async function askUntilAnswered(vault: Harness, max = 6): Promise<string | undefined> {
   for (let asked = 0; asked < max; asked++) {
     vault.send('MSFS_UI_VAULT_LOAD', 'q');
     await vault.settle();
@@ -46,15 +46,15 @@ async function loadedText(disk: Map<string, Uint8Array>): Promise<string | undef
   return askUntilAnswered(vault);
 }
 
-test('answers an empty vault once the missing files are confirmed by a second attempt', { skip }, async () => {
+test('answers an empty vault once the missing files are confirmed by a fourth attempt', { skip }, async () => {
   const vault = await loadVault(newDisk());
   await vault.settle();
-  vault.send('MSFS_UI_VAULT_LOAD', '7');
-  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), [], 'one failed open is not an empty vault');
+  for (let asked = 0; asked < 5; asked++) vault.send('MSFS_UI_VAULT_LOAD', '7');
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), [], 'three failed opens are not an empty vault');
   vault.send('MSFS_UI_VAULT_LOAD', '7');
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['7\n0\n'], 'the same request answered once');
   vault.send('MSFS_UI_VAULT_STATUS', 's');
-  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0]!, /^s\nready 1 phase 2 pending 0 deferred 0 attempts 2\n/);
+  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0]!, /^s\nready 1 phase 2 pending 0 deferred 0 attempts 4\n/);
 });
 
 test('starts on missing files when the sim still calls back their failed opens', { skip }, async () => {
@@ -70,12 +70,13 @@ test('starts on missing files when the sim still calls back their failed opens',
   await vault.settle();
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['1\nok']);
 
-  // Slot a written, slot b still missing: its failed opens call back again at the next start, at both attempts.
+  // Slot a written, slot b still missing: its failed opens call back again at the next start, at each attempt.
   const again = await loadVault(disk, { callbackFailedOpens: true });
   await again.settle();
   assert.equal(await askUntilAnswered(again), 'q\n1\n{"a":"1"}');
   again.send('MSFS_UI_VAULT_STATUS', 's');
-  assert.ok(answers(again, 'MSFS_UI_VAULT_STATE')[0]!.includes('\nreads 3 3\n'), answers(again, 'MSFS_UI_VAULT_STATE')[0]);
+  // Slot a's head at each of the four attempts, then its data.
+  assert.ok(answers(again, 'MSFS_UI_VAULT_STATE')[0]!.includes('\nreads 5 5\n'), answers(again, 'MSFS_UI_VAULT_STATE')[0]);
 });
 
 test('saves, then loads after a restart', { skip }, async () => {
@@ -119,14 +120,16 @@ test('answers STATUS at once, before and after the start-up read', { skip }, asy
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), ['q\n2\nnewest']);
 });
 
-// The sim gives the same answer for a missing file and a file it failed to open: one failure must never pass for an
+// The sim gives the same answer for a missing file and a file it failed to open: a failure must never pass for an
 // empty vault, whose first saves would then write over both slots (2.1.0 and before).
-test('does not answer an empty vault when both heads fail to open once', { skip }, async () => {
+test('does not answer an empty vault when both heads fail to open at three attempts', { skip }, async () => {
   const disk = await twoSnapshots();
   const vault = await loadVault(disk, { refuseOpens: ['/work/vault-a.head', '/work/vault-b.head'] });
   await vault.settle();
-  vault.send('MSFS_UI_VAULT_LOAD', 'q');
+  for (let asked = 0; asked < 5; asked++) vault.send('MSFS_UI_VAULT_LOAD', 'q');
   assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_LOADED'), []);
+  vault.send('MSFS_UI_VAULT_STATUS', 's');
+  assert.match(answers(vault, 'MSFS_UI_VAULT_STATE')[0]!, / attempts 3\n/);
   vault.refuseOpens.clear();
   assert.equal(await askUntilAnswered(vault), 'q\n2\nnewest');
   vault.send('MSFS_UI_VAULT_SAVE', '3\nafter');
@@ -147,8 +150,8 @@ test('does not answer an empty vault when both heads read short once', { skip },
   assert.equal(await askUntilAnswered(vault, 3), 'q\n2\nnewest');
 });
 
-test('takes a file that cannot be opened twice as absent', { skip }, async () => {
-  // Slot b never written: confirmed missing at the second attempt, slot a loaded.
+test('takes a file never opened as absent at the fourth attempt', { skip }, async () => {
+  // Slot b never written: confirmed missing at the fourth attempt, slot a loaded.
   const disk = newDisk();
   const first = await loadVault(disk);
   await first.settle();
@@ -467,4 +470,23 @@ test('does not write first onto the slot with the newest valid head when nothing
   assert.equal(dataOf(disk, 'a'), 'one', 'slot a, possibly valid, is spared');
   assert.equal(dataOf(disk, 'b'), 'two');
   assert.equal(await loadedText(disk), 'q\n2\ntwo');
+});
+
+test('spares the slot with the newest valid head for every write of the session, and it wins when readable again', { skip }, async () => {
+  const disk = newDisk();
+  const first = await readyVault(disk);
+  first.send('MSFS_UI_VAULT_SAVE', '9\nnine');
+  await first.settle();
+  const vault = await loadVault(disk);
+  vault.failReads.add('/work/vault-a.data');
+  await vault.settle();
+  assert.equal(await askUntilAnswered(vault, 20), 'q\n0\n');
+  for (const save of ['1\none', '2\ntwo', '3\nthree']) {
+    vault.send('MSFS_UI_VAULT_SAVE', save);
+    await vault.settle();
+  }
+  assert.deepEqual(answers(vault, 'MSFS_UI_VAULT_SAVED'), ['1\nok', '2\nok', '3\nok']);
+  assert.equal(dataOf(disk, 'a'), 'nine', 'slot a, only unreadable, survives the session');
+  assert.equal(dataOf(disk, 'b'), 'three');
+  assert.equal(await loadedText(disk), 'q\n9\nnine', 'read again: the higher seq wins');
 });

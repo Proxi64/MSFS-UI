@@ -24,8 +24,10 @@ static const char* const HEAD_PATH[2] = {"/work/vault-a.head", "/work/vault-b.he
 static const FsCommBusBroadcastFlags TO_JS = FsCommBusBroadcast_JS;
 static const int STALLED_AFTER_LOADS = 2; // LOADs received during the start-up read before it may start again
 // The sim gives no way to tell a missing file from one it failed to open (both return file 0): a file never opened
-// counts as absent only from this attempt of the start-up read on, so that one failure cannot pass for an empty vault.
-static const int ABSENT_FROM_ATTEMPT = 2;
+// counts as absent only from this attempt of the start-up read on, so that a failure cannot pass for an empty vault,
+// whose first saves would write over both slots. The menu's LOADs every 500 ms bring it about 2.5 s after the first one,
+// inside its 3 s time-out; only a vault with a file never written waits that long.
+static const int ABSENT_FROM_ATTEMPT = 4;
 // After this many attempts the start-up read ends with what it could read, rather than wait for good.
 static const int GIVE_UP_AFTER_ATTEMPTS = 5;
 
@@ -82,7 +84,7 @@ struct Snapshot {
 
 static Snapshot* g_loaded = nullptr;   // the newest snapshot known to be on the disk
 static int g_loadedSlot = -1;          // its slot; -1 when none
-static int g_sparedSlot = -1;          // start-up, no readable snapshot: the slot of the newest valid head, not written first
+static int g_sparedSlot = -1;          // start-up, no readable snapshot: the slot of the newest valid head, not written in this session
 static Snapshot* g_inflight = nullptr; // being written
 static Snapshot* g_queued = nullptr;   // waiting for the write to end; a newer SAVE replaces it
 static int g_inflightSlot = 0;
@@ -245,7 +247,7 @@ static void onDataOpened(FsIOFile file, void* user) {
 static void startWrite() {
   g_inflight = g_queued;
   g_queued = nullptr;
-  int spared = g_loadedSlot >= 0 ? g_loadedSlot : g_sparedSlot; // see finishStartup
+  int spared = g_sparedSlot >= 0 ? g_sparedSlot : g_loadedSlot; // see finishStartup
   g_inflightSlot = spared == 0 ? 1 : 0;
   memset(g_head, ' ', sizeof g_head);
   int length = snprintf(g_head, sizeof g_head, "MSFSUI-VAULT 1 %010u %010u %08x", g_inflight->seq, (unsigned)g_inflight->length,
@@ -417,11 +419,12 @@ static void finishStartup() {
   for (int i = 0; i < 2; i++) {
     if (&g_slots[i] != winner) free(g_slots[i].data);
   }
-  // Where the first write goes (startWrite takes the slot other than g_loadedSlot):
-  // - a winner: its slot is spared, the other one is written (it holds an older or unreadable snapshot);
+  // Where the writes go (startWrite takes the slot other than the spared one):
+  // - a winner: its slot is spared, the other one is written (it holds an older or unreadable snapshot), then they alternate;
   // - no winner but a valid head: that slot may hold a snapshot that was only unreadable this time (a failed read),
-  //   so it is spared too and the other slot is written;
-  // - nothing valid at all: slot 0.
+  //   so it is spared for the whole session, every write going to the other slot; at the next start it is read again,
+  //   and wins if its seq is the higher;
+  // - nothing valid at all: slot 0, then they alternate.
   // Set before the Snapshot allocation, so that a failed malloc does not send the first write onto the winner's slot.
   if (winner != nullptr) {
     g_loadedSlot = winner->index;
@@ -463,7 +466,7 @@ static void endStartupOperation() {
 // Whether a file that cannot be read now (not opened, or fewer bytes than asked) is waited for, its operation left
 // pending until the next attempt, rather than taken as absent or unreadable. Waited for: a file read before (`seen`: a
 // read that never ended may still hold it), a file that must be readable (`mustRead`: the data of the newest valid
-// head, always written before that head), and any file at the first attempt; never once the attempts are used up.
+// head, always written before that head), and any file before ABSENT_FROM_ATTEMPT; never once the attempts are used up.
 static bool waitsFor(bool seen, bool mustRead) {
   if (g_startupAttempts >= GIVE_UP_AFTER_ATTEMPTS) return false;
   return seen || mustRead || g_startupAttempts < ABSENT_FROM_ATTEMPT;
