@@ -51,6 +51,8 @@ Then run `generator\MsfsUi.App\bin\Debug\net10.0-windows10.0.26100.0\win-x64\MSF
 | Document | For | Content |
 |---|---|---|
 | [User guide](docs/user-guide.md) | Users | Installing, the app's pages, every feature of the mod in the sim, after a sim update, troubleshooting |
+| [Build your own MSFS-UI](docs/build-your-own.md) | Beginners | Making your own version with any AI: tools, first build, trying it in the sim, working with an AI, recipes, sharing |
+| [AGENTS.md](AGENTS.md) | Any AI | What an AI needs to take the project over: architecture, commands, contracts, rules, the sim's traps, how to prove a change |
 | [Development](docs/development.md) | Developers | Repository, build and tests, the developer tool, how the package works, the contracts between the app and the mod, working method, rules, the app's structure |
 | [Sim reference](docs/sim-reference.md) | Developers | What the mod uses from the MSFS 2024 menu: files, screens, data model, events, storage, Coherent GT constraints |
 | [Next steps](docs/next-steps.md) | Everyone | Where the project stands and what comes next, in order |
