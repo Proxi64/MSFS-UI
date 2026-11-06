@@ -177,6 +177,7 @@ Nothing of the sim's menu is documented by Asobo. Before writing code that depen
 | Something learned about the sim | [docs/sim-reference.md](docs/sim-reference.md) |
 | Build, tools, app structure, release | [docs/development.md](docs/development.md) |
 | A rule or a trap | This file |
+| [docs/build-your-own.md](docs/build-your-own.md) | Its HTML page: `node tools/docs-html/build.mjs` (never edit `docs/build-your-own.html` by hand; `--check` fails when it is out of date) |
 | What comes next | [docs/next-steps.md](docs/next-steps.md) |
 
 ## 11. Index of the documentation

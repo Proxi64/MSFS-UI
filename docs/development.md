@@ -8,7 +8,8 @@ How the project is built, tested and changed. Users only need the [user guide](u
 generator/   MSFS-UI-GENERATOR, the Windows app (.NET 10, WinUI 3), with its library and tests
 mod/         the menu mod (TypeScript → one ES2017 module), installed in the sim as the msfs-ui package
 wasm/        the vault: a WASM module (C++, MSFS 2024 SDK) of the package, keeping the mod's data in files
-docs/        this documentation; docs/images/ holds the screenshots of the README
+docs/        this documentation; docs/images/ holds the screenshots of the README; build-your-own.html is generated from
+             build-your-own.md by tools/docs-html/build.mjs (run it after a change of the guide; --check)
 tools/       msfs-sdk-mcp, an MCP server giving Claude Code the MSFS 2024 SDK and SimConnect; make-icon.ps1, the app's icon
 .claude/skills/msfs-wasm/   the Claude Code skill for the sim's WASM modules (SDK toolchain, MSFS_IO, CommBus), for 2.0
 build-release.ps1   the release (see below); its output goes to release/, ignored by Git

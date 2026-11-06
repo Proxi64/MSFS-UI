@@ -1,0 +1,405 @@
+<!doctype html>
+<!-- Generated from docs/build-your-own.md by tools/docs-html/build.mjs. Do not edit: change the Markdown and run the script again. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build your own MSFS-UI</title>
+<meta name="description" content="How to take the code of MSFS-UI, the MSFS 2024 main menu mod, and make your own version with any AI.">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa; --surface: #ffffff; --text: #1d2330; --muted: #5a6475; --border: #dde2ea;
+  --accent: #1f6feb; --accent-soft: #e8f0fe; --code-bg: #f0f2f5; --pre-bg: #14181f; --pre-text: #e6e9ef;
+  --warn: #9a6700; --warn-bg: #fff8e5; --warn-border: #f0c75e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1218; --surface: #161a22; --text: #e3e7ee; --muted: #9aa4b5; --border: #2a303c;
+    --accent: #6ea8fe; --accent-soft: #1b2a44; --code-bg: #222835; --pre-bg: #0a0d12; --pre-text: #e6e9ef;
+    --warn: #e3b341; --warn-bg: #2b2411; --warn-border: #6b5416;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1218; --surface: #161a22; --text: #e3e7ee; --muted: #9aa4b5; --border: #2a303c;
+  --accent: #6ea8fe; --accent-soft: #1b2a44; --code-bg: #222835; --pre-bg: #0a0d12; --pre-text: #e6e9ef;
+  --warn: #e3b341; --warn-bg: #2b2411; --warn-border: #6b5416;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.65 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); max-width: 1240px; margin: 0 auto; }
+nav.toc {
+  position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  padding: 32px 20px 32px 24px; border-right: 1px solid var(--border); font-size: 14px;
+}
+.toc-title { font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; }
+nav.toc a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; line-height: 1.35; }
+nav.toc a:hover { color: var(--text); background: var(--code-bg); }
+nav.toc a.active { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.theme { margin-top: 20px; font: inherit; font-size: 13px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.theme:hover { color: var(--text); }
+main { padding: 40px 48px 96px; min-width: 0; }
+article { max-width: 860px; }
+h1 { font-size: 2.3rem; line-height: 1.2; margin: 0 0 20px; letter-spacing: -.01em; }
+h2 { font-size: 1.55rem; line-height: 1.3; margin: 56px 0 16px; padding-top: 24px; border-top: 1px solid var(--border); }
+h3 { font-size: 1.2rem; margin: 36px 0 12px; }
+h2, h3 { position: relative; }
+.anchor { position: absolute; left: -1.1em; color: var(--muted); text-decoration: none; opacity: 0; font-weight: 400; }
+h2:hover .anchor, h3:hover .anchor { opacity: 1; }
+a { color: var(--accent); text-underline-offset: 2px; }
+p, ul, ol { margin: 0 0 14px; }
+li { margin: 4px 0; }
+li > .code, li > p { margin-top: 8px; }
+code { font: .88em/1.5 "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace; background: var(--code-bg); padding: .12em .38em; border-radius: 4px; overflow-wrap: anywhere; }
+.code { position: relative; margin: 12px 0 18px; }
+pre { margin: 0; background: var(--pre-bg); color: var(--pre-text); border-radius: 8px; padding: 16px 18px; overflow-x: auto; line-height: 1.5; }
+pre code { background: none; padding: 0; font-size: 13.5px; color: inherit; overflow-wrap: normal; white-space: pre; }
+.copy { position: absolute; top: 8px; right: 8px; font: 12px "Segoe UI", system-ui, sans-serif; color: #c9d1dc; background: #2a3140; border: 1px solid #3a4354; border-radius: 5px; padding: 3px 9px; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.code:hover .copy, .copy:focus-visible { opacity: 1; }
+.copy.done { color: #8ddb8c; }
+.table { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+th { background: var(--code-bg); font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+.alert { margin: 20px 0; padding: 14px 18px; border: 1px solid var(--warn-border); border-left-width: 4px; border-radius: 8px; background: var(--warn-bg); }
+.alert-title { font-weight: 700; color: var(--warn); margin: 0 0 6px; }
+.alert p:last-child { margin-bottom: 0; }
+blockquote { margin: 16px 0; padding: 4px 16px; border-left: 4px solid var(--border); color: var(--muted); }
+footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+.menu { display: none; }
+@media (max-width: 900px) {
+  .layout { display: block; }
+  nav.toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 0 16px; }
+  nav.toc .toc-body { display: none; padding-bottom: 16px; }
+  nav.toc.open .toc-body { display: block; }
+  .menu { display: block; width: 100%; text-align: left; font: inherit; font-weight: 600; color: var(--text); background: none; border: none; padding: 14px 0; cursor: pointer; }
+  .toc-title { display: none; }
+  main { padding: 24px 16px 64px; }
+  h1 { font-size: 1.8rem; }
+  .anchor { display: none; }
+}
+@media print {
+  nav.toc, .copy { display: none; }
+  .layout { display: block; }
+  main { padding: 0; }
+  pre { white-space: pre-wrap; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Contents">
+<button type="button" class="menu" aria-expanded="false">Contents</button>
+<div class="toc-body">
+<p class="toc-title">Contents</p>
+<ol><li><a href="#1-how-msfs-ui-works-in-plain-words">1. How MSFS-UI works, in plain words</a></li><li><a href="#2-what-is-in-the-repository">2. What is in the repository</a></li><li><a href="#3-what-you-need">3. What you need</a></li><li><a href="#4-get-the-code">4. Get the code</a></li><li><a href="#5-build-it-for-the-first-time">5. Build it for the first time</a></li><li><a href="#6-try-your-version-in-the-sim">6. Try your version in the sim</a></li><li><a href="#7-work-with-an-ai">7. Work with an AI</a></li><li><a href="#8-recipes-your-first-changes">8. Recipes: your first changes</a></li><li><a href="#9-explore-the-sims-menu">9. Explore the sim's menu</a></li><li><a href="#10-the-rules-the-build-enforces-and-why">10. The rules the build enforces, and why</a></li><li><a href="#11-test-and-check-your-work">11. Test and check your work</a></li><li><a href="#12-save-your-work-with-git">12. Save your work with Git</a></li><li><a href="#13-share-your-version">13. Share your version</a></li><li><a href="#14-after-a-sim-update">14. After a sim update</a></li><li><a href="#15-troubleshooting">15. Troubleshooting</a></li><li><a href="#glossary">Glossary</a></li><li><a href="#where-to-read-more">Where to read more</a></li></ol>
+<button type="button" class="theme">Dark theme</button>
+</div>
+</nav>
+<main>
+<article>
+<h1>Build your own MSFS-UI</h1>
+<p>This guide is for anyone who wants to take the code of MSFS-UI and make it their own: change a colour or a size, add an option, fix something that bothers them, or build a whole new feature for the main menu of Microsoft Flight Simulator 2024. <strong>You do not need to be a programmer.</strong> An AI assistant (Claude, ChatGPT, Gemini, Copilot, Cursor, Codex, Mistral…, whichever you like) writes the code with you; this guide gives you everything around it: what to install, how the project is organised, how to build it, how to try your changes in the sim, how to talk to the AI so that it does good work, and how to share the result.</p>
+<p>Read it once from top to bottom, then keep it at hand. Words you may not know are explained in the <a href="#glossary">glossary</a> at the end.</p>
+<aside class="alert alert-warning"><p class="alert-title">Warning</p><p>MSFS-UI is a personal project, not affiliated with, endorsed by or supported by Microsoft or Asobo Studio. It relies on undocumented parts of the sim's menu that any sim update may change. Your own version carries the same risk. The good news: <strong>no file of the sim is ever modified</strong>. Removing the package from the Community folder always brings the original menu back.</p></aside>
+<h2 id="1-how-msfs-ui-works-in-plain-words"><a class="anchor" href="#1-how-msfs-ui-works-in-plain-words" aria-hidden="true">#</a>1. How MSFS-UI works, in plain words</h2>
+<p>The main menu of MSFS 2024 (Free Flight, the aircraft selection, the world map…) is <strong>a web page</strong>. The sim shows it with a small built-in browser engine called <strong>Coherent GT</strong>. Like any web page, it is made of HTML elements, CSS styles and JavaScript code. This is what makes a menu mod possible: we add our own JavaScript to that page.</p>
+<p>The sim loads add-ons from its <strong>Community folder</strong>. Each add-on is a <strong>package</strong>: a folder with a few description files and the files it adds or replaces. A package can replace a file of the sim by putting a file with the same name at the same place. MSFS-UI uses this:</p>
+<div class="code"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>                 your PC
+ ┌─────────────────────────────────────────────────────────────┐
+ │  MSFS-UI-GENERATOR (the Windows app)                        │
+ │   1. reads the sim's own menu root page (the &quot;MasterPage&quot;)  │
+ │   2. makes a copy and adds one line to it: &quot;load our mod&quot;   │
+ │   3. writes the package msfs-ui into the Community folder:  │
+ │        the modified copy of the MasterPage                  │
+ │        main.js    = the mod itself (all our features)       │
+ │        config.js  = your settings (which features, options) │
+ │        msfs-ui.wasm = the &quot;vault&quot; that saves your data      │
+ └─────────────────────────────────────────────────────────────┘
+                          │  the sim starts
+                          ▼
+ ┌─────────────────────────────────────────────────────────────┐
+ │  MSFS 2024 main menu (a web page in Coherent GT)            │
+ │   the copied MasterPage loads main.js                       │
+ │   main.js reads config.js, then starts each feature:        │
+ │   weather bar, aircraft gallery, favourites, …              │
+ └─────────────────────────────────────────────────────────────┘</code></pre></div>
+<p>A few important ideas:</p>
+<ul><li><strong>The repository never contains a file of the sim.</strong> The copy of the MasterPage is made on each user's machine, from their own sim. This respects Asobo's files and keeps the mod working when the sim's menu changes a little.</li><li><strong>The mod works on the sim's real objects.</strong> It imports the sim's own JavaScript modules, so it sees the same data (the current aircraft, the weather, the time) and can ask the sim to do things (load an aircraft, change the time).</li><li><strong>Everything the mod shows is made of the sim's own components</strong> (its buttons, tiles, dropdowns, scroll lists). That is why the mod looks like part of the sim.</li><li><strong>Everything the mod changes can be undone.</strong> The mod can be reloaded while the sim runs (a &quot;hot reload&quot;), and it cleans up after itself first.</li><li><strong>Two programs, two languages.</strong> The mod is written in <strong>TypeScript</strong> (JavaScript with types), turned into one file, <code>main.js</code>. The app is written in <strong>C#</strong> (.NET, WinUI 3). A third, tiny piece, the vault, is written in <strong>C++</strong> and compiled to <strong>WebAssembly</strong> (a <code>.wasm</code> file the sim runs).</li><li><strong>The app and the mod agree through two files</strong>: <code>mod/features.json</code> (the list of features and their options: the app builds its Features page from it) and <code>mod/compat.json</code> (everything the mod needs from the sim: the app checks it on its Compatibility page).</li></ul>
+<p>Most changes you will want to make are in the mod (<code>mod/</code>). You rarely need to touch the app, and almost never the vault.</p>
+<h2 id="2-what-is-in-the-repository"><a class="anchor" href="#2-what-is-in-the-repository" aria-hidden="true">#</a>2. What is in the repository</h2>
+<div class="code"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>MSFS-UI/
+├─ mod/                  THE MENU MOD (TypeScript): this is where most of your changes go
+│  ├─ features.json      the catalogue: every feature, its title, description and options
+│  ├─ compat.json        everything the mod uses from the sim (checked by the app)
+│  ├─ src/
+│  │  ├─ main.ts         entry point: reads the settings, starts the features
+│  │  ├─ features.ts     the list of features (id → code that starts it)
+│  │  ├─ features/       one folder or file per feature (see the table below)
+│  │  ├─ sim/            how to talk to the sim: screens, components, aircraft, data…
+│  │  └─ core/           tools that do not depend on the sim: Scope, storage, log, theme…
+│  ├─ test/              automatic tests of the mod
+│  ├─ build/             the build script and its checks
+│  └─ dist/main.js       the built mod (created by the build, not in Git)
+├─ generator/            THE WINDOWS APP MSFS-UI-GENERATOR (C#, .NET 10, WinUI 3)
+│  ├─ MsfsUi.App/        the app's windows and pages
+│  ├─ MsfsUi.Core/       finding the sim, building and installing the package, checks
+│  ├─ MsfsUi.DevTool/    msfs-ui-dev, a command-line tool for developers (very useful)
+│  └─ …Tests/            automatic tests of the app
+├─ wasm/                 THE VAULT (C++ → WebAssembly): saves the mod's data in files
+├─ docs/                 the documentation (you are reading it)
+├─ tools/                helper scripts (screen resolution checks, the app's icon, an MCP server)
+├─ build-release.ps1     builds a release: the app folder and its zip
+├─ AGENTS.md             instructions for an AI working on this project
+└─ CLAUDE.md             the original author's own instructions for Claude Code (project history)</code></pre></div>
+<p>The features, and where their code is:</p>
+<div class="table"><table><thead><tr><th>Feature (in the app)</th><th>Screen</th><th>Code</th></tr></thead><tbody><tr><td>Fast menus</td><td>All menus</td><td><code>mod/src/features/fast-menus/</code></td></tr><tr><td>Weather and time bar</td><td>Free Flight</td><td><code>mod/src/features/weather-bar/</code></td></tr><tr><td>Mouse wheel on the time</td><td>Free Flight</td><td><code>mod/src/features/time-wheel.ts</code> (the simplest one: start here)</td></tr><tr><td>Tail number per livery</td><td>Aircraft selection</td><td><code>mod/src/features/tail-number.ts</code></td></tr><tr><td>Setup panel</td><td>Aircraft selection</td><td><code>mod/src/features/aircraft-setup/</code></td></tr><tr><td>Aircraft gallery and list</td><td>Aircraft selection</td><td><code>mod/src/features/aircraft-gallery/</code></td></tr><tr><td>Free Flight favourites</td><td>Free Flight</td><td><code>mod/src/features/freeflight-favorites/</code></td></tr><tr><td>Free Flight on wide screens</td><td>Free Flight</td><td><code>mod/src/features/freeflight-layout/</code></td></tr></tbody></table></div>
+<p>Inside a feature's folder, files ending in <code>.css</code> hold its layout (sizes, positions), <code>index.ts</code> starts it, and files whose header comment says &quot;pure&quot; hold calculations without any contact with the sim (they are the ones with tests).</p>
+<h2 id="3-what-you-need"><a class="anchor" href="#3-what-you-need" aria-hidden="true">#</a>3. What you need</h2>
+<p><strong>To change the mod and try it in the sim</strong> (the usual case):</p>
+<div class="table"><table><thead><tr><th>Tool</th><th>Why</th><th>How to get it</th></tr></thead><tbody><tr><td>Windows 10 or 11 (64-bit) and MSFS 2024</td><td>To run the sim and the app</td><td>—</td></tr><tr><td><strong>Git</strong></td><td>To download the code and keep the history of your changes</td><td><code>winget install Git.Git</code> or <a href="https://git-scm.com" target="_blank" rel="noopener">git-scm.com</a></td></tr><tr><td><strong>Node.js 22.18 or later</strong></td><td>To build the mod (TypeScript → <code>main.js</code>) and run its tests</td><td><code>winget install OpenJS.NodeJS.LTS</code> or <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a> (take the LTS version)</td></tr><tr><td><strong>.NET 10 SDK</strong></td><td>To build the app and the developer tool</td><td><code>winget install Microsoft.DotNet.SDK.10</code> or <a href="https://dot.net" target="_blank" rel="noopener">dot.net</a></td></tr><tr><td><strong>PowerShell 7</strong></td><td>The project's scripts need it (<code>pwsh</code>)</td><td><code>winget install Microsoft.PowerShell</code></td></tr><tr><td><strong>A code editor</strong></td><td>To read and change the files</td><td><a href="https://code.visualstudio.com" target="_blank" rel="noopener">Visual Studio Code</a> (<code>winget install Microsoft.VisualStudioCode</code>), or the editor of your AI tool (Cursor, Windsurf…)</td></tr><tr><td><strong>An AI assistant</strong></td><td>To write the code with you</td><td>See <a href="#7-work-with-an-ai">7. Work with an AI</a></td></tr></tbody></table></div>
+<p>To type the <code>winget</code> commands: open the <strong>Terminal</strong> app (or PowerShell) from the Start menu, paste the command, press Enter. Close and reopen the terminal after installing, so that it finds the new tools. To check:</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>git --version        # git version 2.x
+node --version       # v22.18.0 or higher
+dotnet --version     # 10.x
+pwsh --version       # PowerShell 7.x</code></pre></div>
+<p><strong>Only for some tasks:</strong></p>
+<div class="table"><table><thead><tr><th>Tool</th><th>When you need it</th></tr></thead><tbody><tr><td><strong>MSFS 2024 SDK</strong></td><td>To build the vault module (<code>wasm/</code>) yourself. Not needed if you take the module from an installed release (see <a href="#52-the-vault-module">step 5.2</a>). The SDK is offered by the sim in Developer Mode and on the official SDK site (<a href="https://docs.flightsimulator.com" target="_blank" rel="noopener">docs.flightsimulator.com</a>); its installer sets the <code>MSFS2024_SDK</code> variable (set it yourself to the SDK folder if it does not)</td></tr><tr><td><strong>Visual Studio 2022 or later with &quot;Desktop development with C++&quot;</strong></td><td>Only to build a release (<code>build-release.ps1</code>): the small launcher exe is compiled with it. The free Community edition is enough</td></tr><tr><td><strong>WinApp CLI 0.7+ and Windows Developer Mode</strong></td><td>Only for <code>winapp run</code> (starting the app from the command line in its development identity). Running the built <code>.exe</code> directly works without it</td></tr></tbody></table></div>
+<h2 id="4-get-the-code"><a class="anchor" href="#4-get-the-code" aria-hidden="true">#</a>4. Get the code</h2>
+<p><strong>Option A, recommended: your own copy on GitHub (a &quot;fork&quot;).</strong> You keep your changes online, you can share them, and you can still take later improvements from the original.</p>
+<ol><li>Create a free account on <a href="https://github.com" target="_blank" rel="noopener">github.com</a>.</li><li>Open <a href="https://github.com/Proxi64/MSFS-UI" target="_blank" rel="noopener">github.com/Proxi64/MSFS-UI</a> and click <strong>Fork</strong>. You now have <code>github.com/&lt;you&gt;/MSFS-UI</code>.</li><li><p>On your PC, in a terminal, go to the folder where you keep projects and download your fork:</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>cd $env:USERPROFILE\Documents
+git clone https://github.com/&lt;you&gt;/MSFS-UI.git
+cd MSFS-UI</code></pre></div></li><li><p>Tell Git who you are (shown in your commits; use a nickname if you prefer):</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>git config user.name &quot;YourNickname&quot;
+git config user.email &quot;you@example.com&quot;</code></pre></div></li></ol>
+<p><strong>Option B: without GitHub.</strong> On the project's GitHub page, <strong>Code › Download ZIP</strong>, unzip it, then in that folder run <code>git init</code>, <code>git add .</code>, <code>git commit -m &quot;Start&quot;</code> so that you can still go back in time.</p>
+<p>Open the folder in your editor (in VS Code: <strong>File › Open Folder…</strong>). Every command of this guide runs in a terminal <strong>at the root of that folder</strong> (where <code>README.md</code> is), unless it says otherwise.</p>
+<h2 id="5-build-it-for-the-first-time"><a class="anchor" href="#5-build-it-for-the-first-time" aria-hidden="true">#</a>5. Build it for the first time</h2>
+<p>Do this once before changing anything: if something fails here, it is your setup, not your change.</p>
+<h3 id="51-the-mod"><a class="anchor" href="#51-the-mod" aria-hidden="true">#</a>5.1 The mod</h3>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>cd mod
+npm ci              # downloads the build tools (esbuild, TypeScript…) into mod/node_modules, once
+npm run check       # checks, builds mod/dist/main.js, runs the tests
+cd ..</code></pre></div>
+<p><code>npm run check</code> must end without an error and with the tests passing (a summary such as <code>ℹ pass 454</code>, <code>ℹ fail 0</code>). It does a lot at once: it validates <code>features.json</code> and <code>compat.json</code>, checks the rules of <a href="#10-the-rules-the-build-enforces-and-why">section 10</a>, compiles the TypeScript, bundles everything into <code>mod/dist/main.js</code>, and runs the tests. <strong>Run it after every change to the mod.</strong></p>
+<h3 id="52-the-vault-module"><a class="anchor" href="#52-the-vault-module" aria-hidden="true">#</a>5.2 The vault module</h3>
+<p>The app contains the vault module <code>wasm/dist/msfs-ui.wasm</code>, and refuses to build without it. Two ways to get it:</p>
+<ul><li><p><strong>Without the SDK (simplest):</strong> install the official MSFS-UI release once (<a href="https://github.com/Proxi64/MSFS-UI/releases" target="_blank" rel="noopener">the GitHub releases</a>, or flightsim.to), click <strong>Generate &amp; install</strong> in its app, then copy the module it installed:</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>New-Item -ItemType Directory -Force wasm\dist
+Copy-Item &quot;&lt;your Community folder&gt;\msfs-ui\modules\msfs-ui.wasm&quot; wasm\dist\</code></pre></div>
+<p>(The app's Home page shows where your Community folder is.) This is fine as long as you do not change the vault itself.</p></li><li><strong>With the MSFS 2024 SDK:</strong> <code>pwsh -File wasm/build.ps1</code> builds it, checks it and runs its tests.</li></ul>
+<h3 id="53-the-app-and-the-developer-tool"><a class="anchor" href="#53-the-app-and-the-developer-tool" aria-hidden="true">#</a>5.3 The app and the developer tool</h3>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>dotnet build generator/MsfsUi.slnx
+dotnet test generator/MsfsUi.slnx --filter &quot;TestCategory!=UI&quot;</code></pre></div>
+<p>The build treats every warning as an error: it must end with <code>0 Warning(s)</code> and <code>0 Error(s)</code>. The tests must pass. (Without the filter, the tests also open the app's windows for about 20 seconds: do not touch the mouse meanwhile.)</p>
+<p>You now have:</p>
+<ul><li>the app: <code>generator\MsfsUi.App\bin\Debug\net10.0-windows10.0.26100.0\win-x64\MSFS-UI-GENERATOR.exe</code>;</li><li>the developer tool: <code>generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe</code>.</li></ul>
+<p><strong>Important:</strong> the app carries a copy of <code>mod/dist/main.js</code> inside its exe, taken when it was built. After a change to the mod, either rebuild the app (<code>dotnet build</code>) before using its <strong>Generate &amp; install</strong>, or use the developer tool, which always takes the latest <code>mod/dist/main.js</code> (next section).</p>
+<h2 id="6-try-your-version-in-the-sim"><a class="anchor" href="#6-try-your-version-in-the-sim" aria-hidden="true">#</a>6. Try your version in the sim</h2>
+<p>Your version installs as the same <code>msfs-ui</code> package as the official one: it <strong>replaces</strong> it in the Community folder (your favourites and other data in the vault are kept). Only one menu mod can replace the MasterPage at a time: if another menu mod is installed, the installer refuses and names it.</p>
+<h3 id="61-the-developer-tool-msfs-ui-dev"><a class="anchor" href="#61-the-developer-tool-msfs-ui-dev" aria-hidden="true">#</a>6.1 The developer tool, <code>msfs-ui-dev</code></h3>
+<p>It does from the command line what the app does, plus what a developer needs. To save typing, keep its path in a variable (in each new terminal):</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>$dev = &quot;generator\MsfsUi.DevTool\bin\Debug\net10.0-windows\msfs-ui-dev.exe&quot;
+&amp; $dev status          # sim found? package installed? another menu mod in the way? sim running?</code></pre></div>
+<div class="table"><table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>&amp; $dev install</code></td><td>Builds the package from <code>mod/dist/main.js</code>, your settings and the vault module, and installs it in Community</td></tr><tr><td><code>&amp; $dev install --settings my-settings.json</code></td><td>The same with a settings file of your own (format in <a href="https://github.com/Proxi64/MSFS-UI/blob/main/mod/README.md#commands" target="_blank" rel="noopener">mod/README.md</a>); without it, the app's settings, or the defaults</td></tr><tr><td><code>&amp; $dev reload</code></td><td>Reloads the mod in the running sim: your change shows in a second, no restart</td></tr><tr><td><code>&amp; $dev console &quot;[msfs-ui]&quot;</code></td><td>Shows the mod's messages from the sim's console (errors included)</td></tr><tr><td><code>&amp; $dev eval &quot;&lt;JavaScript&gt;&quot;</code></td><td>Runs JavaScript in the sim's menu page and prints the result</td></tr><tr><td><code>&amp; $dev check</code></td><td>The compatibility check: does the sim still offer everything the mod needs? (<code>--detail</code> for every line)</td></tr><tr><td><code>&amp; $dev remove</code></td><td>Removes the package: the original menu comes back at the next start</td></tr></tbody></table></div>
+<p>The tool talks to the running sim through the Coherent GT inspector that the sim opens on your PC (<code>127.0.0.1:19999</code>); <code>reload</code>, <code>console</code>, <code>eval</code> and the live part of <code>check</code> need the sim running, with its main menu loaded.</p>
+<h3 id="62-the-development-loop"><a class="anchor" href="#62-the-development-loop" aria-hidden="true">#</a>6.2 The development loop</h3>
+<p>The first time:</p>
+<ol><li>Close the sim.</li><li><code>&amp; $dev install</code></li><li>Start the sim. (It reads a new package, and the MasterPage, only at start-up.)</li></ol>
+<p>Then, for each change, <strong>with the sim running</strong>:</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>cd mod; npm run check; cd ..      # build and test the mod
+&amp; $dev install                    # put the new main.js in the package
+&amp; $dev reload                     # reload it in the sim
+&amp; $dev console &quot;[msfs-ui]&quot;        # read what it says</code></pre></div>
+<p>The change is live within a second or two. A restart of the sim is needed again only when a <strong>new file</strong> is added to the package (the installer says so) or after a sim update.</p>
+<p>The first line the mod writes is <code>[msfs-ui] module loaded (version …, build …)</code>: if you see it with the time of your build, the sim runs your version. Errors are written <code>[msfs-ui] … failed: …</code>.</p>
+<h3 id="63-if-the-menu-breaks"><a class="anchor" href="#63-if-the-menu-breaks" aria-hidden="true">#</a>6.3 If the menu breaks</h3>
+<p>It will happen, and it is harmless. In order:</p>
+<ol><li><code>&amp; $dev console &quot;[msfs-ui]&quot;</code>: the error usually names the problem. Give it to your AI.</li><li>Go back to your last working version (<code>git stash</code>, see <a href="#12-save-your-work-with-git">section 12</a>), <code>npm run check</code>, <code>install</code>, <code>reload</code>.</li><li>If the menu does not answer at all: close the sim, <code>&amp; $dev remove</code>, start the sim. The original menu is back.</li></ol>
+<h2 id="7-work-with-an-ai"><a class="anchor" href="#7-work-with-an-ai" aria-hidden="true">#</a>7. Work with an AI</h2>
+<h3 id="71-which-kind-of-ai"><a class="anchor" href="#71-which-kind-of-ai" aria-hidden="true">#</a>7.1 Which kind of AI</h3>
+<div class="table"><table><thead><tr><th>Kind</th><th>Examples</th><th>How well it fits</th></tr></thead><tbody><tr><td><strong>An agent with access to your files and terminal</strong></td><td>Claude Code, OpenAI Codex, GitHub Copilot (agent mode), Cursor, Windsurf, Gemini CLI, Cline…</td><td><strong>Best.</strong> It reads the project, changes the files, runs <code>npm run check</code> and <code>msfs-ui-dev</code> itself, and fixes its own errors. Many of these read <code>AGENTS.md</code> (or <code>CLAUDE.md</code> for Claude Code) at the root automatically</td></tr><tr><td><strong>A chat in the browser</strong></td><td>ChatGPT, Claude.ai, Gemini, Le Chat, Copilot chat…</td><td>Works, with more effort: you paste the files it needs and copy its changes back. Fine for small changes</td></tr></tbody></table></div>
+<p>Whichever you use, the AI does not know this project. <strong>The file <a href="https://github.com/Proxi64/MSFS-UI/blob/main/AGENTS.md" target="_blank" rel="noopener"><code>AGENTS.md</code></a> at the root of the repository is written for it</strong>: what the project is, its architecture, its rules, its commands, the traps of the sim's engine, and how to check a change. Always make the AI read it first.</p>
+<h3 id="72-the-first-message"><a class="anchor" href="#72-the-first-message" aria-hidden="true">#</a>7.2 The first message</h3>
+<p>With an agent (it can read files):</p>
+<div class="code" data-language="text"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>Read AGENTS.md at the root of this repository, then docs/development.md and mod/README.md.
+Do not change anything yet. Tell me in a few lines what this project is, how a feature is
+organised, and which commands you will run to check a change.</code></pre></div>
+<p>With a chat (it cannot read files): paste the whole content of <code>AGENTS.md</code> first, then:</p>
+<div class="code" data-language="text"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>That is the instruction file of the project I am working on. I will paste the files you need.
+Do not invent the content of a file I have not pasted: ask me for it.</code></pre></div>
+<h3 id="73-asking-for-a-change"><a class="anchor" href="#73-asking-for-a-change" aria-hidden="true">#</a>7.3 Asking for a change</h3>
+<p>The method that works:</p>
+<ol><li><strong>One small change at a time.</strong> &quot;Make the favourites' rows a bit taller&quot;, not &quot;redesign Free Flight&quot;.</li><li><strong>Say what you see and what you want</strong>, with the screen and a screenshot if your AI accepts images: &quot;On Free Flight, the Favorites rows are too close to each other. I want twice the space between them.&quot;</li><li><strong>Ask for a plan first</strong>: &quot;Before coding, tell me which files you will change and how.&quot; Read it; ask questions if anything is unclear. This avoids long detours.</li><li><strong>Let it build and test</strong>: the agent runs <code>npm run check</code>; with a chat, you run it and paste the full error back.</li><li><strong>Try it in the sim</strong> (<code>install</code>, <code>reload</code>) and <strong>tell the AI what you see</strong>, with the mod's console lines (<code>&amp; $dev console &quot;[msfs-ui]&quot;</code>).</li><li><strong>When it works, save it</strong> with a Git commit (<a href="#12-save-your-work-with-git">section 12</a>). Then the next change.</li></ol>
+<p>Useful phrases:</p>
+<ul><li>&quot;Explain this file to me as to a beginner: <code>mod/src/features/time-wheel.ts</code>.&quot;</li><li>&quot;Where is the code that draws X? Show me the file and the lines.&quot;</li><li>&quot;This error came from <code>npm run check</code>: … Fix it without disabling the check.&quot;</li><li>&quot;Use <code>msfs-ui-dev eval</code> to read the real size of this element in the sim before changing the CSS.&quot;</li><li>&quot;Check that this change respects the rules of AGENTS.md (sim components, Scope, compat.json, ES2017).&quot;</li><li>&quot;Undo your last change.&quot; (or <code>git checkout -- .</code> yourself)</li></ul>
+<h3 id="74-with-a-chat-which-files-to-paste"><a class="anchor" href="#74-with-a-chat-which-files-to-paste" aria-hidden="true">#</a>7.4 With a chat: which files to paste</h3>
+<div class="table"><table><thead><tr><th>You want to…</th><th>Paste</th></tr></thead><tbody><tr><td>Change a feature's look</td><td>Its <code>.css</code> file, and the <code>.ts</code> file that creates the elements (its <code>panel.ts</code> or <code>index.ts</code>)</td></tr><tr><td>Change what a feature does</td><td>Its folder's <code>index.ts</code> and the file the AI asks for</td></tr><tr><td>Add or change an option</td><td><code>mod/features.json</code> (the feature's entry) and the feature's <code>index.ts</code> (or its single <code>.ts</code> file)</td></tr><tr><td>Add a feature</td><td><code>mod/features.json</code> (one entry as an example), <code>mod/src/features.ts</code>, <code>mod/src/features/time-wheel.ts</code> (as a model)</td></tr><tr><td>Use something of the sim</td><td><code>mod/compat.json</code> and <code>docs/sim-reference.md</code></td></tr><tr><td>An error</td><td>The full output of <code>npm run check</code>, or the console lines</td></tr></tbody></table></div>
+<p>Paste each file with its path on the line above, between three backticks.</p>
+<h3 id="75-what-to-watch-in-the-ais-answers"><a class="anchor" href="#75-what-to-watch-in-the-ais-answers" aria-hidden="true">#</a>7.5 What to watch in the AI's answers</h3>
+<p>AIs know the web very well, which is a trap here: the sim's engine is <strong>not</strong> a modern browser. The build catches most mistakes, but check that the AI:</p>
+<ul><li><strong>does not write modern JavaScript the engine refuses</strong> (<code>{...object}</code> spread of objects, <code>Object.fromEntries</code>, <code>!await x</code>): the build refuses some, others fail only in the sim;</li><li><strong>uses the sim's own components</strong> (<code>createComponent</code> in <code>mod/src/sim/components.ts</code>) rather than drawing its own buttons, lists or text fields in HTML and CSS;</li><li><strong>registers every change to the sim in a <code>Scope</code></strong> (<code>scope.listen</code>, <code>scope.patch</code>, <code>scope.add</code>…), so that the hot reload undoes it;</li><li><strong>declares in <code>compat.json</code></strong> every new thing it uses from the sim (a component GUID, a <code>name=&quot;…&quot;</code>, a <code>TT:</code> translation key, a CSS variable <code>--color…</code>);</li><li><strong>stores data through <code>core/storage.ts</code></strong> with a key starting <code>MSFS_UI_</code>, never <code>localStorage</code> (emptied at every start);</li><li><strong>does not disable a check, a test or a warning</strong> to make the build pass;</li><li><strong>does not claim it works</strong> before you have seen it in the sim.</li></ul>
+<p>If the AI goes round in circles on a bug, stop it: ask it to list what it knows for sure, what it supposes, and to measure in the sim (<code>eval</code>) before changing more code. Or start a new conversation with a short summary: a fresh start often helps.</p>
+<h2 id="8-recipes-your-first-changes"><a class="anchor" href="#8-recipes-your-first-changes" aria-hidden="true">#</a>8. Recipes: your first changes</h2>
+<p>Each recipe is a real change you can make in a few minutes, with or without an AI. Make them in order the first time: they teach you the whole loop.</p>
+<h3 id="81-change-an-options-default-value"><a class="anchor" href="#81-change-an-options-default-value" aria-hidden="true">#</a>8.1 Change an option's default value</h3>
+<p>The mouse wheel on Free Flight's time moves it by 60 seconds per notch by default. Make it 5 minutes.</p>
+<ol><li>Open <code>mod/features.json</code>, find <code>&quot;id&quot;: &quot;timeWheel&quot;</code>, then its option <code>&quot;id&quot;: &quot;step&quot;</code>, and change <code>&quot;default&quot;: 60</code> to <code>&quot;default&quot;: 300</code> (it must be within <code>min</code> and <code>max</code>, on the <code>step</code> grid).</li><li><p>The app and the mod share test files made from this catalogue. Regenerate them, then build:</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>$env:MSFS_UI_UPDATE_FIXTURES = &quot;1&quot;; dotnet test generator/MsfsUi.slnx --filter &quot;TestCategory!=UI&quot;; Remove-Item Env:MSFS_UI_UPDATE_FIXTURES
+cd mod; npm run check; cd ..
+dotnet build generator/MsfsUi.slnx</code></pre></div></li><li><code>&amp; $dev install</code> (without <code>--settings</code>, it uses your saved settings if the app has some, otherwise the new default), <code>&amp; $dev reload</code>. On Free Flight, turn the wheel over the time.</li></ol>
+<p>A default only applies to users who have not saved that option yet; to try any value at once, change it on the app's Features page instead.</p>
+<h3 id="82-change-a-look-css"><a class="anchor" href="#82-change-a-look-css" aria-hidden="true">#</a>8.2 Change a look (CSS)</h3>
+<p>Each feature's layout is in its <code>.css</code> file. Sizes are written in <strong>units</strong> of the sim's mock-ups: <code>calc(var(--u) * 6)</code> means 6 units, where one unit is 1/1080 of the screen's height (so the layout looks the same at every resolution).</p>
+<p>Example: more space between the Free Flight favourites. In <code>mod/src/features/freeflight-favorites/freeflight-favorites.css</code>:</p>
+<div class="code" data-language="css"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>.msfs-ui-fav__row { position: relative; width: 100%; height: calc(var(--u) * 77); margin-bottom: calc(var(--u) * 6); }</code></pre></div>
+<p>Change <code>* 6</code> to <code>* 12</code> in <code>margin-bottom</code>, then build, install, reload.</p>
+<p><strong>Read the comment above a rule before changing it.</strong> Many sizes are also used by the TypeScript code (here, the comment says &quot;the heights match panel.ts&quot;): change one without the other and rows get cut. Ask your AI: &quot;Is this value also used in the TypeScript code? Change both.&quot;</p>
+<h3 id="83-add-an-option-to-a-feature"><a class="anchor" href="#83-add-an-option-to-a-feature" aria-hidden="true">#</a>8.3 Add an option to a feature</h3>
+<p>Add a <strong>Reverse</strong> switch to the mouse wheel on the time (wheel up = earlier).</p>
+<ol><li><p>In <code>mod/features.json</code>, in <code>timeWheel</code>'s <code>&quot;options&quot;</code>, after <code>fastStep</code>, add:</p>
+<div class="code" data-language="json"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>{
+  &quot;id&quot;: &quot;reverse&quot;,
+  &quot;type&quot;: &quot;boolean&quot;,
+  &quot;title&quot;: &quot;Reverse&quot;,
+  &quot;description&quot;: &quot;Wheel up moves the time earlier, wheel down later.&quot;,
+  &quot;default&quot;: false
+}</code></pre></div></li><li><p>In <code>mod/src/features/time-wheel.ts</code>, the line that computes the direction becomes:</p>
+<div class="code" data-language="ts"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>const direction = (event.deltaY &lt; 0 ? 1 : -1) * (settings.reverse ? -1 : 1);
+const delta = direction * (event.shiftKey ? settings.fastStep : settings.step);</code></pre></div>
+<p>The type of <code>settings</code> is generated from <code>features.json</code>: <code>settings.reverse</code> exists and is a boolean as soon as the catalogue has it. If you add an option and forget to read it, the build refuses: every option must be used.</p></li><li>Regenerate the shared test files, build and try, as in 8.1. Rebuild the app (<code>dotnet build</code>) and open it: the Features page shows the new switch by itself, built from <code>features.json</code>.</li></ol>
+<p>Option types: <code>boolean</code> (a switch), <code>number</code> (with <code>min</code>, <code>max</code>, <code>step</code> and an optional <code>unit</code>), <code>choice</code> (radio buttons: a list of <code>choices</code>, each with an <code>id</code>, a <code>title</code> and an optional <code>description</code>). The full schema is <code>mod/schema/features.schema.json</code>.</p>
+<h3 id="84-add-a-new-feature"><a class="anchor" href="#84-add-a-new-feature" aria-hidden="true">#</a>8.4 Add a new feature</h3>
+<p>A minimal feature that writes in the log each time Free Flight opens, and optionally when it closes. Once it works, you have the skeleton of any feature.</p>
+<ol><li><p><strong>The catalogue</strong>, <code>mod/features.json</code>, at the end of <code>&quot;features&quot;</code> (the id is in camelCase):</p>
+<div class="code" data-language="json"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>{
+  &quot;id&quot;: &quot;helloFreeFlight&quot;,
+  &quot;title&quot;: &quot;Hello Free Flight&quot;,
+  &quot;description&quot;: &quot;Writes in the mod's log when Free Flight opens.&quot;,
+  &quot;screen&quot;: &quot;Free Flight&quot;,
+  &quot;enabledByDefault&quot;: true,
+  &quot;options&quot;: [
+    {
+      &quot;id&quot;: &quot;logClose&quot;,
+      &quot;type&quot;: &quot;boolean&quot;,
+      &quot;title&quot;: &quot;Also when it closes&quot;,
+      &quot;description&quot;: &quot;Also writes a line when Free Flight closes.&quot;,
+      &quot;default&quot;: true
+    }
+  ]
+}</code></pre></div></li><li><p><strong>The code</strong>, a new file <code>mod/src/features/hello-free-flight.ts</code> (the file name is the id in kebab-case; a feature with several files gets a folder of that name with an <code>index.ts</code>):</p>
+<div class="code" data-language="ts"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>// Writes in the mod's log when Free Flight opens, and when it closes with the option logClose.
+
+import { log } from '../core/log.ts';
+import type { Scope } from '../core/scope.ts';
+import type { Settings } from '../generated/catalog.ts';
+import { onScreenActive, SCREENS } from '../sim/screens.ts';
+
+export function helloFreeFlight(settings: Settings['helloFreeFlight'], scope: Scope): void {
+  const hooked = onScreenActive(SCREENS.freeFlight, scope, (page, screen) =&gt; {
+    log(`Free Flight opened (${Math.round(page.elt.getBoundingClientRect().width)} px wide)`);
+    // `screen` is a Scope disposed when Free Flight closes: what is added to it runs then.
+    if (settings.logClose) screen.add(() =&gt; log('Free Flight closed'));
+  });
+  if (!hooked) throw new Error('the Free Flight screen is missing');
+}</code></pre></div></li><li><strong>The registry</strong>, <code>mod/src/features.ts</code>: add <code>import { helloFreeFlight } from './features/hello-free-flight.ts';</code> with the other imports, and <code>helloFreeFlight,</code> in the <code>FEATURES</code> list. (Forget it and the build says <code>Property 'helloFreeFlight' is missing in type … 'FeatureRegistry'</code>.)</li><li>Regenerate the shared test files, build, install, reload, as in 8.1. Open and close Free Flight, then <code>&amp; $dev console &quot;[msfs-ui]&quot;</code>.</li></ol>
+<p>From there, a real feature creates the sim's components on the screen (<code>createComponent</code>, see <code>mod/src/sim/components.ts</code> and how <code>freeflight-favorites/panel.ts</code> does it), places them (CSS in units, layout passes every 250 ms on an anchor element), reads the sim's data (<code>store</code> and <code>watch</code>, <code>mod/src/sim/store.ts</code>) and keeps its data (<code>loadData</code> / <code>saveData</code>, <code>mod/src/core/storage.ts</code>). Ask your AI to study an existing feature close to your idea first, and to follow its patterns. Ideas, with what the sim offers for each: <a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/feature-ideas.md" target="_blank" rel="noopener">docs/feature-ideas.md</a>.</p>
+<h3 id="85-change-the-app"><a class="anchor" href="#85-change-the-app" aria-hidden="true">#</a>8.5 Change the app</h3>
+<p>The app is a standard WinUI 3 app (C#, MVVM): pages in <code>generator/MsfsUi.App/Pages/</code>, their logic in <code>ViewModels/</code>, their texts in <code>Strings/en-us/Resources.resw</code>, the real work in <code>MsfsUi.Core</code>. Its build is strict (warnings are errors, code style enforced): let your AI run <code>dotnet build</code> and fix every message. Its rules are in <a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/development.md#the-apps-structure" target="_blank" rel="noopener">docs/development.md, The app's structure</a>. You rarely need it: a new option of the mod appears in the app by itself.</p>
+<h2 id="9-explore-the-sims-menu"><a class="anchor" href="#9-explore-the-sims-menu" aria-hidden="true">#</a>9. Explore the sim's menu</h2>
+<p>To change something of the sim (move a block, read a value), you first need to know how the sim builds it. The sim's menu files are on your PC, in its <code>fs-base-ui</code> package (the app's Home page shows the path):</p>
+<ul><li><code>html_ui\Global\*.js</code>: the menu's JavaScript (large files; search them with your editor's search);</li><li><code>cookedcomps\{GUID}.html</code> and <code>.json</code>: the sim's components (one file per component: its elements, each with a <code>name=&quot;…&quot;</code>, and its visual states).</li></ul>
+<p><strong>Read them, never copy them into the project.</strong> And the running menu can be explored with <code>eval</code>:</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>&amp; $dev eval &quot;document.querySelector('[name=FreeFlight_AircraftButton]').getBoundingClientRect()&quot;
+&amp; $dev eval &quot;window.__msfsUiRuntime.settings&quot;           # the settings the mod runs with
+&amp; $dev eval &quot;window.__msfsUiRuntime.storage.kind&quot;       # vault or datastorage
+&amp; $dev eval &quot;Array.from(document.querySelectorAll('[name]')).slice(0, 50).map(e =&gt; e.getAttribute('name')).join(', ')&quot;</code></pre></div>
+<p>What the project already found is written down, so neither you nor the AI needs to find it again: <a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/sim-reference.md" target="_blank" rel="noopener">docs/sim-reference.md</a> (screens, data model, events, the engine's limits) and the &quot;traps&quot; table of <a href="https://github.com/Proxi64/MSFS-UI/blob/main/AGENTS.md" target="_blank" rel="noopener">AGENTS.md</a>. Tell your AI: &quot;Look in docs/sim-reference.md before exploring.&quot;</p>
+<p>When you find something new about the sim, note it in <code>docs/sim-reference.md</code>: it is the project's memory.</p>
+<h2 id="10-the-rules-the-build-enforces-and-why"><a class="anchor" href="#10-the-rules-the-build-enforces-and-why" aria-hidden="true">#</a>10. The rules the build enforces, and why</h2>
+<p><code>npm run check</code> stops with an explanation when one of these rules is broken. Do not ask the AI to remove the check: fix the cause.</p>
+<div class="table"><table><thead><tr><th>Rule</th><th>Why</th></tr></thead><tbody><tr><td>Every feature of <code>features.json</code> has its code (<code>src/features/&lt;id-in-kebab-case&gt;</code>), registered in <code>src/features.ts</code>, which reads every one of its options</td><td>The app shows what the catalogue lists: an option that does nothing would lie to the user</td></tr><tr><td>Every reference to the sim is declared in <code>compat.json</code>: component and screen GUIDs, <code>name=&quot;…&quot;</code> anchors, <code>TT:</code> translation keys, <code>/Global/…</code> imports, <code>coui://</code> files, the sim's CSS variables</td><td>After a sim update, the Compatibility page checks them all and tells which feature may break</td></tr><tr><td>JavaScript ES2017 only; no operator before <code>await</code> (<code>!await x</code>)</td><td>The sim's engine is an old WebKit: newer syntax stops the whole mod from loading</td></tr><tr><td>No raw U+2028 / U+2029 characters (invisible line separators) in the sources</td><td>The engine refuses them in strings; build them with <code>String.fromCharCode</code></td></tr><tr><td>Strict TypeScript</td><td>Type errors are caught before the sim</td></tr><tr><td>Imports from the sim only from <code>/Global/engine_ui.bundle.js</code>, <code>/Global/shared/utils.js</code>, <code>/Global/shared/store.js</code>, by readable names</td><td>The other files' names are minified and change with each sim update</td></tr></tbody></table></div>
+<p>And the rules no tool checks, which the project keeps all the same:</p>
+<ul><li><strong>The sim's own components</strong> for everything visible. Exceptions: the mod's two icons (heart, slashed eye), drawn in SVG.</li><li><strong>Every change to the sim through a <code>Scope</code></strong> (listeners, patches, timers, added elements): the hot reload and closing a screen undo it.</li><li><strong>Data through <code>core/storage.ts</code></strong>, keys starting with <code>MSFS_UI_</code>: it goes to the vault (files that survive a restart), or to the sim's <code>datastorage</code> when the vault does not answer. Never <code>localStorage</code>.</li><li><strong>No file of Asobo</strong> in the repository or in a release.</li><li><strong>Everything in English</strong> in the code, its comments, the messages and the documentation (the sim's own texts come from its translation keys, <code>translate('TT:…')</code>, so they follow the sim's language).</li><li><strong>No personal data</strong>: no real name, no path to your user folder (<code>C:\Users\YourName\…</code>) in the files; write <code>%USERPROFILE%</code> or a path relative to the repository.</li></ul>
+<h2 id="11-test-and-check-your-work"><a class="anchor" href="#11-test-and-check-your-work" aria-hidden="true">#</a>11. Test and check your work</h2>
+<ul><li><strong>Automatic tests.</strong> <code>npm run check</code> runs the mod's tests (<code>mod/test/*.test.ts</code>); <code>dotnet test generator/MsfsUi.slnx</code> runs the app's. When you or the AI write a calculation (a size, an order, a filter), put it in a &quot;pure&quot; function (no contact with the sim) and ask the AI for a test of it: it is the cheapest way to keep it right.</li><li><strong>In the sim, by measuring.</strong> Looking is not enough to know that two blocks are aligned: ask the AI to measure with <code>eval</code> and <code>getBoundingClientRect()</code> (positions in pixels), and compare.</li><li><strong>At several resolutions.</strong> The layout depends on the screen's shape. With the sim in windowed mode, <code>tools/resolution-check/</code> sets its size and takes screenshots (<a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/development.md#screen-resolutions" target="_blank" rel="noopener">docs/development.md, Screen resolutions</a>). At least: 1920 × 1080, 2560 × 1440, and a wide screen (3440 × 1440) if your change touches Free Flight.</li><li><strong>The compatibility check.</strong> <code>&amp; $dev check</code> after adding something of the sim to <code>compat.json</code>.</li><li><strong>Your settings.</strong> Turn your feature off in the app (Features page, <strong>Apply</strong>): the menu must be exactly the original one. Turn it on again: no error in the console.</li></ul>
+<h2 id="12-save-your-work-with-git"><a class="anchor" href="#12-save-your-work-with-git" aria-hidden="true">#</a>12. Save your work with Git</h2>
+<p>Git keeps every version of your work. Save (commit) each time something works; you can always go back.</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>git status                          # what changed since the last commit
+git diff                            # the changes, line by line
+git add -A                          # take every change
+git commit -m &quot;Free Flight favourites: twice the space between rows&quot;
+git log --oneline                   # the history</code></pre></div>
+<div class="table"><table><thead><tr><th>You want to…</th><th>Command</th></tr></thead><tbody><tr><td>Throw away all changes since the last commit</td><td><code>git checkout -- .</code> (and <code>git clean -fd</code> for new files: careful, they are deleted)</td></tr><tr><td>Put your changes aside, then take them back</td><td><code>git stash</code>, then <code>git stash pop</code></td></tr><tr><td>Try something big without risk</td><td><code>git switch -c my-idea</code> (a new branch); back with <code>git switch main</code></td></tr><tr><td>Send your commits to your fork on GitHub</td><td><code>git push</code></td></tr><tr><td>Take the original project's latest changes</td><td>Once: <code>git remote add upstream https://github.com/Proxi64/MSFS-UI.git</code>; then <code>git fetch upstream</code> and <code>git merge upstream/main</code> (your AI can help with conflicts)</td></tr></tbody></table></div>
+<p>Write commit messages in English, saying what changed for the user. Many AI agents can commit for you: ask them to show you the message first.</p>
+<h2 id="13-share-your-version"><a class="anchor" href="#13-share-your-version" aria-hidden="true">#</a>13. Share your version</h2>
+<p>You may share your version freely: MSFS-UI is under the <strong>MIT License</strong> (<a href="https://github.com/Proxi64/MSFS-UI/blob/main/LICENSE" target="_blank" rel="noopener">LICENSE</a>). The only obligation: <strong>keep the licence file and its copyright line</strong> (&quot;© 2026 Proxi64&quot;) in your copy and in what you distribute. You can add your own line for your changes.</p>
+<p>Good practice:</p>
+<ul><li><strong>Say clearly that it is a modified version</strong>, and by whom, in its README and its description (for example &quot;based on MSFS-UI by Proxi64&quot;), so that users know whom to ask for help.</li><li><strong>Keep the disclaimer</strong>: not affiliated with Microsoft or Asobo, use at your own risk.</li><li><strong>Users can install only one menu mod at a time</strong> (the official MSFS-UI or yours): both replace the same page, and the app refuses a second one. Tell your users to remove the other one first.</li><li><strong>Never include a file of the sim</strong>, and nothing personal (the release script checks that no file contains the path of your user folder).</li></ul>
+<p>To build a release (the app's folder and a zip, as the official one):</p>
+<div class="code" data-language="powershell"><button type="button" class="copy" aria-label="Copy the code">Copy</button><pre><code>pwsh -File build-release.ps1        # needs Visual Studio's C++ tools; -SkipUiTests to skip the UI tests</code></pre></div>
+<p>It builds the mod and the app in Release, runs every test, publishes the app to <code>release\MSFS-UI-GENERATOR\</code> (a folder that runs on any Windows 10 1809+ x64 PC, nothing to install) and zips it. Before, set the version in three places, which a test checks are equal: <code>modVersion</code> in <code>mod/features.json</code> (and <code>version</code> in <code>mod/package.json</code>), <code>&lt;Version&gt;</code> in <code>generator/Directory.Build.props</code>, and the <code>Identity</code> version (<code>x.y.z.0</code>) in <code>generator/MsfsUi.App/Package.appxmanifest</code>. Describe your changes in <code>CHANGELOG.md</code>.</p>
+<p>To publish: on your fork's GitHub page, <strong>Releases › Draft a new release</strong>, a tag such as <code>v1.0.0-yourname</code>, the notes, and the zip attached. Or on flightsim.to.</p>
+<h2 id="14-after-a-sim-update"><a class="anchor" href="#14-after-a-sim-update" aria-hidden="true">#</a>14. After a sim update</h2>
+<p>A sim update can move or rename what the mod uses. Then:</p>
+<ol><li>Start the sim, then <code>&amp; $dev check --detail</code> (or the app's <strong>Compatibility</strong> page). The lines in error tell what disappeared and which feature is affected.</li><li>Give that output to your AI with <code>mod/compat.json</code> and the code of the affected feature: &quot;The sim was updated; these checks fail. Find in the sim's files (<code>fs-base-ui</code>) what replaced them.&quot;</li><li>Fix, update <code>compat.json</code>, build, check again.</li></ol>
+<p>The app also says <em>Installed, update needed</em> on Home after a sim update: <strong>Generate &amp; install</strong> makes the copy of the new MasterPage.</p>
+<h2 id="15-troubleshooting"><a class="anchor" href="#15-troubleshooting" aria-hidden="true">#</a>15. Troubleshooting</h2>
+<div class="table"><table><thead><tr><th>What you see</th><th>Likely cause</th><th>What to do</th></tr></thead><tbody><tr><td><code>npm</code> or <code>node</code> &quot;is not recognized&quot;</td><td>Node.js not installed, or the terminal was open before</td><td>Install Node.js, close and reopen the terminal</td></tr><tr><td><code>npm run check</code>: an error naming <code>compat.json</code></td><td>The code uses something of the sim that is not declared</td><td>Add it to the right list of <code>mod/compat.json</code> (look at how a similar one is declared)</td></tr><tr><td><code>npm run check</code>: <code>option &quot;…&quot; of features.json is never read</code></td><td>An option of <code>features.json</code> is not used by its feature</td><td>Read it as <code>settings.&lt;option&gt;</code> in the feature's code, or remove it</td></tr><tr><td><code>npm run check</code>: an error about <code>await</code> or U+2028</td><td>Syntax the sim's engine refuses</td><td>See <a href="#10-the-rules-the-build-enforces-and-why">section 10</a></td></tr><tr><td><code>dotnet build</code>: &quot;mod\dist\main.js is missing&quot;</td><td>The mod was not built</td><td><code>cd mod; npm run check</code></td></tr><tr><td><code>dotnet build</code>: &quot;wasm\dist\msfs-ui.wasm is missing&quot;</td><td>The vault module is missing</td><td><a href="#52-the-vault-module">Step 5.2</a></td></tr><tr><td><code>dotnet test</code>: a contract test fails after a change of <code>features.json</code></td><td>The shared test files are old</td><td>Run the tests with <code>MSFS_UI_UPDATE_FIXTURES=1</code> (<a href="#81-change-an-options-default-value">recipe 8.1</a>), then <code>npm run check</code></td></tr><tr><td><code>msfs-ui-dev reload</code> / <code>console</code> / <code>eval</code> cannot connect</td><td>The sim is not running, or its main menu is not loaded yet</td><td>Wait for the main menu; check <code>&amp; $dev status</code></td></tr><tr><td>Your change does not show in the sim</td><td><code>install</code> forgotten, the old <code>main.js</code>, or the app's Generate &amp; install with an app built before the change</td><td><code>npm run check</code>, <code>&amp; $dev install</code>, <code>&amp; $dev reload</code>; check the build time in the first console line</td></tr><tr><td>&quot;restart needed&quot; after <code>install</code></td><td>A new file in the package, or a first install</td><td>Restart the sim</td></tr><tr><td>The menu is broken or empty</td><td>An error in the mod</td><td><a href="#63-if-the-menu-breaks">6.3</a>; <code>&amp; $dev remove</code> always brings the original menu back</td></tr><tr><td>Clicks go through your panel to the map</td><td>The panel has no input lock</td><td>The mod's panels use <code>inputLocker</code> (<code>core/theme.ts</code>): build yours like the existing ones</td></tr><tr><td>The installer refuses: another mod replaces the same page</td><td>Another menu mod is in Community</td><td>Remove it from the Community folder</td></tr><tr><td>Your favourites are gone after installing your version</td><td>They are in the vault, which your version reads like the original: they should not be. If the Compatibility page says <em>datastorage</em>, the vault module did not answer</td><td>Restart the sim once after installing; check <code>wasm\dist\msfs-ui.wasm</code> was there when you installed</td></tr></tbody></table></div>
+<h2 id="glossary"><a class="anchor" href="#glossary" aria-hidden="true">#</a>Glossary</h2>
+<div class="table"><table><thead><tr><th>Word</th><th>Meaning</th></tr></thead><tbody><tr><td><strong>Anchor</strong></td><td>An element of the sim's page found by its <code>name=&quot;…&quot;</code> attribute, used by the mod to place its blocks</td></tr><tr><td><strong>Build</strong></td><td>Turning the source code into what runs: <code>npm run check</code> for the mod, <code>dotnet build</code> for the app</td></tr><tr><td><strong>Coherent GT</strong></td><td>The browser engine that shows the sim's menus; an old WebKit with limits (section 10)</td></tr><tr><td><strong>Commit</strong></td><td>A saved version of your work in Git</td></tr><tr><td><strong>Community folder</strong></td><td>The sim's folder for add-on packages</td></tr><tr><td><strong>Component</strong></td><td>A ready-made element of the sim's menu (a tile, a button, a dropdown), identified by a GUID</td></tr><tr><td><strong><code>compat.json</code></strong></td><td>The list of everything the mod uses from the sim, checked by the app</td></tr><tr><td><strong><code>config.js</code></strong></td><td>The user's settings, written by the app next to the mod in the package</td></tr><tr><td><strong><code>datastorage</code></strong></td><td>The sim's own storage for menus; the mod's fallback when the vault does not answer</td></tr><tr><td><strong><code>features.json</code></strong></td><td>The catalogue of the mod's features and their options, shared by the mod and the app</td></tr><tr><td><strong>Fork</strong></td><td>Your own copy of a project on GitHub</td></tr><tr><td><strong>GUID</strong></td><td>A long identifier such as <code>{3C7A4EC5-E7F6-4761-B27F-A0EA89C0F081}</code> (here, the Free Flight screen)</td></tr><tr><td><strong>Hot reload</strong></td><td>Reloading the mod in the running sim, without a restart (<code>msfs-ui-dev reload</code>)</td></tr><tr><td><strong>Inspector</strong></td><td>The connection the sim opens on your PC (port 19999) to look inside its pages; used by the app and <code>msfs-ui-dev</code></td></tr><tr><td><strong>Manipulator</strong></td><td>The JavaScript object behind a sim component or screen (its behaviour)</td></tr><tr><td><strong>MasterPage</strong></td><td>The root component of the sim's menu; the package replaces it with a copy that loads the mod</td></tr><tr><td><strong><code>msfs-ui-dev</code></strong></td><td>The developer's command-line tool (<code>generator/MsfsUi.DevTool</code>)</td></tr><tr><td><strong>Package</strong></td><td>A folder in Community that the sim loads (here <code>msfs-ui</code>)</td></tr><tr><td><strong>Pure function</strong></td><td>Code that only computes, without touching the sim: easy to test</td></tr><tr><td><strong>Scope</strong></td><td>The mod's tool that records every change it makes to the sim, to undo them all at once</td></tr><tr><td><strong>TypeScript</strong></td><td>JavaScript with types; the mod's language, compiled to <code>main.js</code></td></tr><tr><td><strong>Unit (<code>--u</code>)</strong></td><td>1/1080 of the screen's height: the sim's mock-ups are drawn in these units</td></tr><tr><td><strong>Vault</strong></td><td>The mod's WebAssembly module that writes its data (favourites, tail numbers…) to files</td></tr><tr><td><strong>WASM / WebAssembly</strong></td><td>Compiled code the sim runs safely; the vault is one</td></tr><tr><td><strong>WinUI 3</strong></td><td>The Windows framework of the app's windows</td></tr></tbody></table></div>
+<h2 id="where-to-read-more"><a class="anchor" href="#where-to-read-more" aria-hidden="true">#</a>Where to read more</h2>
+<div class="table"><table><thead><tr><th>Document</th><th>What you find there</th></tr></thead><tbody><tr><td><a href="https://github.com/Proxi64/MSFS-UI/blob/main/AGENTS.md" target="_blank" rel="noopener">AGENTS.md</a></td><td>The instructions for an AI: architecture, rules, commands, traps</td></tr><tr><td><a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/user-guide.md" target="_blank" rel="noopener">User guide</a></td><td>What every feature does, from the user's side</td></tr><tr><td><a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/development.md" target="_blank" rel="noopener">Development</a></td><td>The build, the developer tool, how the package works, the contracts, the release, the app's structure</td></tr><tr><td><a href="https://github.com/Proxi64/MSFS-UI/blob/main/mod/README.md" target="_blank" rel="noopener">Mod README</a></td><td>The mod's sources file by file, the sim's components it uses, its stored data</td></tr><tr><td><a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/sim-reference.md" target="_blank" rel="noopener">Sim reference</a></td><td>What is known of the sim's menu: files, screens, data, events, the engine's limits</td></tr><tr><td><a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/feature-ideas.md" target="_blank" rel="noopener">Feature ideas</a></td><td>Features that could come next, with what the sim offers for each</td></tr><tr><td><a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/next-steps.md" target="_blank" rel="noopener">Next steps</a></td><td>Where the original project stands</td></tr><tr><td><a href="https://github.com/Proxi64/MSFS-UI/blob/main/wasm/README.md" target="_blank" rel="noopener">wasm/README.md</a></td><td>The vault's protocol and file format</td></tr></tbody></table></div>
+<footer>MSFS-UI, MIT License, © 2026 Proxi64. Generated from <a href="https://github.com/Proxi64/MSFS-UI/blob/main/docs/build-your-own.md" target="_blank" rel="noopener">docs/build-your-own.md</a>.</footer>
+</article>
+</main>
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  try { var saved = localStorage.getItem('msfs-ui-guide-theme'); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+  var themeButton = document.querySelector('.theme');
+  function dark() { var t = root.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
+  function label() { themeButton.textContent = dark() ? 'Light theme' : 'Dark theme'; }
+  label();
+  themeButton.addEventListener('click', function () {
+    var next = dark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('msfs-ui-guide-theme', next); } catch (e) {}
+    label();
+  });
+  var toc = document.querySelector('nav.toc');
+  document.querySelector('.menu').addEventListener('click', function () {
+    toc.classList.toggle('open');
+    this.setAttribute('aria-expanded', toc.classList.contains('open'));
+  });
+  toc.addEventListener('click', function (e) { if (e.target.tagName === 'A') toc.classList.remove('open'); });
+  document.querySelectorAll('.copy').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var text = button.nextElementSibling.textContent;
+      function done() { button.textContent = 'Copied'; button.classList.add('done'); setTimeout(function () { button.textContent = 'Copy'; button.classList.remove('done'); }, 1500); }
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {});
+    });
+  });
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var sections = links.map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); });
+  function spy() {
+    var current = 0;
+    sections.forEach(function (s, i) { if (s && s.getBoundingClientRect().top < 120) current = i; });
+    links.forEach(function (a, i) { a.classList.toggle('active', i === current); });
+  }
+  addEventListener('scroll', spy, { passive: true });
+  spy();
+})();
+</script>
+</body>
+</html>
