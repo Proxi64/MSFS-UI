@@ -14,7 +14,7 @@ import { COMPONENTS, createComponent, markOwned, type SimComponent } from '../..
 import { FAVORITE_LIVERIES_CHANGED, loadFavoriteLiveries, saveFavoriteLiveries } from '../../sim/favorites.ts';
 import { liveryDirectory, liveryKey, loadLiveryTails } from '../../sim/liveries.ts';
 import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
-import { GROUP_GAP } from '../../sim/freeflight-layout.ts';
+import { underSearchTop } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
 import type { RealScroll } from '../../sim/real-scroll.ts';
 import { store, watch } from '../../sim/store.ts';
@@ -32,7 +32,7 @@ const AIRCRAFT_BUTTON = '[name="FreeFlight_AircraftButton"]';
 const SEARCH = '[name="Search"]';
 /** The search field's results list, shown under it while there are results. */
 const SEARCH_RESULTS = '[name="Searchblock"] [name="Results"]';
-/** Layout units: room kept at the bottom of the screen (the sim's buttons). The gap above the block: see GROUP_GAP. */
+/** Layout units: room kept at the bottom of the screen (the sim's buttons). Its top: underSearchTop. */
 const BOTTOM_ROOM = 110;
 /** Layout units: row and gap between rows (as in the CSS); no header (the owner's choice, 2026-10-30). */
 const ROW = 77;
@@ -106,9 +106,8 @@ export class FavoritesPanel {
       return;
     }
     const origin = this.page.elt.getBoundingClientRect();
-    // The sim's own gap: the one above the search field, or GROUP_GAP.
-    const gap = under ? under.top - rect.bottom : Math.floor(GROUP_GAP * unit);
-    const top = Math.round((under ? under.bottom : rect.bottom) - origin.top + gap);
+    // Level with the weather bar's first section, whether the sim shows its search field or not (the owner, 2026-11-06).
+    const top = Math.round(underSearchTop(rect.bottom, unit) - origin.top);
     const available = Math.floor(origin.height - BOTTOM_ROOM * unit - top);
     // As high as its rows, up to the whole rows that fit in the room left: the sim's list then scrolls, and the block
     // still ends on the edge of a row (the owner's choice, 2026-10-30: a cut row showed under the last one). In whole

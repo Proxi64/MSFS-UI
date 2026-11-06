@@ -12,7 +12,7 @@ import { PANEL_INPUT_GROUP } from '../../core/theme.ts';
 import type { Settings } from '../../generated/catalog.ts';
 import { createComponent } from '../../sim/components.ts';
 import { isOnScreen, isShown, type Manipulator } from '../../sim/screens.ts';
-import { FLIGHT_CONDITIONS_WIDGET, GROUP_GAP } from '../../sim/freeflight-layout.ts';
+import { FLIGHT_CONDITIONS_WIDGET, GROUP_GAP, SEARCH_ROW, underSearchTop } from '../../sim/freeflight-layout.ts';
 import { translate } from '../../sim/localization.ts';
 import { store, watch, type TimeInfo } from '../../sim/store.ts';
 import { GAP } from './bar-layout.ts';
@@ -197,8 +197,10 @@ export class WeatherBar {
     const gap = Math.floor(GAP * unit);
     this.spaceSections(gap);
     const card = this.column.visibleCard();
+    // The tab row as high as the sim's search field and level with it, the bar level with the favourites.
     const tabsTop = rect.bottom - origin.top + Math.floor(GROUP_GAP * unit);
-    const top = tabsTop + this.column.showTabs(card, { left, width, top: tabsTop }) + gap;
+    this.column.showTabs(card, { left, width, top: tabsTop, height: Math.floor(SEARCH_ROW * unit) });
+    const top = underSearchTop(rect.bottom, unit) - origin.top;
     const tab = this.column.shownTab();
     if (card) {
       this.column.holdCard(card.element, top + origin.top);

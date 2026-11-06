@@ -19,8 +19,6 @@ export type Tab = 'weather' | 'airport';
 
 /** Last tab chosen (kept even without `remember`: a display preference). */
 const TAB_KEY = 'WEATHER_BAR_TAB';
-/** Height of the tab row, in layout units (as the tabs of the sim's runway card). */
-const TAB_ROW = 36;
 /** Cards of the sim drawn where the bar is, and the label of their tab; the first one names it without a card. */
 const SIM_CARDS: { selector: string; tab: string }[] = [
   { selector: '[name="FreeFlight_Runways"]', tab: 'TT:GENERIC.AIRPORT' },
@@ -57,7 +55,6 @@ export class RightColumn {
   build(component: MakeComponent): void {
     addPanelLayers(this.tabs);
     this.tabs.style.display = 'none';
-    this.tabs.style.height = `calc(var(--u) * ${TAB_ROW})`;
     for (const tab of ['weather', 'airport'] as Tab[]) {
       const host = el('div', 'msfs-ui-wx-tabs__tab', this.tabs);
       if (tab === 'airport') this.cardTabHost = host;
@@ -98,10 +95,10 @@ export class RightColumn {
   }
 
   /**
-   * The tabs at a place (`top` in pixels in the page): the second one named after `card`, dimmed and inactive without
-   * one (the sim's TextTab has no Disabled state). Returns the tab row's height in pixels.
+   * The tabs at a place (`top` and `height` in pixels in the page): the second one named after `card`, dimmed and
+   * inactive without one (the sim's TextTab has no Disabled state).
    */
-  showTabs(card: SimCard | null, place: { left: string; width: string; top: number }): number {
+  showTabs(card: SimCard | null, place: { left: string; width: string; top: number; height: number }): void {
     const cardButton = this.tabButtons.get('airport');
     if (cardButton) cardButton.set('Text', translate(card ? card.tab : SIM_CARDS[0]!.tab));
     if (this.cardTabHost) toggleClass(this.cardTabHost, 'is-inactive', !card);
@@ -114,7 +111,7 @@ export class RightColumn {
     tabs.left = place.left;
     tabs.width = place.width;
     tabs.top = `${place.top}px`;
-    return this.tabs.getBoundingClientRect().height;
+    tabs.height = `${place.height}px`;
   }
 
   /**

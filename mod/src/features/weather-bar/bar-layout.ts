@@ -1,8 +1,10 @@
 // Sizes of the weather bar, without the sim (tested by test/weather-bar.test.ts): the presets grid in whole pixels.
 // bar.ts measures the page and writes the results.
 
+import { SECTION_GAP } from '../../sim/freeflight-layout.ts';
+
 /** Gap between the bar's tiles, and between its blocks (the tabs, the sections), in layout units (as in weather-bar.css). */
-export const GAP = 6;
+export const GAP = SECTION_GAP;
 
 /** A cell of the presets grid: its first column (counted over the rows) and the number of columns it spans. */
 export interface PresetCell {

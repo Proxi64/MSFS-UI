@@ -58,15 +58,15 @@
   background-image: linear-gradient(165deg, var(--colorPrimary) 0%, var(--colorGradient) 100%) !important;
 }
 
-/* Tabs Weather / Airport, as the tab row of the sim's runway card (gradient from black at 20 %); its height is set by
-   right-column.ts (TAB_ROW), bar.ts places it and the bar or the sim's card under it. */
+/* Tabs Weather / Airport, as the tab row of the sim's runway card (gradient from black at 20 %); bar.ts places it,
+   as high as the sim's search field and level with it (SEARCH_ROW), and the bar or the sim's card under it. The tabs
+   fill the row. */
 .msfs-ui-wx-tabs {
   display: flex;
-  align-items: center;
-  padding: 0 calc(var(--u) * 3);
+  align-items: stretch;
   background-image: linear-gradient(90deg, #00000033 0%, #00000000 100%);
 }
-.msfs-ui-wx-tabs__tab { position: relative; flex-grow: 1; flex-basis: 0; height: calc(var(--u) * 30); }
+.msfs-ui-wx-tabs__tab { position: relative; flex-grow: 1; flex-basis: 0; }
 .msfs-ui-wx-tabs__tab + .msfs-ui-wx-tabs__tab { margin-left: calc(var(--u) * 6); }
 /* The card's tab without a card: the sim's TextTab has no Disabled state, so it is dimmed as the blocked bar. */
 .msfs-ui-wx-tabs__tab.is-inactive { opacity: 0.4; pointer-events: none; }

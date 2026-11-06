@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { freeflightPlaces, type PlaceInput, type Places } from '../src/features/freeflight-layout/places.ts';
 import { frameEdge } from '../src/features/freeflight-layout/sim-blocks.ts';
+import { underSearchTop } from '../src/sim/freeflight-layout.ts';
+
+describe('underSearchTop', () => {
+  it('puts the favourites and Today a group gap, a search row and a section gap under the top row', () => {
+    assert.equal(underSearchTop(373, 4 / 3), 373 + 32 + 40 + 8);
+    assert.equal(underSearchTop(280, 1), 280 + 24 + 30 + 6);
+  });
+});
 
 describe('frameEdge', () => {
   const left = (units: string) => `calc(var(--h-anchor) + calc(var(--unscaledScreenHeight) * ${units}px / 1080))`;
