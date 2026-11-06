@@ -37,6 +37,16 @@ public sealed class CompatibilityCheckerTests
             + "<ui-element name=\"RightBlock\" style=\"left: calc(var(--h-anchor) + calc(var(--unscaledScreenHeight) * 574px / 1080));\"></ui-element>"
             + string.Concat(manifest.Anchors.Select(anchor => $"<ui-element name=\"{anchor}\"></ui-element>"))
             + "</ui-resource-element>");
+        const string FromCentre = "--h-anchor: 50%; --v-anchor: 50%;";
+        const string FrameEdge = "left: calc(var(--h-anchor) + calc(var(--unscaledScreenHeight) * 940px / 1080));";
+        folder.Write("fs-base-ui/cookedcomps/{00000000-0000-0000-0000-000000000002}.html",
+            "<ui-resource-element name=\"FreeFlight_AircraftButton\"></ui-resource-element>"
+            + $"<ui-element name=\"MainBlock\" style=\"width: calc(var(--unscaledScreenHeight) * 1880px / 1080); {FromCentre} --pivot-x: -50%;\"></ui-element>"
+            + "<ui-element name=\"FreeFlight_Plan\" style=\"left: calc(var(--h-anchor) + calc(var(--unscaledScreenHeight) * 446px / 1080)); right: calc(var(--unscaledScreenHeight) * 446px / 1080);\"></ui-element>"
+            + "<ui-element name=\"WeatherBlock\" style=\"left: calc(var(--h-anchor) + calc(var(--unscaledScreenHeight) * 1440px / 1080)); right: 0px;\"></ui-element>"
+            + $"<ui-element name=\"Searchblock\" style=\"{FromCentre} left: calc(var(--h-anchor) + calc(var(--unscaledScreenHeight) * -940px / 1080));\"></ui-element>"
+            + $"<ui-element name=\"Worldmap_Filters\" style=\"{FromCentre} --pivot-x: -100%; --pivot-y: -100%; {FrameEdge}\"></ui-element>"
+            + $"<ui-element name=\"Buttons\" style=\"{FromCentre} --pivot-x: -100%; --pivot-y: -100%; {FrameEdge}\"></ui-element>");
         foreach (var file in manifest.Files)
         {
             folder.Write($"fs-base-ui/{file}", "<svg/>");

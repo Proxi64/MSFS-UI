@@ -149,6 +149,14 @@
       "screen": "Free Flight",
       "enabledByDefault": true,
       "options": []
+    },
+    {
+      "id": "freeflightLayout",
+      "title": "Free Flight on wide screens",
+      "description": "Moves Free Flight's columns to the edges of the screen (up to a 21:9 width) and evens out the gaps between its blocks.",
+      "screen": "Free Flight",
+      "enabledByDefault": true,
+      "options": []
     }
   ]
 }

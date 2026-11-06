@@ -32,6 +32,9 @@ export default {
     },
     "freeflightFavorites": {
       "enabled": true
+    },
+    "freeflightLayout": {
+      "enabled": true
     }
   }
 };

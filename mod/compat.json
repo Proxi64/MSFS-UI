@@ -51,7 +51,15 @@
     "Worldmap_Filters",
     "Buttons",
     "ScaleBlock",
-    "EFB"
+    "EFB",
+    "FreeFlightPage",
+    "MainBlock",
+    "FreeFlight_Plan",
+    "WeatherBlock",
+    "Navigation",
+    "MenuBarPage",
+    "MenuBar",
+    "Fly"
   ],
   "componentPatterns": [
     {
@@ -63,6 +71,20 @@
         "name=\"RightBlock\"[^>]*left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* -?[\\d.]+px / 1080\\)\\)"
       ],
       "failure": "unexpected format: the left column cannot be widened"
+    },
+    {
+      "group": "Free Flight frame",
+      "label": "Free Flight's blocks placed from the screen's centre, the frame's edges at -940 and 940 units",
+      "component": "name=\"FreeFlight_AircraftButton\"",
+      "patterns": [
+        "name=\"MainBlock\"[^>]*width: calc\\(var\\(--unscaledScreenHeight\\) \\* 1880px / 1080\\)[^>]*--h-anchor: 50%; --v-anchor: 50%; --pivot-x: -50%",
+        "name=\"FreeFlight_Plan\"[^>]*left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* [\\d.]+px / 1080\\)\\); right: calc\\(var\\(--unscaledScreenHeight\\) \\* [\\d.]+px / 1080\\)",
+        "name=\"WeatherBlock\"[^>]*left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* [\\d.]+px / 1080\\)\\); right: 0px",
+        "name=\"Searchblock\"[^>]*--h-anchor: 50%[^>]*left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* -940px / 1080\\)\\)",
+        "name=\"Worldmap_Filters\"[^>]*--h-anchor: 50%; --v-anchor: 50%; --pivot-x: -100%; --pivot-y: -100%; left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* 940px / 1080\\)\\)",
+        "name=\"Buttons\"[^>]*--h-anchor: 50%; --v-anchor: 50%; --pivot-x: -100%; --pivot-y: -100%; left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* 940px / 1080\\)\\)"
+      ],
+      "failure": "unexpected format: Free Flight cannot be laid out to the screen's edges"
     }
   ],
   "symbols": [

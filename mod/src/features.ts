@@ -8,6 +8,7 @@ import { aircraftGallery } from './features/aircraft-gallery/index.ts';
 import { aircraftSetup } from './features/aircraft-setup/index.ts';
 import { fastMenus } from './features/fast-menus/index.ts';
 import { freeflightFavorites } from './features/freeflight-favorites/index.ts';
+import { freeflightLayout } from './features/freeflight-layout/index.ts';
 import { weatherBar } from './features/weather-bar/index.ts';
 import { tailNumber } from './features/tail-number.ts';
 import { timeWheel } from './features/time-wheel.ts';
@@ -30,4 +31,5 @@ export const FEATURES: FeatureRegistry = {
   aircraftSetup,
   aircraftGallery,
   freeflightFavorites,
+  freeflightLayout,
 };
