@@ -19,7 +19,7 @@ the widget, `weather-bar/bar.ts`; the favourites under the aircraft button, `fre
 stay in that area too. The sides of the screen are empty, and the globe is squeezed between two columns that fill the
 screen's height.
 
-The update moves **Free Flight's two columns to the edges of the screen**, stretches the block between them, and puts
+The update moves **Free Flight's two columns to the edges of the screen**, keeps Departure / Arrival at the sim's width between them (first stretched, see below), and puts
 **every gap of the screen on one rule**: "propre, symétrique et cohérent" (the owner). The aircraft selection is not
 changed: the owner waits to see whether users ask for it.
 
@@ -59,7 +59,7 @@ generator needs to know nothing about the user's screen.
 
 ### Across widths
 
-- **Departure / Arrival stretches** between the two columns (the owner chose this over keeping its width, centred).
+- **Departure / Arrival keeps the sim's width (988 units), centred between the columns**, narrower only where the room is short (16:9: a group gap from each column). First built stretched between the columns (the owner's choice over the mockups); seen in the sim it covered the top of the globe for nothing, its fields staying at its two ends, and the owner chose this instead (2026-11-06): the gaps on its two sides are equal but larger than 24 units on a wide screen (443 px at 3440 × 1440).
 - **The whole layout stops at the width of a 21:9 screen** (3440 × 1440: 2580 units) and stays centred beyond it. On a
   32:9 screen (5120 × 1440) the layout is exactly the 3440 × 1440 one, the globe free on both sides; only the outer
   margin grows. The owner chose this over Departure / Arrival stretching without limit (2864 units at 32:9) and over a
@@ -77,7 +77,7 @@ generator needs to know nothing about the user's screen.
 | *Search location* | sim | left column |
 | Favourites | mod | left column (already anchored on the aircraft button) |
 | Back / Select hints | sim | left column |
-| Departure / Arrival (with runway and swap) | sim | stretched between the columns |
+| Departure / Arrival (with runway and swap) | sim | centred between the columns, at the sim's width |
 | Profile bar (B, profile, notifications, settings) | sim | right column |
 | *Flight Conditions* widget | sim | right column |
 | Weather / Airport tabs, *Today*, *Weather*, *Presets*, *Air traffic*, *Multiplayer*, METAR | mod | right column (anchored on the widget) |

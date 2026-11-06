@@ -51,7 +51,18 @@ describe('freeflightPlaces', () => {
     assert.equal(places.left, 32);
     assert.equal(places.right, 3408);
     assert.equal(places.columnWidth, 586);
-    assert.equal(places.planInset, 586 + 32);
+  });
+
+  it("keeps Departure / Arrival at the sim's width, centred, where the screen has room", () => {
+    const places = freeflightPlaces(input(3440, 1440));
+    const width = places.right - places.left - 2 * places.planInset;
+    assert.equal(width, 1318);
+    assert.equal(places.planInset, (3376 - 1318) / 2);
+  });
+
+  it('narrows Departure / Arrival to a group gap from each column on a 16:9 screen', () => {
+    const places = freeflightPlaces(input(1920, 1080));
+    assert.equal(places.planInset, 440 + 24);
   });
 
   it('stacks the top rows 24 units apart from the screen top', () => {

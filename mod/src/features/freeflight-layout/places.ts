@@ -9,6 +9,11 @@ import { GROUP_GAP } from '../../sim/freeflight-layout.ts';
 export const MAX_LAYOUT_UNITS = 2580;
 /** The sim's column width (the aircraft button, the Flight Conditions block), in layout units. */
 const COLUMN_UNITS = 440;
+/**
+ * The sim's width of Departure / Arrival, in layout units (its 1880-unit row less 446 on each side): kept on a wide
+ * screen, centred, so that it does not cover the globe (the owner, 2026-11-06, over it stretched between the columns).
+ */
+const PLAN_UNITS = 988;
 
 /** The screen and the heights of the sim's blocks, in pixels as drawn; `unit` in pixels per layout unit. */
 export interface PlaceInput {
@@ -33,7 +38,10 @@ export interface Places {
   /** The right column's right edge. */
   right: number;
   columnWidth: number;
-  /** Departure / Arrival's `left` and `right` inside the top row: a column and a group gap. */
+  /**
+   * Departure / Arrival's `left` and `right` inside the top row: centred at the sim's width, never closer to a column
+   * than a group gap (16:9).
+   */
   planInset: number;
   /** The group gap, 24 units, in whole pixels. */
   gap: number;
@@ -71,7 +79,7 @@ export function freeflightPlaces(input: PlaceInput): Places {
     left,
     right: left + content,
     columnWidth,
-    planInset: columnWidth + gap,
+    planInset: Math.max(columnWidth + gap, Math.floor((content - PLAN_UNITS * unit) / 2)),
     gap,
     menuTop: gap,
     mainTop,
