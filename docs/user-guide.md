@@ -116,7 +116,7 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 
 ### Favourites on Free Flight
 
-**Where:** Free Flight, left column, under the sim's *Search location* field, as wide as the aircraft button; hidden while the search shows its results.
+**Where:** Free Flight, left column, under the sim's *Search location* field and level with the weather bar's *Today*, as wide as the aircraft button; hidden while the search shows its results.
 
 - One row per **favourite livery** (the heart of the liveries in the aircraft selection). No favourite: no block.
 - As many whole rows as fit above the screen's bottom buttons; the others scroll.
@@ -125,6 +125,17 @@ In Live weather the wheel moves within the last 24 hours and stays live; out of 
 - **Heart**: clicking it removes the favourite livery.
 - **Order**: from the most recently used, computed when the screen opens, then kept while it stays open, so that a clicked row does not jump under the mouse.
 - The use of each aircraft (last livery per variant) is recorded at every change of aircraft, whatever the screen.
+
+### Free Flight on wide screens
+
+**Where:** Free Flight, the whole screen. On by default; turned off, the sim keeps its own places.
+
+- The sim draws Free Flight in a frame 1880 units wide at the screen's centre (a unit is 1/1080 of the screen's height): on a 21:9 screen the sides stay empty and the globe is squeezed between the two columns. The mod moves **both columns to the screen's edges**: on the left the aircraft button, *Search location* and the favourites; on the right the profile bar, *Flight Conditions*, the weather bar, the sim's Airport and Traffic cards, the map buttons and their panels, *EFB* and *Start flight*. **Departure / Arrival stretches** between them.
+- **Two gaps for the whole screen**: 24 units between groups (the screen's edges, both sides of Departure / Arrival, under the profile bar, under the top row, above the map buttons, *EFB* and *Start flight*, and the screen's bottom) and 6 units inside a group (the weather bar's sections, under *Search location*). The aircraft button, Departure / Arrival and *Flight Conditions* share their top and bottom; the Weather / Airport tabs are as high as *Search location* and level with it, the favourites level with *Today*.
+- **Up to a 21:9 width**: on a wider screen (32:9) the layout keeps the 21:9 one, centred, the globe free on both sides.
+- The same rules on 16:9 screens: the gaps are evened out (Departure / Arrival a little narrower than the sim draws it).
+- The mod reads the screen's size itself: a change of resolution or of the window's size is followed at once.
+- The profile bar is shared by every screen: it is moved only while Free Flight shows. The *Back* / *Select* hints at the bottom left belong to another view of the sim and keep their place.
 
 ### Aircraft gallery and list
 
