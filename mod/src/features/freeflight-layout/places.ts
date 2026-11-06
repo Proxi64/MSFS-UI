@@ -35,6 +35,8 @@ export interface Places {
   columnWidth: number;
   /** Departure / Arrival's `left` and `right` inside the top row: a column and a group gap. */
   planInset: number;
+  /** The group gap, 24 units, in whole pixels. */
+  gap: number;
   menuTop: number;
   mainTop: number;
   /** Search location, a group gap under the top row. */
@@ -70,6 +72,7 @@ export function freeflightPlaces(input: PlaceInput): Places {
     right: left + content,
     columnWidth,
     planInset: columnWidth + gap,
+    gap,
     menuTop: gap,
     mainTop,
     searchTop,

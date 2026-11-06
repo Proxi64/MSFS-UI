@@ -71,6 +71,8 @@ describe('freeflightPlaces', () => {
   it("fits the map's panels between Search location's top and a group gap above the map buttons", () => {
     const places = freeflightPlaces(input(3440, 1440));
     assert.equal(places.panelsHeight, places.filtersBottom - 58 - 32 - places.searchTop);
+    assert.equal(places.gap, 32);
+    assert.equal(freeflightPlaces(input(2161, 1164)).gap, 25);
   });
 
   it('puts the columns 24 units from the edges of a 16:9 screen', () => {

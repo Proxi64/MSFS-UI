@@ -89,9 +89,14 @@ class WideLayout {
     const filters = childNamed(root, 'Worldmap_Filters');
     if (filters) {
       top(this.block('Worldmap_Filters', filters), places.filtersBottom);
-      // Its panels hang a group gap above it (the sim's own style), 550 units high: they now start at Search location's top.
+      // Its panels hang a group gap above it (the sim's style, in fractions of a pixel), 550 units high: they now end a
+      // whole-pixel group gap above it (their pivot puts them by their bottom) and start at Search location's top.
       const panels = childNamed(filters, 'Content');
-      if (panels) this.block('Worldmap_Filters_Content', panels).set('height', `${places.panelsHeight}px`);
+      if (panels) {
+        const block = this.block('Worldmap_Filters_Content', panels);
+        top(block, -places.gap);
+        block.set('height', `${places.panelsHeight}px`);
+      }
     }
     const buttons = childNamed(root, 'Buttons');
     if (buttons) {
