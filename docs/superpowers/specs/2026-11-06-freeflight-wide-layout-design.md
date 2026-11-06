@@ -10,9 +10,11 @@ the browser (`.superpowers/brainstorm/`, not in Git; the last ones `wide-freefli
 
 ## Intent
 
-The sim lays its menu out in a 16:9 area centred on the screen. On the owner's 3440 × 1440 screen, Free Flight's left
-column (the aircraft button) starts about 440 px from the screen's left edge and its right column (the Flight Conditions
-widget) ends about 440 px from the right edge. The mod's panels are anchored on those sim blocks (the weather bar under
+The sim lays Free Flight out in a frame **1880 units wide** centred on the screen: every block is placed by an inline
+style `left: calc(var(--h-anchor) + calc(var(--unscaledScreenHeight) * Npx / 1080))` with `--h-anchor: 50%` and
+N = ±940 for the frame's edges (measured 2026-11-06 at 3440 × 1440, below). On the owner's screen the aircraft button
+starts 467 px from the left edge and the right column ends 467 px from the right edge (350 units); on a 16:9 screen the
+margin is 20 units. The mod's panels are anchored on those sim blocks (the weather bar under
 the widget, `weather-bar/bar.ts`; the favourites under the aircraft button, `freeflight-favorites/panel.ts`), so they
 stay in that area too. The sides of the screen are empty, and the globe is squeezed between two columns that fill the
 screen's height.
@@ -48,10 +50,10 @@ generator needs to know nothing about the user's screen.
 
 - The aircraft button, Departure / Arrival and *Flight Conditions*: the same top and the same bottom.
 - *Search location* level with the Weather / Airport tabs: **the tabs' row takes the measured height of *Search
-  location*** (today it is `TAB_ROW`, 36 units, `weather-bar/right-column.ts`; *Search location* is about 28 units on
-  the owner's capture, to be measured). The owner chose this over making the sim's field taller.
+  location*** (today it is `TAB_ROW`, 36 units, `weather-bar/right-column.ts`; *Search location* is 30 units, the
+  `Searchblock`'s own height). The owner chose this over making the sim's field taller.
 - The favourites level with *Today*.
-- The two columns the same width (as today: the aircraft button and the widget are both about 440 units wide).
+- The two columns the same width (as today: the aircraft button and the right column are both 440 units wide).
 - The profile bar's right edge on the right column's right edge.
 - The Back / Select hints on the left column's left edge and on *Start flight*'s bottom.
 
@@ -62,9 +64,9 @@ generator needs to know nothing about the user's screen.
   32:9 screen (5120 × 1440) the layout is exactly the 3440 × 1440 one, the globe free on both sides; only the outer
   margin grows. The owner chose this over Departure / Arrival stretching without limit (2864 units at 32:9) and over a
   capped Departure / Arrival, which would break the 24-unit gaps on each side of it.
-- **The same rules on 16:9 screens.** There the update tidies today's uneven gaps (on the owner's capture about 19 units
-  left of Departure / Arrival and 8 on its right, an edge margin of about 19): the columns move a few pixels inward and
-  Departure / Arrival narrows by about 30 units (944 units at 16:9, 1604 at 3440 × 1440, 1584 at 2560 × 1080).
+- **The same rules on 16:9 screens.** Today the sim leaves there an edge margin of 20 units and 6 units on each side of
+  Departure / Arrival (988 units wide at every ratio): the columns move 4 units outward and Departure / Arrival
+  narrows to 944 units (1604 at 3440 × 1440, 1584 at 2560 × 1080).
 - 16:10: the sim shows it as 16:9 (measured in 1f); it gets the 16:9 layout.
 
 ### Free Flight's blocks
@@ -85,6 +87,27 @@ generator needs to know nothing about the user's screen.
 
 The airport label on the map is the map's own and is not moved.
 
+## What the sim does (measured 2026-11-06, 3440 × 1440, Free Flight shown)
+
+Units below are layout units (1 unit = 1.333 px at 1440 lines). Every block is an absolute element of `FreeFlightPage`
+(or of `MenuBarPage`) placed by its inline style from the screen's centre (`--h-anchor: 50%`, `--v-anchor: 50%`) and a
+pivot (`--pivot-x`, `--pivot-y`, applied as a `transform`):
+
+| Element (`name`) | Place (inline style) | Box | Holds |
+|---|---|---|---|
+| `MainBlock` | `left: 50%`, pivot −50 %, `width: 1880`, `top: 50% − 450`, `height: 190` | 90 → 280 | `FreeFlight_AircraftButton` (`left: 0`, 440 wide), `FreeFlight_Plan` (Departure / Arrival, `left: 446`, `right: 446`), `WeatherBlock` (`left: 1440`, `right: 0`: the *Flight Conditions* title, 88 high, and `Flight_Conditions_History_Widget`, 96 high, 6 apart) |
+| `Searchblock` | `left: 50% − 940`, `top: 50% − 236`, 440 × 30, z-index 51 | 304 → 334 | `Search` |
+| `Worldmap_Filters` | `left: 50% + 940`, pivot −100 % / −100 %, `top: 50% + 378`, 440 × 44 | 874 → 918 | the scale (`ScaleBlock`), the map buttons (`Buttons`), their panels (`Content`) |
+| `Buttons` (FreeFlightPage) | `left: 50% + 940`, pivot −100 %, bottom at 1059.75 | 942 → 1059.75 | `EFB` (49.5 high), `Fly` (*Start flight*, 49.5 high), 18.75 apart |
+| `MenuBar` (in `MenuBarPage`, **shared by every screen**) | `left: 50% + 940`, pivot −100 %, `top: 50% − 525`, 50 high | 15 → 65 | `ShortcutWrap` (B), `MenuBar_ProfileButton`, the icon buttons, `Market`, `SettingsButton` |
+
+So the frame is 1880 units (centre ± 940); the gaps today are 24 under `MainBlock`, 25 under `MenuBar`, 6 around
+`FreeFlight_Plan`, 24 between the map buttons and *EFB*, 18.75 between *EFB* and *Start flight*, 20.25 under *Start
+flight*. The Back / Select hints were not on the screen during the measure. Moving a block means rewriting the offset
+of its `left` (and `top`), or the `width` and inner `left` / `right` of `MainBlock`, through a scope that puts the
+inline style back; the sim did not rewrite these styles while Free Flight stayed shown (to be confirmed across screen
+changes and a change of resolution).
+
 ## Constraints
 
 - Every change to the sim through a `Scope` (reversible); every sim element touched (`name="…"`, classes, GUIDs)
@@ -93,8 +116,9 @@ The airport label on the map is the map's own and is not moved.
   a higher z-index, checked by hit testing.
 - The sim animates and resizes its screens without notice: places computed in the existing 250 ms passes, whole
   pixels, a CSS variable written only when it changes (`setVariable()`).
-- The sim's other screens are not touched: blocks shared with them (if the profile bar or the hints are a global menu
-  bar) move only while Free Flight is shown.
+- The sim's other screens are not touched. **The profile bar (`MenuBar`) is shared by every screen: it moves only while
+  Free Flight is shown** (the owner, 2026-11-06, over moving it on every screen or never), and goes back to the sim's
+  place when another screen shows; the same for the Back / Select hints if they are shared.
 - No `resize` event sent; no profile save.
 - Nothing else of the mod's Free Flight behaviour changes: the tabs, the cards held under them, the map panels hiding
   the bar, the favourites hidden while the search shows its results, the presets list sized toward the map buttons
@@ -120,10 +144,9 @@ The airport label on the map is the map's own and is not moved.
 
 ## Left to the builder (to settle by measuring in the sim first)
 
-- How each sim block is laid out (its container, the 16:9 frame, transforms, margins) and the least fragile way to move
-  it: one container per column, or block by block.
-- Whether the profile bar and the Back / Select hints belong to Free Flight or to a menu bar shared by every screen.
-- The exact height of *Search location* and of the profile bar; the column width at each ratio.
+- Whether the sim writes the inline styles above again (screen changes, a change of resolution, its animations), and
+  how the scope keeps them.
+- Where the Back / Select hints are and when they show.
 - Where the map buttons' panels, the search results and the sim's cards open once their anchors move.
 - The behaviour at a change of resolution while Free Flight is shown.
 
