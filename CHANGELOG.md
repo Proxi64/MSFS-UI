@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.2.0 (2026-11-06)
+
+Coming from 2.1.0 or earlier: this version includes 2.1.1 (see below), never published on its own, among them **the fix for the sim's graphics settings being reset**.
+
+- **Free Flight on wide screens**, a new feature, on by default: on a screen wider than 16:9 (a 21:9 monitor, for example), Free Flight's two columns go to the screen's edges, up to a 21:9 width and centred beyond, so that the globe is no longer cramped between the favourites and the weather bar. Departure / Arrival stays at the sim's width, centred between them, and the gaps between the blocks are even. Turn it off on the Features page to keep the sim's own placement.
+- Tested on the sim updated on 2026-11-06 (1.9.24).
+- **Updating**: delete the old `MSFS-UI-GENERATOR` folder before unzipping this one, then open the app and click **Generate & install**. Coming from 2.1.0 or earlier, restart the sim once, and set your graphics options again if they were reset (see 2.1.1).
+
+## 2.1.1 (2026-11-04)
+
+Not published on its own: its changes come with 2.2.0.
+
+- **The sim's graphics settings are no longer reset**: versions 1.2.0 to 2.1.0 asked the sim to save its profile, so that the mod's data reached the disk, and that save put the graphics settings back to a preset (High, Ultra…). The mod never asks for it any more. Settings already reset cannot be restored: set your graphics options again once.
+- **Your data is safer at start-up**: when the sim failed to open the vault's files at a start, the mod could take the vault for an empty one and write over it. It now waits and reads again, and never writes over the newest copy it could not read. What a session without the vault changed is added to the vault's data at the next start, instead of being lost.
+- **Aircraft whose name follows its variant** (the Just Flight 146-200, for example): a hidden aircraft and a favourite livery are found again on its other variants.
+- **A click back** on the livery or the variant you just left, within a second, is no longer ignored.
+- **Dawn, Day, Dusk and Night** use the time zone of the new departure airport, not the previous one's.
+- **The app**: an interrupted installation no longer blocks later ones; its dialogs follow the app's light or dark theme; a number being typed in an option enables **Apply** at once; Home keeps the result of its last action when you come back to it; a minimum window size.
+- **The gallery**: the ticks of **Hidden** and **Favorites** no longer cover their text, *Manufacturer* is no longer cut in the sort list, and the bar no longer moves when a filter leaves few aircraft.
+
 ## 2.1.0 (2026-11-02)
 
 - **Showcase**: the Default view is now **Showcase**, and it is the view a new user starts on. On the left, every part stays at the same place from one aircraft to the next: the title on three lines (model, manufacturer, studio), the variants in a dropdown, the current livery large with its arrows, position and heart, up to six small liveries at a time that scroll by whole rows, the tail number, Fuel and Payload, Identification and **Configure your aircraft**. The large aircraft tiles show the model, the manufacturer, the variant and, at the bottom, the studio.

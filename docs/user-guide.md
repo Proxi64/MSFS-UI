@@ -5,7 +5,7 @@ MSFS-UI improves the main menu of **Microsoft Flight Simulator 2024**. It has tw
 - **MSFS-UI-GENERATOR**, a Windows app: you choose the features, it generates the `msfs-ui` package, installs it in the sim's Community folder, and checks that the sim still offers what the mod needs;
 - the **`msfs-ui` package**, the mod itself, which runs inside the sim's menu.
 
-Developed on MSFS 2024 1.9.18 and tested on 1.9.21 (Steam), base UI package `fs-base-ui` 0.1.10.
+Version 2.2.0, developed on MSFS 2024 1.9.18 to 1.9.21 and tested on 1.9.24 (Steam), base UI package `fs-base-ui` 0.1.10.
 
 ## Contents
 
