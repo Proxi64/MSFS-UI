@@ -22,6 +22,8 @@ export interface PlaceInput {
   efbHeight: number;
   /** Start flight. */
   flyHeight: number;
+  /** The map buttons' row (`Worldmap_Filters`). */
+  filtersHeight: number;
 }
 
 /** Whole pixels from the screen's left or top edge. */
@@ -43,6 +45,11 @@ export interface Places {
   buttonsHeight: number;
   /** The map buttons' bottom, a group gap above EFB. */
   filtersBottom: number;
+  /**
+   * The map buttons' panels (legend, layers, display): from Search location's top (a group gap under the top row, as
+   * the weather bar's tabs) to the sim's group gap above the map buttons, where the sim hangs them.
+   */
+  panelsHeight: number;
 }
 
 export function freeflightPlaces(input: PlaceInput): Places {
@@ -56,6 +63,8 @@ export function freeflightPlaces(input: PlaceInput): Places {
   const mainTop = gap + input.menuHeight + gap;
   const buttonsBottom = height - gap;
   const buttonsHeight = input.efbHeight + gap + input.flyHeight;
+  const searchTop = mainTop + input.mainHeight + gap;
+  const filtersBottom = buttonsBottom - buttonsHeight - gap;
   return {
     left,
     right: left + content,
@@ -63,9 +72,10 @@ export function freeflightPlaces(input: PlaceInput): Places {
     planInset: columnWidth + gap,
     menuTop: gap,
     mainTop,
-    searchTop: mainTop + input.mainHeight + gap,
+    searchTop,
     buttonsBottom,
     buttonsHeight,
-    filtersBottom: buttonsBottom - buttonsHeight - gap,
+    filtersBottom,
+    panelsHeight: filtersBottom - input.filtersHeight - gap - searchTop,
   };
 }

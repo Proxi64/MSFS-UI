@@ -56,6 +56,7 @@ class WideLayout {
       mainHeight: Math.round(main.getBoundingClientRect().height),
       efbHeight: height('[name="Buttons"] > [name="EFB"]'),
       flyHeight: height('[name="Buttons"] > [name="Fly"]'),
+      filtersHeight: height('[name="Worldmap_Filters"]'),
     });
     this.placeEdges(places);
     this.placeTopRow(main, places);
@@ -85,7 +86,13 @@ class WideLayout {
     top(this.block('MainBlock', main), places.mainTop);
     top(this.child(root, 'Searchblock'), places.searchTop);
     top(this.child(root, 'Navigation'), places.searchTop);
-    top(this.child(root, 'Worldmap_Filters'), places.filtersBottom);
+    const filters = childNamed(root, 'Worldmap_Filters');
+    if (filters) {
+      top(this.block('Worldmap_Filters', filters), places.filtersBottom);
+      // Its panels hang a group gap above it (the sim's own style), 550 units high: they now start at Search location's top.
+      const panels = childNamed(filters, 'Content');
+      if (panels) this.block('Worldmap_Filters_Content', panels).set('height', `${places.panelsHeight}px`);
+    }
     const buttons = childNamed(root, 'Buttons');
     if (buttons) {
       const block = this.block('Buttons', buttons);

@@ -41,6 +41,7 @@ function input(width: number, height: number): PlaceInput {
     mainHeight: Math.floor(190 * unit),
     efbHeight: Math.floor(49.5 * unit),
     flyHeight: Math.floor(49.5 * unit),
+    filtersHeight: Math.floor(44 * unit),
   };
 }
 
@@ -65,6 +66,11 @@ describe('freeflightPlaces', () => {
     assert.equal(places.buttonsBottom, 1440 - 32);
     assert.equal(places.buttonsHeight, 66 + 32 + 66);
     assert.equal(places.filtersBottom, 1440 - 32 - (66 + 32 + 66) - 32);
+  });
+
+  it("fits the map's panels between Search location's top and a group gap above the map buttons", () => {
+    const places = freeflightPlaces(input(3440, 1440));
+    assert.equal(places.panelsHeight, places.filtersBottom - 58 - 32 - places.searchTop);
   });
 
   it('puts the columns 24 units from the edges of a 16:9 screen', () => {
