@@ -82,9 +82,30 @@
         "name=\"WeatherBlock\"[^>]*left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* [\\d.]+px / 1080\\)\\); right: 0px",
         "name=\"Searchblock\"[^>]*--h-anchor: 50%[^>]*left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* -940px / 1080\\)\\)",
         "name=\"Worldmap_Filters\"[^>]*--h-anchor: 50%; --v-anchor: 50%; --pivot-x: -100%; --pivot-y: -100%; left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* 940px / 1080\\)\\)",
-        "name=\"Buttons\"[^>]*--h-anchor: 50%; --v-anchor: 50%; --pivot-x: -100%; --pivot-y: -100%; left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* 940px / 1080\\)\\)"
+        "name=\"Buttons\"[^>]*--h-anchor: 50%; --v-anchor: 50%; --pivot-x: -100%; --pivot-y: -100%; left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* 940px / 1080\\)\\)",
+        "name=\"MainBlock\"[^>]*--pivot-y: 0%; top: calc\\(var\\(--v-anchor\\) \\+ ",
+        "name=\"Searchblock\"[^>]*--pivot-y: 0%; left: calc\\([^;]*; top: calc\\(var\\(--v-anchor\\) \\+ ",
+        "name=\"EFB\"[^>]*--v-anchor: 100%; --pivot-x: 0%; --pivot-y: -100%"
       ],
       "failure": "unexpected format: Free Flight cannot be laid out to the screen's edges"
+    },
+    {
+      "group": "Free Flight frame",
+      "label": "The map's panels hung by their bottom above the map buttons",
+      "component": "name=\"Worldmap_Filters\"",
+      "patterns": [
+        "name=\"Content\"[^>]*--v-anchor: 100%; --pivot-x: 0%; --pivot-y: -100%"
+      ],
+      "failure": "unexpected format: the map's panels cannot be fitted to Free Flight's right column"
+    },
+    {
+      "group": "Free Flight frame",
+      "label": "The profile bar placed by its right edge from the screen's centre",
+      "component": "name=\"MenuBarPage\"",
+      "patterns": [
+        "name=\"MenuBar\"[^>]*--h-anchor: 50%; --v-anchor: 50%; --pivot-x: -100%; --pivot-y: 0%; left: calc\\(var\\(--h-anchor\\) \\+ calc\\(var\\(--unscaledScreenHeight\\) \\* 940px / 1080\\)\\); top: calc\\(var\\(--v-anchor\\) \\+ "
+      ],
+      "failure": "unexpected format: the profile bar cannot follow Free Flight's right column"
     }
   ],
   "symbols": [
