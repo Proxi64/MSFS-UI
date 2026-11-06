@@ -4,8 +4,8 @@
   // field under the aircraft button), the bar or the sim's card 6 units under them, 6 units between the sections, the
   // METAR last, the whole column above the map buttons; each section a card of its own (every gap shows the map); every
   // block on the widget's edges; headers 6 units above their content; the weather grid to the bar's edges; the presets
-  // list, when open, in whole items toward the map buttons. Left column: the favourites under the search field at the sim's
-  // gap, on the button's edges, ending on a whole row, their scroll bar 6 units from the rows.
+  // list, when open, in whole items toward the map buttons. Left column: the favourites level with the bar's first section
+  // (6 units under the search field), on the button's edges, ending on a whole row, their scroll bar 6 units from the rows.
   // Returns { u, gaps, favourites, problems }.
   var u = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--unscaledScreenHeight')) / 1080;
   var R = function (e) { return e.getBoundingClientRect(); };
@@ -115,15 +115,15 @@
     }
   }
 
-  // Left column: the favourites, under the search field at the sim's gap above it.
+  // Left column: the favourites level with the weather bar's first section (2026-11-06): a group gap, the search
+  // field's 30 units and a section gap under the aircraft button, whether the sim shows the field or not.
   var fav = page.querySelector('.msfs-ui-fav');
   var favInfo = 'no favourites';
   if (fav && R(fav).height > 0) {
     var fb = R(fav);
-    var above = s && s.height > 0 ? s : aircraft;
-    var leftGap = Math.round(fb.top - above.bottom);
-    var simGap = s && s.height > 0 ? Math.round(s.top - aircraft.bottom) : group;
-    if (Math.abs(leftGap - simGap) > 1) problems.push('favourites ' + leftGap + ' under the ' + (above === s ? 'search field' : 'aircraft button') + ', not ' + simGap);
+    var favTop = aircraft.bottom + group + Math.floor(30 * u) + gap;
+    if (!near(fb.top, favTop)) problems.push('favourites at ' + Math.round(fb.top) + ', not ' + Math.round(favTop));
+    if (s && s.height > 0 && !near(fb.top - s.bottom, gap)) problems.push('favourites ' + Math.round(fb.top - s.bottom) + ' under the search field, not ' + gap);
     if (!near(fb.left, aircraft.left) || !near(fb.right, aircraft.right)) problems.push('favourites sides');
     var favRows = Array.prototype.slice.call(fav.querySelectorAll('.msfs-ui-fav__row')).map(R).filter(function (b) { return b.top < fb.bottom && b.bottom > fb.top; });
     var lastRow = favRows[favRows.length - 1];
