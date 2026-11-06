@@ -59,6 +59,42 @@ class WideLayout {
     });
     this.placeEdges(places);
     this.placeTopRow(main, places);
+    this.placeRows(root, main, places);
+  }
+
+  /**
+   * The rows 24 units apart from the screen's top and bottom: the profile bar (shared by every screen, so moved only
+   * while Free Flight shows: the screen's scope puts it back), the top row, Search location (or the sim's navigation
+   * dropdown in its place), and at the bottom Start flight, EFB and the map buttons. Pivots are the sim's: a block
+   * with `--pivot-y: -100%` is placed by its bottom.
+   */
+  private placeRows(root: HTMLElement, main: HTMLElement, places: Places): void {
+    const menu = document.querySelector<HTMLElement>('[name="MenuBarPage"] [name="MenuBar"]');
+    if (menu) {
+      const bar = this.block('MenuBar', menu);
+      bar.set('--h-anchor', '0%');
+      bar.set('left', `${places.right}px`);
+      bar.set('--v-anchor', '0%');
+      bar.set('top', `${places.menuTop}px`);
+    }
+    const top = (block: SimBlock | null, value: number) => {
+      if (!block) return;
+      block.set('--v-anchor', '0%');
+      block.set('top', `${value}px`);
+    };
+    top(this.block('MainBlock', main), places.mainTop);
+    top(this.child(root, 'Searchblock'), places.searchTop);
+    top(this.child(root, 'Navigation'), places.searchTop);
+    top(this.child(root, 'Worldmap_Filters'), places.filtersBottom);
+    const buttons = childNamed(root, 'Buttons');
+    if (buttons) {
+      const block = this.block('Buttons', buttons);
+      top(block, places.buttonsBottom);
+      block.set('height', `${places.buttonsHeight}px`);
+      // EFB at the block's top (the sim puts it 68 units above Start flight's bottom), Start flight at its bottom.
+      const efb = childNamed(buttons, 'EFB');
+      if (efb) top(this.block('EFB', efb), Math.round(efb.getBoundingClientRect().height));
+    }
   }
 
   /** Every block on the frame's edge to the layout's edge, whatever it is (the sim's cards appear later). */
